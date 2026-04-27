@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { initializeIntegrations, IntegrationStatus } from '@/lib/integrations';
+import { initializeIntegrations, type IntegrationStatus as IntegrationStatusState } from '@/lib/integrations';
 
 /**
  * Component that displays the integration status
  * Useful for debugging and verifying all services are connected
  */
 export const IntegrationStatus: React.FC = () => {
-  const [status, setStatus] = useState<IntegrationStatus | null>(null);
+  const [status, setStatus] = useState<IntegrationStatusState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
