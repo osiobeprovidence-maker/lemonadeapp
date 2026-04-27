@@ -2,39 +2,15 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "outputDirectory": "dist",
-  "env": {
-    "VITE_FIREBASE_API_KEY": "@firebase_api_key",
-    "VITE_FIREBASE_AUTH_DOMAIN": "@firebase_auth_domain",
-    "VITE_FIREBASE_PROJECT_ID": "@firebase_project_id",
-    "VITE_FIREBASE_STORAGE_BUCKET": "@firebase_storage_bucket",
-    "VITE_FIREBASE_MESSAGING_SENDER_ID": "@firebase_messaging_sender_id",
-    "VITE_FIREBASE_APP_ID": "@firebase_app_id",
-    "VITE_CONVEX_URL": "@convex_url",
-    "VITE_MUX_TOKEN_ID": "@mux_token_id",
-    "VITE_MUX_TOKEN_SECRET": "@mux_token_secret",
-    "VITE_PAYSTACK_PUBLIC_KEY": "@paystack_public_key",
-    "VITE_PAYSTACK_SECRET_KEY": "@paystack_secret_key",
-    "VITE_VERCEL_URL": "@vercel_url",
-    "VITE_ENVIRONMENT": "production"
-  },
   "rewrites": [
     {
-      "source": "/(?!.*\\..*|_next|_static)(.*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ],
   "headers": [
     {
-      "source": "/(?!.*\\..*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/assets/(.*)",
+      "source": "/assets/:path*",
       "headers": [
         {
           "key": "Cache-Control",
