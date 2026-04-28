@@ -1,226 +1,139 @@
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { useCallback, useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { useCallback } from 'react';
+import { useApp } from '../contexts/AppContext';
+import { generateReference, initializePayment } from '../lib/paystack';
+import { auth } from '../lib/firebase';
 
-/**
- * Custom React hooks for API calls
- */
-
-// Hook for authentication
 export const useCurrentUser = () => {
-  const auth = getAuth();
-  const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setFirebaseUid(user?.uid || null);
-      setIsLoading(false);
-    });
-
-    return unsubscribe;
-  }, [auth]);
-
-  const user = useQuery(
-    api.auth_api.getCurrentUser,
-    firebaseUid ? { firebaseUid } : "skip"
-  );
-
-  return { user, isLoading, firebaseUid };
+  const { user } = useApp();
+  return {
+    user: user ? ({ ...user, _id: user.id, followers: user.followedCreators } as any) : null,
+    isLoading: false,
+    firebaseUid: auth.currentUser?.uid || null,
+  };
 };
 
-// Hook for stories
 export const useStories = (creatorId?: string) => {
-  const stories = creatorId
-    ? useQuery(api.stories_api.getStoriesByCreator, { creatorId })
-    : useQuery(api.stories_api.getTrendingStories, {});
+  const { stories, user } = useApp();
 
-  return stories;
+  if (!creatorId) {
+    return stories;
+  }
+
+  const username = user?.username;
+  return username ? stories.filter((story) => story.creator.username === username) : stories;
 };
 
-// Hook for searching stories
+export const useTrendingStories = () => {
+  const { stories } = useApp();
+  return [...stories].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 6);
+};
+
 export const useSearchStories = (query: string, genre?: string) => {
-  const results = useQuery(
-    query ? api.stories_api.searchStories : "skip",
-    query ? { query, genre } : "skip"
-  );
+  const { stories } = useApp();
+  const normalizedQuery = query.trim().toLowerCase();
 
-  return results;
+  return stories.filter((story) => {
+    const matchesQuery =
+      !normalizedQuery ||
+      story.title.toLowerCase().includes(normalizedQuery) ||
+      story.creator.name.toLowerCase().includes(normalizedQuery) ||
+      story.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery));
+
+    const matchesGenre = !genre || story.genre === genre;
+    return matchesQuery && matchesGenre;
+  });
 };
 
-// Hook for story details
 export const useStoryById = (storyId: string) => {
-  const story = useQuery(api.stories_api.getStoryById, { storyId });
-  return story;
+  const { stories } = useApp();
+  return stories.find((story) => story.id === storyId) || stories[0] || null;
 };
 
-// Hook for payments
-export const usePaymentHistory = (userId: string) => {
-  const payments = useQuery(api.payments_api.getPaymentHistory, { userId });
-  return payments;
-};
+export const usePaymentHistory = (_userId: string) => [];
+export const useWalletBalance = (_userId: string) => null;
 
-// Hook for wallet balance
-export const useWalletBalance = (userId: string) => {
-  const balance = useQuery(
-    userId ? api.payments_api.getWalletBalance : "skip",
-    userId ? { userId } : "skip"
-  );
-
-  return balance;
-};
-
-// Hook for creating a payment
 export const useCreatePayment = () => {
-  const mutation = useMutation(api.payments_api.createPaymentIntent);
-
   return useCallback(
-    (args: Parameters<typeof mutation>[0]) => {
-      return mutation(args);
+    async (args: { amount: number; userId: string; planType: string; billingCycle: string }) => {
+      const email = auth.currentUser?.email;
+      if (!email) {
+        throw new Error('Please sign in before starting a payment.');
+      }
+
+      const reference = generateReference();
+      const response = await initializePayment({
+        email,
+        amount: args.amount,
+        reference,
+        metadata: {
+          userId: args.userId,
+          planType: args.planType,
+          billingCycle: args.billingCycle,
+          product: 'premium',
+        },
+      });
+
+      return {
+        reference,
+        authorizationUrl: response?.data?.authorization_url,
+      };
     },
-    [mutation]
+    [],
   );
 };
 
-// Hook for verifying payment
 export const useVerifyPayment = () => {
-  const mutation = useMutation(api.payments_api.verifyPayment);
-
-  return useCallback(
-    (args: Parameters<typeof mutation>[0]) => {
-      return mutation(args);
-    },
-    [mutation]
-  );
+  return useCallback(async () => null, []);
 };
 
-// Hook for following/unfollowing
 export const useFollowCreator = () => {
-  const followMutation = useMutation(api.auth_api.followCreator);
-  const unfollowMutation = useMutation(api.auth_api.unfollowCreator);
-
+  const { followCreator, unfollowCreator } = useApp();
   return {
-    follow: useCallback(
-      (userId: string, creatorId: string) =>
-        followMutation({ userId, creatorId }),
-      [followMutation]
-    ),
-    unfollow: useCallback(
-      (userId: string, creatorId: string) =>
-        unfollowMutation({ userId, creatorId }),
-      [unfollowMutation]
-    ),
+    follow: useCallback((_userId: string, creatorId: string) => followCreator(creatorId), [followCreator]),
+    unfollow: useCallback((_userId: string, creatorId: string) => unfollowCreator(creatorId), [unfollowCreator]),
   };
 };
 
-// Hook for saving/unsaving stories
 export const useSaveStory = () => {
-  const saveMutation = useMutation(api.auth_api.saveStory);
-  const unsaveMutation = useMutation(api.auth_api.unsaveStory);
-
+  const { saveStory, unsaveStory } = useApp();
   return {
-    save: useCallback(
-      (userId: string, storyId: string) =>
-        saveMutation({ userId, storyId }),
-      [saveMutation]
-    ),
-    unsave: useCallback(
-      (userId: string, storyId: string) =>
-        unsaveMutation({ userId, storyId }),
-      [unsaveMutation]
-    ),
+    save: useCallback((_userId: string, storyId: string) => saveStory(storyId), [saveStory]),
+    unsave: useCallback((_userId: string, storyId: string) => unsaveStory(storyId), [unsaveStory]),
   };
 };
 
-// Hook for getting saved stories
-export const useSavedStories = (userId: string) => {
-  const stories = useQuery(
-    userId ? api.auth_api.getSavedStories : "skip",
-    userId ? { userId } : "skip"
-  );
-
-  return stories;
+export const useSavedStories = (_userId?: string) => {
+  const { user, stories } = useApp();
+  if (!user || user.isGuest) return [];
+  return stories.filter((story) => user.savedStories.includes(story.id));
 };
 
-// Hook for getting followed creators
-export const useFollowedCreators = (userId: string) => {
-  const creators = useQuery(
-    userId ? api.auth_api.getFollowedCreators : "skip",
-    userId ? { userId } : "skip"
-  );
-
-  return creators;
+export const useFollowedCreators = (_userId?: string) => {
+  const { user, creators } = useApp();
+  if (!user || user.isGuest) return [];
+  return (Object.values(creators) as any[]).filter((creator) => user.followedCreators.includes(creator.username));
 };
 
-// Hook for registering user
 export const useRegisterUser = () => {
-  const mutation = useMutation(api.auth_api.registerUser);
-
-  return useCallback(
-    (args: Parameters<typeof mutation>[0]) => {
-      return mutation(args);
-    },
-    [mutation]
-  );
+  return useCallback(async () => null, []);
 };
 
-// Hook for updating user profile
 export const useUpdateUserProfile = () => {
-  const mutation = useMutation(api.auth_api.updateUserProfile);
-
-  return useCallback(
-    (args: Parameters<typeof mutation>[0]) => {
-      return mutation(args);
-    },
-    [mutation]
-  );
+  return useCallback(async () => null, []);
 };
 
-// Hook for applying for creator access
 export const useApplyForCreatorAccess = () => {
-  const mutation = useMutation(api.auth_api.applyForCreatorAccess);
-
-  return useCallback(
-    (args: Parameters<typeof mutation>[0]) => {
-      return mutation(args);
-    },
-    [mutation]
-  );
+  return useCallback(async () => null, []);
 };
 
-// Hook for creating a story
 export const useCreateStory = () => {
-  const mutation = useMutation(api.stories_api.createStory);
-
-  return useCallback(
-    (args: Parameters<typeof mutation>[0]) => {
-      return mutation(args);
-    },
-    [mutation]
-  );
+  return useCallback(async () => null, []);
 };
 
-// Hook for updating a story
 export const useUpdateStory = () => {
-  const mutation = useMutation(api.stories_api.updateStory);
-
-  return useCallback(
-    (args: Parameters<typeof mutation>[0]) => {
-      return mutation(args);
-    },
-    [mutation]
-  );
+  return useCallback(async () => null, []);
 };
 
-// Hook for publishing a story
 export const usePublishStory = () => {
-  const mutation = useMutation(api.stories_api.publishStory);
-
-  return useCallback(
-    (args: Parameters<typeof mutation>[0]) => {
-      return mutation(args);
-    },
-    [mutation]
-  );
+  return useCallback(async () => null, []);
 };

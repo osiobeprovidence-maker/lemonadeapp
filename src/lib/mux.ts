@@ -5,7 +5,6 @@
 
 export interface MuxUploadConfig {
   tokenId: string;
-  tokenSecret: string;
 }
 
 export interface MuxPlaybackConfig {
@@ -15,13 +14,12 @@ export interface MuxPlaybackConfig {
 
 export const getMuxConfig = (): MuxUploadConfig => {
   const tokenId = import.meta.env.VITE_MUX_TOKEN_ID;
-  const tokenSecret = import.meta.env.VITE_MUX_TOKEN_SECRET;
 
-  if (!tokenId || !tokenSecret) {
-    throw new Error('Mux configuration is missing. Please set VITE_MUX_TOKEN_ID and VITE_MUX_TOKEN_SECRET');
+  if (!tokenId) {
+    throw new Error('Mux public token ID is missing. Please set VITE_MUX_TOKEN_ID');
   }
 
-  return { tokenId, tokenSecret };
+  return { tokenId };
 };
 
 /**
@@ -35,20 +33,16 @@ export const getMuxStreamUrl = (playbackId: string): string => {
  * Create a Mux Direct Upload URL
  */
 export const createMuxDirectUploadUrl = async (filename: string): Promise<string> => {
-  const config = getMuxConfig();
+  getMuxConfig();
   
   try {
-    const response = await fetch('https://api.mux.com/video/v1/uploads', {
+    const response = await fetch('/api/mux-upload', {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${btoa(`${config.tokenId}:${config.tokenSecret}`)}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        cors_origin: window.location.origin,
-        new_asset_settings: {
-          playback_policy: ['public'],
-        },
+        filename,
       }),
     });
 

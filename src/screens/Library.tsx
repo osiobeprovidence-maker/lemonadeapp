@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MOCK_STORIES } from '../data/mock';
 import { HorizontalStoryCard } from '../components/ui/Cards';
 import { cn } from '../lib/utils';
-import { Bookmark, Clock, Download, Unlock } from 'lucide-react';
+import { Bookmark, Clock, Download, Unlock, Loader } from 'lucide-react';
+import { useCurrentUser, useSavedStories } from '../hooks/useConvex';
 
 export default function Library() {
+  const { user } = useCurrentUser();
+  const savedStories = useSavedStories(user?.id);
   const [activeTab, setActiveTab] = useState<'reading' | 'saved' | 'downloads' | 'unlocked'>('reading');
 
   const tabs = [
@@ -13,6 +16,24 @@ export default function Library() {
     { id: 'downloads', label: 'Downloads', icon: Download },
     { id: 'unlocked', label: 'Unlocked', icon: Unlock },
   ] as const;
+
+  // Get stories for active tab
+  const displayStories = useMemo(() => {
+    switch (activeTab) {
+      case 'saved':
+        return savedStories?.length > 0 ? savedStories : [];
+      case 'reading':
+        return MOCK_STORIES.slice(0, 2); // TODO: Load from user reading history
+      case 'downloads':
+        return []; // TODO: Load downloaded stories
+      case 'unlocked':
+        return user?.unlockedChapters?.length > 0 ? MOCK_STORIES.slice(0, 1) : [];
+      default:
+        return [];
+    }
+  }, [activeTab, savedStories, user]);
+
+  const isLoading = activeTab === 'saved' && savedStories === null;
 
   return (
     <div className="flex flex-col w-full min-h-screen p-6 md:p-12">
@@ -41,9 +62,17 @@ export default function Library() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {MOCK_STORIES.slice(0, activeTab === 'reading' ? 2 : activeTab === 'saved' ? 4 : 1).map(story => (
-          <HorizontalStoryCard key={story.id} story={story} />
-        ))}
+        {isLoading ? (
+          <div className="col-span-full flex items-center justify-center p-8">
+            <Loader className="animate-spin" />
+          </div>
+        ) : displayStories && displayStories.length > 0 ? (
+          displayStories.map((story: any) => (
+            <HorizontalStoryCard key={story.id} story={story} />
+          ))
+        ) : (
+          <div className="col-span-full p-8 text-center text-white/60">No items to show for this tab.</div>
+        )}
       </div>
     </div>
   );

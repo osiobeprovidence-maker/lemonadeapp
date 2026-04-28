@@ -287,6 +287,7 @@ export default function Premium() {
             )}
           </Button>
         </div>
+      </div>
     </div>
   );
 }

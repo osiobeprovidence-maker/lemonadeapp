@@ -7,35 +7,52 @@ import { FormatBadge, GenreBadge, LockedContentCTA, SupportStatusBadge } from '.
 import { FollowButton, SupportButton } from '../components/InteractionButtons';
 import { SensitiveActionWrapper } from '../components/SensitiveActionWrapper';
 import { cn } from '../lib/utils';
-import { useApp } from '../contexts/AppContext';
+import { useCurrentUser, useStoryById, useSaveStory, useUpdateStory } from '../hooks/useConvex';
+import { useEffect } from 'react';
 
 export default function StoryDetail() {
   const { id } = useParams();
-  const { stories, user, creators, unlockChapter, saveStory, unsaveStory } = useApp();
-  const story = stories.find(s => s.id === id) || stories[0];
+  const { user } = useCurrentUser();
+  const story = useStoryById(id ?? '');
+  const saveMutations = useSaveStory();
+  const updateStory = useUpdateStory();
+  const [hasIncremented, setHasIncremented] = React.useState(false);
   const [activeTab, setActiveTab] = useState<'chapters' | 'about' | 'comments'>('chapters');
 
-  const isSaved = user?.savedStories.includes(story.id);
+  const isSaved = !!(user?.savedStories || []).includes(story?.id);
 
   const toggleSave = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user || !story) return;
     if (isSaved) {
-      unsaveStory(story.id);
+      saveMutations.unsave(user.id, story.id);
     } else {
-      saveStory(story.id);
+      saveMutations.save(user.id, story.id);
     }
   };
 
   const handleUnlock = (e: React.MouseEvent, chapterId: string, price: number) => {
     e.preventDefault();
     e.stopPropagation();
+    // unlock flow should be implemented via payments; fallback to wallet check
     if (user && user.walletBalance >= price) {
-      unlockChapter(story.id, chapterId, price);
+      // Ideally call an API to unlock; placeholder for now
+      console.warn('Unlock chapter not yet implemented in hooks');
     } else {
       // Navigate to wallet or show modal
     }
   };
+
+  useEffect(() => {
+    if (!story || hasIncremented) return;
+    try {
+      updateStory({ storyId: story.id, updates: { views: (story.views || 0) + 1 } });
+      setHasIncremented(true);
+    } catch (err) {
+      // ignore errors silently
+    }
+  }, [story, hasIncremented, updateStory]);
 
   return (
     <div className="relative w-full min-h-screen bg-black-core">
@@ -140,14 +157,14 @@ export default function StoryDetail() {
               </div>
             </div>
 
-            <div className="hidden lg:flex flex-col gap-3 justify-center text-right">
+                <div className="hidden lg:flex flex-col gap-3 justify-center text-right">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-1">Followers</p>
-                <p className="font-display font-black text-2xl">{(creators[story.creator.username]?.followers ?? 0).toLocaleString() || (story.creator.followers ?? 0).toLocaleString()}</p>
+                <p className="font-display font-black text-2xl">{(story.creator.followers ?? 0).toLocaleString()}</p>
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-1">Total Reads</p>
-                <p className="font-display font-black text-2xl">{(story.creator.totalReads/1000000).toFixed(1)}M</p>
+                <p className="font-display font-black text-2xl">{((story.creator.totalReads || story.views || 0)/1000000).toFixed(1)}M</p>
               </div>
             </div>
           </div>

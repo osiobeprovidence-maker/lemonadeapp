@@ -3,14 +3,12 @@ import { Link } from 'react-router-dom';
 import { MOCK_STORIES } from '../data/mock';
 import { StoryCard, FormatBadge } from '../components/ui/Cards';
 import { Button } from '../components/ui/Button';
-import { useStories, useTrendingStories, useCurrentUser } from '../hooks/useConvex';
+import { useStories, useTrendingStories } from '../hooks/useConvex';
 import { Loader } from 'lucide-react';
 
 export default function Home() {
-  const { user } = useCurrentUser();
   const stories = useStories();
   const trendingStories = useTrendingStories();
-  const [isLoadingStories, setIsLoadingStories] = useState(false);
 
   // Use real stories from Convex if available, fallback to mock
   const allStories = stories?.length > 0 ? stories : MOCK_STORIES;
@@ -107,15 +105,6 @@ export default function Home() {
              </div>
           </section>
         ))}
-      </div>
-    </div>
-  );
-}
-                ))}
-             </div>
-          </section>
-        ))}
-        
       </div>
     </div>
   );

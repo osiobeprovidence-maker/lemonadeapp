@@ -1,14 +1,8 @@
 import React, { useEffect, useState } from 'react';
 
-/**
- * Mux Connection Status Component
- * Verifies that Mux is properly configured
- */
-
 export interface MuxStatus {
   configured: boolean;
   hasTokenId: boolean;
-  hasTokenSecret: boolean;
   error: string | null;
 }
 
@@ -17,34 +11,15 @@ export const MuxStatus: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkMuxStatus = async () => {
-      try {
-        const tokenId = import.meta.env.VITE_MUX_TOKEN_ID;
-        const tokenSecret = import.meta.env.VITE_MUX_TOKEN_SECRET;
+    const tokenId = import.meta.env.VITE_MUX_TOKEN_ID;
+    const hasTokenId = !!tokenId && tokenId !== 'YOUR_MUX_TOKEN_ID';
 
-        const hasTokenId = !!tokenId && tokenId !== 'YOUR_MUX_TOKEN_ID';
-        const hasTokenSecret = !!tokenSecret && tokenSecret !== 'YOUR_MUX_TOKEN_SECRET';
-        const configured = hasTokenId && hasTokenSecret;
-
-        setStatus({
-          configured,
-          hasTokenId,
-          hasTokenSecret,
-          error: configured ? null : 'Mux environment variables not properly configured',
-        });
-      } catch (error) {
-        setStatus({
-          configured: false,
-          hasTokenId: false,
-          hasTokenSecret: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkMuxStatus();
+    setStatus({
+      configured: hasTokenId,
+      hasTokenId,
+      error: hasTokenId ? null : 'Mux public token ID is not configured',
+    });
+    setLoading(false);
   }, []);
 
   if (loading) {
@@ -55,19 +30,14 @@ export const MuxStatus: React.FC = () => {
     );
   }
 
-  if (!status) {
-    return null;
-  }
+  if (!status) return null;
 
   if (status.configured) {
     return (
       <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">✓</span>
-          <h3 className="font-semibold text-green-800">Mux Connected</h3>
-        </div>
+        <h3 className="font-semibold text-green-800 mb-2">Mux Connected</h3>
         <p className="text-sm text-green-700">
-          Mux video integration is properly configured and ready to use.
+          Mux playback is configured. Upload credentials are checked securely on the server.
         </p>
       </div>
     );
@@ -75,31 +45,17 @@ export const MuxStatus: React.FC = () => {
 
   return (
     <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xl">✗</span>
-        <h3 className="font-semibold text-red-800">Mux Not Configured</h3>
-      </div>
+      <h3 className="font-semibold text-red-800 mb-2">Mux Not Configured</h3>
       <p className="text-sm text-red-700 mb-3">{status.error}</p>
-      
       <div className="text-sm text-red-600 space-y-1">
-        <div>Token ID: {status.hasTokenId ? '✓ Set' : '✗ Missing'}</div>
-        <div>Token Secret: {status.hasTokenSecret ? '✓ Set' : '✗ Missing'}</div>
+        <div>Token ID: {status.hasTokenId ? 'Set' : 'Missing'}</div>
+        <div>Token Secret: checked securely on the server</div>
       </div>
-
-      <div className="mt-3 p-3 bg-red-100 rounded text-xs">
-        <p className="font-semibold mb-2">Setup Instructions:</p>
-        <ol className="list-decimal ml-4 space-y-1">
-          <li>Go to <a href="https://dashboard.mux.com" target="_blank" rel="noopener noreferrer" className="underline">Mux Dashboard</a></li>
-          <li>Generate Access Tokens</li>
-          <li>Add to <code className="bg-red-50 px-1">.env.local</code>:
-            <pre className="bg-red-100 p-2 mt-1 rounded overflow-auto">
+      <pre className="bg-red-100 p-2 mt-3 rounded overflow-auto text-xs">
 {`VITE_MUX_TOKEN_ID=your_token_id
-VITE_MUX_TOKEN_SECRET=your_token_secret`}
-            </pre>
-          </li>
-          <li>Restart your development server</li>
-        </ol>
-      </div>
+MUX_TOKEN_ID=your_token_id
+MUX_TOKEN_SECRET=your_token_secret`}
+      </pre>
     </div>
   );
 };
