@@ -8,17 +8,17 @@ import { useAuth } from '../contexts/AppContext';
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, continueAsGuest, executePendingAction } = useAuth();
+  const { signIn, signUp, signInWithGoogle, resetPassword, continueAsGuest, executePendingAction } = useAuth();
   
   const defaultMode = searchParams.get('mode') || 'signin';
   const intent = searchParams.get('intent');
   
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'role'>(defaultMode as any);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const handleAuthSuccess = (role: 'reader' | 'creator') => {
-    login(role === 'creator' ? 'reader' : 'reader'); // everyone starts as reader
-    
     // Execute any pending action that was intercepted
     executePendingAction();
 
@@ -34,37 +34,56 @@ export default function Auth() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
+    setNotice(null);
     setLoading(true);
-    
-    // Mock network delay
-    setTimeout(() => {
-      setLoading(false);
-      if (mode === 'signup') {
+
+    const formData = new FormData(e.currentTarget);
+    const email = String(formData.get('email') || '');
+    const password = String(formData.get('password') || '');
+    const name = String(formData.get('name') || '');
+    const username = String(formData.get('username') || '');
+
+    try {
+      if (mode === 'forgot') {
+        await resetPassword(email);
+        setNotice('Password reset email sent. Check your inbox.');
+      } else if (mode === 'signup') {
+        await signUp({ name, username, email, password });
         setMode('role');
-      } else if (mode === 'role') {
-        handleAuthSuccess('reader');
       } else {
+        await signIn(email, password);
         handleAuthSuccess('reader');
       }
-    }, 800);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRoleSelect = (role: 'reader' | 'creator') => {
     handleAuthSuccess(role);
   };
 
-  const handleGoogleAuth = () => {
+  const handleGoogleAuth = async () => {
+    setError(null);
+    setNotice(null);
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await signInWithGoogle();
       if (mode === 'signup') {
         setMode('role');
       } else {
         handleAuthSuccess('reader');
       }
-    }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGuest = () => {
@@ -160,15 +179,15 @@ export default function Auth() {
                   <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
                     {mode === 'signup' && (
                       <div className="flex flex-col sm:flex-row gap-4">
-                        <Input placeholder="Full Name" required />
-                        <Input placeholder="Username" required />
+                        <Input name="name" placeholder="Full Name" required />
+                        <Input name="username" placeholder="Username" required />
                       </div>
                     )}
                     
-                    <Input type="email" placeholder="Email address" required />
+                    <Input name="email" type="email" placeholder="Email address" required />
                     
                     {mode !== 'forgot' && (
-                      <Input type="password" placeholder="Password" required />
+                      <Input name="password" type="password" placeholder="Password" required minLength={6} />
                     )}
 
                     {mode === 'signin' && (
@@ -183,6 +202,18 @@ export default function Auth() {
                       {loading ? 'Processing...' : mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Continue' : 'Send Link'}
                     </Button>
                   </form>
+
+                  {error && (
+                    <p className="text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+                      {error}
+                    </p>
+                  )}
+
+                  {notice && (
+                    <p className="text-sm font-bold text-lemon-muted bg-lemon-muted/10 border border-lemon-muted/20 rounded-xl p-4">
+                      {notice}
+                    </p>
+                  )}
 
                   <div className="mt-6 text-center text-sm text-white/50">
                     {mode === 'signin' ? (

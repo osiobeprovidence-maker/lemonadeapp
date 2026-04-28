@@ -1,5 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  updateProfile,
+  type User as FirebaseUser,
+} from 'firebase/auth';
 import { MOCK_CREATORS, MOCK_STORIES, Creator, Story, Reader, SupportTransaction, CreatorApplication, CreatorAccessStatus } from '../data/mock';
+import { api } from '../../convex/_generated/api';
+import { auth, googleProvider } from '../lib/firebase';
+import { convex } from '../lib/convex';
 
 export type UserRole = 'guest' | 'reader' | 'creator' | 'admin';
 export type AdminRole = 'super_admin' | 'moderator' | 'content_reviewer' | 'payment_reviewer';
@@ -77,6 +90,7 @@ export interface UnlockTransaction {
 
 export interface AppUser {
   id: string;
+  email?: string;
   name: string;
   username: string;
   avatar: string;
@@ -116,6 +130,10 @@ interface AppContextType {
   
   // Actions
   login: (role: UserRole) => void;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (input: { name: string; username: string; email: string; password: string }) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   continueAsGuest: () => void;
   logout: () => void;
   
@@ -222,6 +240,35 @@ const INITIAL_READER: AppUser = {
   settings: DEFAULT_SETTINGS,
 };
 
+const usernameFromUser = (firebaseUser: FirebaseUser, preferred?: string) => {
+  const base = preferred || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'reader';
+  return base.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') || 'reader';
+};
+
+const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppUser => ({
+  id: convexUser?._id || firebaseUser.uid,
+  email: firebaseUser.email || convexUser?.email,
+  name: convexUser?.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Reader',
+  username: convexUser?.username || usernameFromUser(firebaseUser),
+  avatar: convexUser?.avatar || firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/100/100`,
+  role: convexUser?.role || 'reader',
+  creatorAccessStatus: convexUser?.creatorAccessStatus || 'none',
+  isAuthenticated: true,
+  isGuest: false,
+  isPremium: convexUser?.premiumStatus === 'premium',
+  premiumStatus: convexUser?.premiumStatus || 'free',
+  walletBalance: convexUser?.walletBalance || 0,
+  followedCreators: convexUser?.followedCreators || [],
+  savedStories: convexUser?.savedStories || [],
+  unlockedChapters: convexUser?.unlockedChapters || [],
+  unlockHistory: [],
+  supportHistory: [],
+  readingHistory: [],
+  badges: convexUser?.badges || [],
+  notifications: [],
+  settings: convexUser?.settings || DEFAULT_SETTINGS,
+});
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [creators, setCreators] = useState<Record<string, Creator>>(MOCK_CREATORS);
@@ -235,21 +282,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [reports, setReports] = useState<ContentReport[]>([]);
   const [activityLog, setActivityLog] = useState<AdminActivity[]>([]);
 
+  const syncFirebaseUser = async (firebaseUser: FirebaseUser) => {
+    if (!convex) {
+      setUser(appUserFromFirebase(firebaseUser));
+      return;
+    }
+
+    const username = usernameFromUser(firebaseUser);
+    await convex.mutation(api.users.upsertFromAuth, {
+      firebaseUid: firebaseUser.uid,
+      email: firebaseUser.email || undefined,
+      name: firebaseUser.displayName || username,
+      username,
+      avatar: firebaseUser.photoURL || undefined,
+    });
+    const convexUser = await convex.query(api.users.getByFirebaseUid, {
+      firebaseUid: firebaseUser.uid,
+    });
+    setUser(appUserFromFirebase(firebaseUser, convexUser));
+  };
+
   // Persistence
   useEffect(() => {
-    const savedState = localStorage.getItem('lemonade_app_state');
     const savedAdminState = localStorage.getItem('lemonade_admin_session');
-    
-    if (savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
-        setUser(parsed.user);
-      } catch (e) {
-        console.error('Failed to load state', e);
-      }
-    } else {
-      setUser(GUEST_USER);
-    }
 
     if (savedAdminState) {
       try {
@@ -258,13 +313,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error('Failed to load admin session', e);
       }
     }
-  }, []);
 
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('lemonade_app_state', JSON.stringify({ user }));
-    }
-  }, [user]);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(GUEST_USER);
+        return;
+      }
+
+      try {
+        await syncFirebaseUser(firebaseUser);
+      } catch (error) {
+        console.error('Failed to sync Firebase user', error);
+        setUser(appUserFromFirebase(firebaseUser));
+      }
+    });
+
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (adminSession) {
@@ -425,6 +490,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
   };
 
+  const signIn = async (email: string, password: string) => {
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    await syncFirebaseUser(credential.user);
+  };
+
+  const signUp = async (input: { name: string; username: string; email: string; password: string }) => {
+    const credential = await createUserWithEmailAndPassword(auth, input.email, input.password);
+    await updateProfile(credential.user, {
+      displayName: input.name,
+      photoURL: `https://picsum.photos/seed/${input.username}/100/100`,
+    });
+
+    if (convex) {
+      await convex.mutation(api.users.upsertFromAuth, {
+        firebaseUid: credential.user.uid,
+        email: input.email,
+        name: input.name,
+        username: usernameFromUser(credential.user, input.username),
+        avatar: credential.user.photoURL || undefined,
+      });
+      const convexUser = await convex.query(api.users.getByFirebaseUid, {
+        firebaseUid: credential.user.uid,
+      });
+      setUser(appUserFromFirebase(credential.user, convexUser));
+    } else {
+      setUser(appUserFromFirebase(credential.user));
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    const credential = await signInWithPopup(auth, googleProvider);
+    await syncFirebaseUser(credential.user);
+  };
+
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const setPendingAction = (type: string, payload?: any) => {
     if (!user) return;
     setUser(prev => prev ? { ...prev, pendingAction: { type, payload } } : null);
@@ -457,9 +560,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUser(GUEST_USER);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await signOut(auth);
     setUser(GUEST_USER);
-    localStorage.removeItem('lemonade_app_state');
   };
 
   const followCreator = (username: string) => {
@@ -739,6 +842,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       creators,
       stories,
       login,
+      signIn,
+      signUp,
+      signInWithGoogle,
+      resetPassword,
       continueAsGuest,
       logout,
       setPendingAction,
