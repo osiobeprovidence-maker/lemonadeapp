@@ -4,11 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, User, PenTool, Globe } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AppContext';
+import { useRegisterUser } from '../hooks/useConvex';
+import { auth } from '../lib/firebase';
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { signIn, signUp, signInWithGoogle, resetPassword, continueAsGuest, executePendingAction } = useAuth();
+  const registerUser = useRegisterUser();
   
   const defaultMode = searchParams.get('mode') || 'signin';
   const intent = searchParams.get('intent');
@@ -17,10 +20,14 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [signupData, setSignupData] = useState<{ name: string; username: string; email: string } | null>(null);
 
-  const handleAuthSuccess = (role: 'reader' | 'creator') => {
+  const handleAuthSuccess = async (role: 'reader' | 'creator') => {
     // Execute any pending action that was intercepted
     executePendingAction();
+
+    // Store selected role in sessionStorage for reference
+    sessionStorage.setItem('selectedRole', role);
 
     if (role === 'creator') {
       navigate('/creator-application');
@@ -51,14 +58,37 @@ export default function Auth() {
         await resetPassword(email);
         setNotice('Password reset email sent. Check your inbox.');
       } else if (mode === 'signup') {
-        await signUp({ name, username, email, password });
+        // Firebase signup
+        const userCredential = await signUp({ name, username, email, password });
+        
+        // Register user in Convex database
+        if (userCredential?.user?.uid) {
+          try {
+            await registerUser({
+              firebaseUid: userCredential.user.uid,
+              email,
+              name,
+              username,
+              avatar: userCredential.user.photoURL || undefined,
+            });
+          } catch (convexError) {
+            console.error('Failed to register user in Convex:', convexError);
+            // Don't block auth flow, user still exists in Firebase
+          }
+        }
+        
+        // Store signup data for role selection
+        setSignupData({ name, username, email });
         setMode('role');
       } else {
+        // Firebase signin
         await signIn(email, password);
         handleAuthSuccess('reader');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Authentication failed. Please try again.';
+      setError(errorMessage);
+      console.error('Auth error:', err);
     } finally {
       setLoading(false);
     }
