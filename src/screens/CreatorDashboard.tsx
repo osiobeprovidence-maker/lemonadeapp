@@ -1,26 +1,40 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Plus, Eye, UserPlus, DollarSign, BookOpen, MessageCircle, Coffee, ExternalLink, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronRight, Plus, Eye, UserPlus, DollarSign, BookOpen, MessageCircle, Coffee, ExternalLink, Settings as SettingsIcon, Loader } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { MOCK_STORIES } from '../data/mock';
+import { useCurrentUser, useStories } from '../hooks/useConvex';
 
 export default function CreatorDashboard() {
-  const stats = [
-    { label: "Total Reads", value: "2.4M", icon: Eye, color: "text-blue-400" },
-    { label: "Followers", value: "124K", icon: UserPlus, color: "text-green-400" },
-    { label: "Earnings (30d)", value: "$4,250", icon: DollarSign, color: "text-lemon-muted" },
-    { label: "Active Stories", value: "3", icon: BookOpen, color: "text-purple-400" },
-  ];
-
-  const myStories = MOCK_STORIES.slice(0, 3);
+  const { user, firebaseUid } = useCurrentUser();
+  const creatorStories = useStories(user?._id);
+  
+  // Use real stories if available, fallback to mock
+  const myStories = creatorStories && creatorStories.length > 0 
+    ? creatorStories.slice(0, 6) 
+    : MOCK_STORIES.slice(0, 3);
+  
+  // Calculate stats from real data
+  const stats = useMemo(() => {
+    const totalReads = myStories.reduce((sum, story) => sum + (story.views || 0), 0);
+    const followers = user?.followers?.length || 0;
+    const activeStories = myStories.filter(s => s.status === 'published').length;
+    
+    return [
+      { label: "Total Reads", value: totalReads.toLocaleString(), icon: Eye, color: "text-blue-400" },
+      { label: "Followers", value: followers.toLocaleString(), icon: UserPlus, color: "text-green-400" },
+      { label: "Earnings (30d)", value: "$4,250", icon: DollarSign, color: "text-lemon-muted" },
+      { label: "Active Stories", value: activeStories.toString(), icon: BookOpen, color: "text-purple-400" },
+    ];
+  }, [myStories, user]);
 
   return (
     <div className="flex flex-col w-full min-h-screen p-6 md:p-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
         <div>
           <h1 className="font-display font-black text-4xl mb-1">Creator Studio</h1>
-          <p className="text-white/50">Welcome back, Ovo Studios.</p>
+          <p className="text-white/50">Welcome back, {user?.name || 'Creator'}.</p>
         </div>
         <Link to="/studio/upload">
           <Button className="pl-4 pr-6">
@@ -58,24 +72,44 @@ export default function CreatorDashboard() {
              <button className="text-sm text-lemon-muted font-medium hover:underline">View All</button>
            </div>
            
-           <div className="flex flex-col gap-4">
-             {myStories.map(story => (
-               <Link key={story.id} to={`/story/${story.id}`} className="flex items-center gap-4 bg-ink-deep p-4 rounded-2xl border border-white/5 hover:border-lemon-muted/50 transition-colors group">
-                 <div className="w-16 h-20 rounded-xl overflow-hidden shrink-0 bg-black">
-                   <img src={story.coverImage} alt={story.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
-                 </div>
-                 <div className="flex-1 min-w-0">
-                   <h4 className="font-display font-semibold text-lg truncate">{story.title}</h4>
-                   <p className="text-sm text-white/50 mb-2">{story.episodes} Published Chapters</p>
-                   <div className="flex gap-4 text-xs font-medium text-white/40">
-                     <span className="flex items-center gap-1"><Eye size={12}/> {(story.views ?? 0).toLocaleString()}</span>
-                     <span className="flex items-center gap-1"><DollarSign size={12}/> 1.2K</span>
+           {creatorStories === null ? (
+             <div className="flex flex-col gap-4">
+               {[1, 2, 3].map(i => (
+                 <div key={i} className="flex items-center gap-4 bg-ink-deep p-4 rounded-2xl border border-white/5 animate-pulse">
+                   <div className="w-16 h-20 rounded-xl bg-white/10" />
+                   <div className="flex-1 space-y-2">
+                     <div className="h-4 bg-white/10 rounded w-3/4" />
+                     <div className="h-3 bg-white/10 rounded w-1/2" />
                    </div>
                  </div>
-                 <ChevronRight className="text-white/20 group-hover:text-lemon-muted" />
-               </Link>
-             ))}
-           </div>
+               ))}
+             </div>
+           ) : (
+             <div className="flex flex-col gap-4">
+               {myStories.length > 0 ? (
+                 myStories.map(story => (
+                   <Link key={story.id} to={`/story/${story.id}`} className="flex items-center gap-4 bg-ink-deep p-4 rounded-2xl border border-white/5 hover:border-lemon-muted/50 transition-colors group">
+                     <div className="w-16 h-20 rounded-xl overflow-hidden shrink-0 bg-black">
+                       <img src={story.coverImage} alt={story.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                     </div>
+                     <div className="flex-1 min-w-0">
+                       <h4 className="font-display font-semibold text-lg truncate">{story.title}</h4>
+                       <p className="text-sm text-white/50 mb-2">{story.chapters?.length || 1} Published Chapters</p>
+                       <div className="flex gap-4 text-xs font-medium text-white/40">
+                         <span className="flex items-center gap-1"><Eye size={12}/> {(story.views ?? 0).toLocaleString()}</span>
+                         <span className="flex items-center gap-1"><DollarSign size={12}/> 1.2K</span>
+                       </div>
+                     </div>
+                     <ChevronRight className="text-white/20 group-hover:text-lemon-muted" />
+                   </Link>
+                 ))
+               ) : (
+                 <div className="text-center py-8 text-white/50">
+                   <p>No stories published yet. Start creating!</p>
+                 </div>
+               )}
+             </div>
+           )}
         </div>
 
         {/* Sidebar */}
