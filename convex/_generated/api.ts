@@ -13,6 +13,7 @@ import type * as applications from "../applications.js";
 import type * as creators from "../creators.js";
 import type * as interactions from "../interactions.js";
 import type * as payments from "../payments.js";
+import type * as seed from "../seed.js";
 import type * as stories from "../stories.js";
 import type * as users from "../users.js";
 
@@ -22,6 +23,7 @@ const fullApi: ApiFromModules<{
   creators: typeof creators;
   interactions: typeof interactions;
   payments: typeof payments;
+  seed: typeof seed;
   stories: typeof stories;
   users: typeof users;
 }> = anyApi as any;

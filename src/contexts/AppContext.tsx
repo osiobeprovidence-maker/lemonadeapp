@@ -269,6 +269,39 @@ const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppU
   settings: convexUser?.settings || DEFAULT_SETTINGS,
 });
 
+const creatorFromDoc = (doc: any): Creator => ({
+  id: doc.externalId || doc._id,
+  name: doc.name,
+  username: doc.username,
+  avatar: doc.avatar,
+  followers: doc.followers,
+  bio: doc.bio,
+  category: doc.category,
+  location: doc.location,
+  totalReads: doc.totalReads,
+  totalStories: doc.totalStories,
+  dropsomethingUrl: doc.dropsomethingUrl,
+  supportEnabled: doc.supportEnabled,
+  ...(doc.profile || {}),
+});
+
+const storyFromDoc = (doc: any, creator: Creator): Story => ({
+  id: doc.externalId || doc._id,
+  title: doc.title,
+  creator,
+  genre: doc.genre,
+  format: doc.format,
+  rating: doc.rating,
+  views: doc.views,
+  saves: doc.saves,
+  episodes: doc.episodes,
+  synopsis: doc.synopsis,
+  coverImage: doc.coverImage,
+  bannerImage: doc.bannerImage,
+  tags: doc.tags,
+  isOriginal: doc.isOriginal,
+});
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [creators, setCreators] = useState<Record<string, Creator>>(MOCK_CREATORS);
@@ -281,6 +314,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [allUsers, setAllUsers] = useState<AppUser[]>([]);
   const [reports, setReports] = useState<ContentReport[]>([]);
   const [activityLog, setActivityLog] = useState<AdminActivity[]>([]);
+
+  useEffect(() => {
+    if (!convex) return;
+
+    const loadLiveContent = async () => {
+      try {
+        let [creatorDocs, storyDocs] = await Promise.all([
+          convex.query(api.creators.list, {}),
+          convex.query(api.stories.listPublished, {}),
+        ]);
+
+        if (creatorDocs.length === 0 || storyDocs.length === 0) {
+          await convex.mutation(api.seed.initialContent, {});
+          [creatorDocs, storyDocs] = await Promise.all([
+            convex.query(api.creators.list, {}),
+            convex.query(api.stories.listPublished, {}),
+          ]);
+        }
+
+        const liveCreators = creatorDocs.reduce<Record<string, Creator>>((acc, doc: any) => {
+          const creator = creatorFromDoc(doc);
+          acc[creator.username] = creator;
+          return acc;
+        }, {});
+
+        const liveStories = storyDocs
+          .map((doc: any) => {
+            const creator = liveCreators[doc.creatorUsername];
+            return creator ? storyFromDoc(doc, creator) : null;
+          })
+          .filter(Boolean) as Story[];
+
+        if (Object.keys(liveCreators).length > 0) {
+          setCreators(liveCreators);
+        }
+        if (liveStories.length > 0) {
+          setStories(liveStories);
+        }
+      } catch (error) {
+        console.error('Failed to load live Convex content; using bundled fallback.', error);
+      }
+    };
+
+    loadLiveContent();
+  }, []);
 
   const syncFirebaseUser = async (firebaseUser: FirebaseUser) => {
     if (!convex) {
