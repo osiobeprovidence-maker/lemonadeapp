@@ -113,3 +113,23 @@ export const setStatus = mutation({
     return user._id;
   },
 });
+
+export const addWalletBalance = mutation({
+  args: {
+    firebaseUid: v.string(),
+    amount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
+      .unique();
+    if (!user) return null;
+
+    await ctx.db.patch(user._id, {
+      walletBalance: user.walletBalance + args.amount,
+      updatedAt: now(),
+    });
+    return user._id;
+  },
+});

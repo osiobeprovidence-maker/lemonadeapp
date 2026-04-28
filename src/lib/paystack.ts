@@ -5,7 +5,6 @@
 
 export interface PaystackConfig {
   publicKey: string;
-  secretKey: string;
 }
 
 export interface PaymentInitialization {
@@ -22,26 +21,24 @@ export interface PaymentVerification {
 
 export const getPaystackConfig = (): PaystackConfig => {
   const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
-  const secretKey = import.meta.env.VITE_PAYSTACK_SECRET_KEY;
 
-  if (!publicKey || !secretKey) {
-    throw new Error('Paystack configuration is missing. Please set VITE_PAYSTACK_PUBLIC_KEY and VITE_PAYSTACK_SECRET_KEY');
+  if (!publicKey) {
+    throw new Error('Paystack public key is missing. Please set VITE_PAYSTACK_PUBLIC_KEY');
   }
 
-  return { publicKey, secretKey };
+  return { publicKey };
 };
 
 /**
  * Initialize a Paystack payment
  */
 export const initializePayment = async (paymentData: PaymentInitialization): Promise<any> => {
-  const config = getPaystackConfig();
+  getPaystackConfig();
 
   try {
-    const response = await fetch('https://api.paystack.co/transaction/initialize', {
+    const response = await fetch('/api/paystack-initialize', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.secretKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -50,6 +47,7 @@ export const initializePayment = async (paymentData: PaymentInitialization): Pro
         reference: paymentData.reference || generateReference(),
         metadata: paymentData.metadata,
         channels: paymentData.channels || ['card', 'bank', 'ussd'],
+        callbackUrl: `${window.location.origin}/wallet`,
       }),
     });
 
@@ -68,15 +66,8 @@ export const initializePayment = async (paymentData: PaymentInitialization): Pro
  * Verify a Paystack payment
  */
 export const verifyPayment = async (reference: string): Promise<any> => {
-  const config = getPaystackConfig();
-
   try {
-    const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${config.secretKey}`,
-      },
-    });
+    const response = await fetch(`/api/paystack-verify?reference=${encodeURIComponent(reference)}`);
 
     if (!response.ok) {
       throw new Error(`Failed to verify payment: ${response.statusText}`);

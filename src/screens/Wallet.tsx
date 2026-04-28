@@ -1,21 +1,104 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Coins, ArrowDownLeft, ArrowUpRight, History, Crown, CreditCard, Zap, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { SensitiveActionWrapper } from '../components/SensitiveActionWrapper';
 import { cn } from '../lib/utils';
+import { generateReference, initializePayment, naiiraToKobo, verifyPayment } from '../lib/paystack';
+import { auth } from '../lib/firebase';
+import { convex } from '../lib/convex';
+import { api } from '../../convex/_generated/api';
 
 export default function Wallet() {
   const { user, isGuest, addCoins } = useApp();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const userRole = user?.role || 'reader';
+  const walletTopUpNaira = 5000;
+  const walletTopUpCoins = 500;
 
-  const handleAddFunds = () => {
-    // In a real app, this would open a payment modal
-    // For now, we'll just add 500 coins as a mock action
-    addCoins(500);
-    alert('Mock Action: 500 Coins added to your wallet!');
+  useEffect(() => {
+    const reference = searchParams.get('reference') || searchParams.get('trxref');
+    if (!reference || !user || isGuest) return;
+
+    const confirmPayment = async () => {
+      setPaymentLoading(true);
+      setPaymentStatus('Verifying payment...');
+
+      try {
+        const result = await verifyPayment(reference);
+        const transaction = result?.data;
+
+        if (transaction?.status !== 'success') {
+          setPaymentStatus('Payment was not successful. Your wallet was not updated.');
+          return;
+        }
+
+        if (convex && auth.currentUser) {
+          const creditResult = await convex.mutation(api.payments.creditWalletAfterPaystack, {
+            firebaseUid: auth.currentUser.uid,
+            userId: user.id,
+            coins: walletTopUpCoins,
+            nairaAmount: transaction.amount / 100,
+            reference,
+            providerPayload: transaction,
+          });
+
+          if (creditResult.credited) {
+            addCoins(walletTopUpCoins);
+          }
+        } else {
+          addCoins(walletTopUpCoins);
+        }
+
+        setPaymentStatus(`Payment confirmed. ${walletTopUpCoins} coins added to your wallet.`);
+        setSearchParams({});
+      } catch (error) {
+        setPaymentStatus(error instanceof Error ? error.message : 'Unable to verify payment.');
+      } finally {
+        setPaymentLoading(false);
+      }
+    };
+
+    confirmPayment();
+  }, [searchParams, setSearchParams, user, isGuest]);
+
+  const handleAddFunds = async () => {
+    if (!user?.email) {
+      navigate('/auth?mode=signin&intent=add%20funds');
+      return;
+    }
+
+    setPaymentLoading(true);
+    setPaymentStatus(null);
+
+    try {
+      const reference = generateReference();
+      const result = await initializePayment({
+        email: user.email,
+        amount: naiiraToKobo(walletTopUpNaira),
+        reference,
+        metadata: {
+          userId: user.id,
+          username: user.username,
+          product: 'wallet_topup',
+          coins: walletTopUpCoins,
+        },
+      });
+
+      const authorizationUrl = result?.data?.authorization_url;
+      if (!authorizationUrl) {
+        throw new Error('Paystack did not return a checkout URL.');
+      }
+
+      window.location.href = authorizationUrl;
+    } catch (error) {
+      setPaymentStatus(error instanceof Error ? error.message : 'Unable to start payment.');
+      setPaymentLoading(false);
+    }
   };
 
   return (
@@ -59,10 +142,17 @@ export default function Wallet() {
                 {userRole === 'creator' ? (
                   <Button size="lg" className="w-full"><ArrowUpRight size={18} className="mr-2" /> Withdraw</Button>
                 ) : (
-                  <Button size="lg" className="w-full"><ArrowDownLeft size={18} className="mr-2" /> Add Funds</Button>
+                  <Button size="lg" className="w-full" disabled={paymentLoading}>
+                    <ArrowDownLeft size={18} className="mr-2" /> {paymentLoading ? 'Processing...' : 'Add Funds'}
+                  </Button>
                 )}
               </SensitiveActionWrapper>
             </div>
+            {paymentStatus && (
+              <p className="mt-4 text-sm font-bold text-lemon-muted bg-lemon-muted/10 border border-lemon-muted/20 rounded-2xl p-4">
+                {paymentStatus}
+              </p>
+            )}
           </div>
         </div>
 
@@ -164,13 +254,6 @@ export default function Wallet() {
                     color="white"
                   />
                 ))}
-                <HistoryItem 
-                  icon={ArrowDownLeft} 
-                  title="Bought 500 Coins" 
-                  date="Sep 10, 2024" 
-                  amount="+500 C" 
-                  color="green-400"
-                />
               </div>
             )}
 
