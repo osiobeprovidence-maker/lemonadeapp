@@ -3,17 +3,57 @@ import { ArrowLeft, Check, Upload, Image as ImageIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 
+import { useApp } from '../contexts/AppContext';
+import { convex } from '../lib/convex';
+import { api } from '../../convex/_generated/api';
+
 export default function UploadFlow() {
+  const { user } = useApp();
   const [step, setStep] = useState(1);
+  const [isUploading, setIsUploading] = useState(false);
   const navigate = useNavigate();
+
+  // Form State
+  const [formData, setFormData] = useState({
+    title: '',
+    format: 'Manga',
+    genre: 'Action',
+    synopsis: '',
+    tags: ['Original'],
+  });
 
   const steps = ["Story Info", "Visuals", "First Chapter", "Monetization"];
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < steps.length) {
       setStep(s => s + 1);
     } else {
-      setTimeout(() => navigate('/studio'), 1000);
+      if (!user || user.isGuest) {
+        navigate('/auth');
+        return;
+      }
+
+      setIsUploading(true);
+      try {
+        await convex.mutation(api.stories.create, {
+          creatorId: user.id,
+          creatorUsername: user.username,
+          title: formData.title || 'Untitled Story',
+          genre: formData.genre,
+          format: formData.format,
+          synopsis: formData.synopsis || 'No synopsis provided.',
+          coverImage: `https://picsum.photos/seed/${Math.random()}/600/800`,
+          bannerImage: `https://picsum.photos/seed/${Math.random()}/1200/600`,
+          tags: formData.tags,
+          isOriginal: true,
+        });
+        
+        // Short delay for aesthetic effect
+        setTimeout(() => navigate('/studio'), 1500);
+      } catch (error) {
+        console.error('Failed to publish story', error);
+        setIsUploading(false);
+      }
     }
   }
 
@@ -52,13 +92,23 @@ export default function UploadFlow() {
           <div className="flex flex-col gap-6 animate-fade-in">
              <div>
                <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-2 block">Story Title</label>
-               <input type="text" placeholder="e.g. Lagos 2099" className="w-full h-14 bg-black border border-white/10 rounded-xl px-4 text-white placeholder:text-white/20 focus:border-lemon-muted outline-none" />
+               <input 
+                type="text" 
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                placeholder="e.g. Lagos 2099" 
+                className="w-full h-14 bg-black border border-white/10 rounded-xl px-4 text-white placeholder:text-white/20 focus:border-lemon-muted outline-none" 
+              />
              </div>
              
              <div className="grid grid-cols-2 gap-4">
                <div>
                  <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-2 block">Format</label>
-                 <select className="w-full h-14 bg-black border border-white/10 rounded-xl px-4 text-white outline-none appearance-none font-medium">
+                 <select 
+                  value={formData.format}
+                  onChange={(e) => setFormData({...formData, format: e.target.value})}
+                  className="w-full h-14 bg-black border border-white/10 rounded-xl px-4 text-white outline-none appearance-none font-medium"
+                 >
                    <option>Manga</option>
                    <option>Manhwa</option>
                    <option>Webcomic</option>
@@ -67,7 +117,11 @@ export default function UploadFlow() {
                </div>
                <div>
                  <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-2 block">Genre</label>
-                 <select className="w-full h-14 bg-black border border-white/10 rounded-xl px-4 text-white outline-none appearance-none font-medium">
+                 <select 
+                  value={formData.genre}
+                  onChange={(e) => setFormData({...formData, genre: e.target.value})}
+                  className="w-full h-14 bg-black border border-white/10 rounded-xl px-4 text-white outline-none appearance-none font-medium"
+                 >
                    <option>Action</option>
                    <option>African Fantasy</option>
                    <option>Sci-Fi & Cyberpunk</option>
@@ -78,7 +132,13 @@ export default function UploadFlow() {
 
              <div>
                <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-2 block">Synopsis</label>
-               <textarea placeholder="What is your story about?" rows={4} className="w-full bg-black border border-white/10 rounded-xl p-4 text-white placeholder:text-white/20 focus:border-lemon-muted outline-none resize-none" />
+               <textarea 
+                value={formData.synopsis}
+                onChange={(e) => setFormData({...formData, synopsis: e.target.value})}
+                placeholder="What is your story about?" 
+                rows={4} 
+                className="w-full bg-black border border-white/10 rounded-xl p-4 text-white placeholder:text-white/20 focus:border-lemon-muted outline-none resize-none" 
+              />
              </div>
           </div>
         )}
@@ -144,8 +204,8 @@ export default function UploadFlow() {
       </div>
 
       <div className="flex justify-end mt-8">
-        <Button size="lg" onClick={handleNext} className="min-w-[150px]">
-          {step === steps.length ? "Publish Story" : "Continue"}
+        <Button size="lg" onClick={handleNext} className="min-w-[150px]" disabled={isUploading}>
+          {isUploading ? <Loader size={18} className="animate-spin" /> : step === steps.length ? "Publish Story" : "Continue"}
         </Button>
       </div>
     </div>

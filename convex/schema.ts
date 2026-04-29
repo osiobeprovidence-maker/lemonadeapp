@@ -209,6 +209,24 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_user_story", ["userId", "storyId"]),
 
+  notifications: defineTable({
+    userId: v.string(),
+    type: v.union(
+      v.literal("follow"),
+      v.literal("save"),
+      v.literal("unlock"),
+      v.literal("premium"),
+      v.literal("support"),
+      v.literal("update"),
+      v.literal("wallet"),
+    ),
+    title: v.string(),
+    message: v.string(),
+    timestamp: v.string(),
+    read: v.boolean(),
+    link: v.optional(v.string()),
+  }).index("by_userId", ["userId"]),
+
   platformSettings: defineTable({
     showMockData: v.boolean(),
     maintenanceMode: v.boolean(),

@@ -133,3 +133,37 @@ export const addWalletBalance = mutation({
     return user._id;
   },
 });
+
+export const getFullProfile = query({
+  args: { firebaseUid: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
+      .unique();
+
+    if (!user) return null;
+
+    const [readingHistory, notifications, transactions] = await Promise.all([
+      ctx.db
+        .query("readingHistory")
+        .withIndex("by_userId", (q) => q.eq("userId", user._id))
+        .collect(),
+      ctx.db
+        .query("notifications")
+        .withIndex("by_userId", (q) => q.eq("userId", user._id))
+        .collect(),
+      ctx.db
+        .query("walletTransactions")
+        .withIndex("by_userId", (q) => q.eq("userId", user._id))
+        .collect(),
+    ]);
+
+    return {
+      ...user,
+      readingHistory,
+      notifications,
+      walletTransactions: transactions,
+    };
+  },
+});

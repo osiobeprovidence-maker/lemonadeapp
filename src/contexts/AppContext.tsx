@@ -249,29 +249,50 @@ const usernameFromUser = (firebaseUser: FirebaseUser, preferred?: string) => {
   return base.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') || 'reader';
 };
 
-const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppUser => ({
-  id: convexUser?._id || firebaseUser.uid,
-  email: firebaseUser.email || convexUser?.email,
-  name: convexUser?.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Reader',
-  username: convexUser?.username || usernameFromUser(firebaseUser),
-  avatar: convexUser?.avatar || firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/100/100`,
-  role: convexUser?.role || 'reader',
-  creatorAccessStatus: convexUser?.creatorAccessStatus || 'none',
-  isAuthenticated: true,
-  isGuest: false,
-  isPremium: convexUser?.premiumStatus === 'premium',
-  premiumStatus: convexUser?.premiumStatus || 'free',
-  walletBalance: convexUser?.walletBalance || 0,
-  followedCreators: convexUser?.followedCreators || [],
-  savedStories: convexUser?.savedStories || [],
-  unlockedChapters: convexUser?.unlockedChapters || [],
-  unlockHistory: [],
-  supportHistory: [],
-  readingHistory: [],
-  badges: convexUser?.badges || [],
-  notifications: [],
-  settings: convexUser?.settings || DEFAULT_SETTINGS,
-});
+const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppUser => {
+  const walletTransactions = convexUser?.walletTransactions || [];
+  
+  const unlockHistory = walletTransactions
+    .filter((t: any) => t.type === 'chapter_unlock' && t.status === 'success')
+    .map((t: any) => ({
+      storyId: t.metadata?.storyId,
+      chapterId: t.metadata?.chapterId,
+      timestamp: t.createdAt,
+      price: t.amount,
+    }));
+
+  const supportHistory = walletTransactions
+    .filter((t: any) => t.type === 'creator_support' && t.status === 'success')
+    .map((t: any) => ({
+      creatorId: t.metadata?.username || t.metadata?.creatorId,
+      amount: t.amount,
+      timestamp: t.createdAt,
+    }));
+
+  return {
+    id: convexUser?._id || firebaseUser.uid,
+    email: firebaseUser.email || convexUser?.email,
+    name: convexUser?.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Reader',
+    username: convexUser?.username || usernameFromUser(firebaseUser),
+    avatar: convexUser?.avatar || firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/100/100`,
+    role: convexUser?.role || 'reader',
+    creatorAccessStatus: convexUser?.creatorAccessStatus || 'none',
+    isAuthenticated: true,
+    isGuest: false,
+    isPremium: convexUser?.premiumStatus === 'premium',
+    premiumStatus: convexUser?.premiumStatus || 'free',
+    walletBalance: convexUser?.walletBalance || 0,
+    followedCreators: convexUser?.followedCreators || [],
+    savedStories: convexUser?.savedStories || [],
+    unlockedChapters: convexUser?.unlockedChapters || [],
+    unlockHistory,
+    supportHistory,
+    readingHistory: convexUser?.readingHistory || [],
+    badges: convexUser?.badges || [],
+    notifications: convexUser?.notifications || [],
+    settings: convexUser?.settings || DEFAULT_SETTINGS,
+  };
+};
 
 const creatorFromDoc = (doc: any): Creator => ({
   id: doc.externalId || doc._id,
@@ -405,7 +426,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       username,
       avatar: firebaseUser.photoURL || undefined,
     });
-    const convexUser = await convex.query(api.users.getByFirebaseUid, {
+    const convexUser = await convex.query(api.users.getFullProfile, {
       firebaseUid: firebaseUser.uid,
     });
     setUser(appUserFromFirebase(firebaseUser, convexUser));
