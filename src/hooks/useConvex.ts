@@ -77,7 +77,7 @@ export const useCreatePayment = () => {
         email,
         amount: plan ? 0 : Math.round(args.amount * 100), // Convert Naira to Kobo if no plan
         reference,
-        plan,
+        plan: plan || undefined, // Ensure it's undefined if empty string
         metadata: {
           userId: args.userId,
           planType: args.planType,

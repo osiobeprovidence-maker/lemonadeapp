@@ -40,10 +40,11 @@ export default function Premium() {
   }, [user, navigate]);
 
   // Payment amounts in Naira (converted to kobo for Paystack)
-  const PREMIUM_MONTHLY = 3500 * 100; 
-  const PREMIUM_YEARLY = 35000 * 100; 
-  const PATRON_MONTHLY = 7500 * 100; 
-  const PATRON_YEARLY = 75000 * 100; 
+  // Payment amounts in Naira (converted to kobo for Paystack in the hook)
+  const PREMIUM_MONTHLY = 3500; 
+  const PREMIUM_YEARLY = 35000; 
+  const PATRON_MONTHLY = 7500; 
+  const PATRON_YEARLY = 75000; 
   
   const getPlanAmount = () => {
     if (selectedPlan === 'patron') {
