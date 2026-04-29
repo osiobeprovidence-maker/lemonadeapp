@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { MOCK_STORIES } from '../data/mock';
 import { StoryCard, FormatBadge } from '../components/ui/Cards';
 import { Button } from '../components/ui/Button';
+import { useStories, useTrendingStories } from '../hooks/useConvex';
 import { useApp } from '../contexts/AppContext';
 
 export default function Home() {
