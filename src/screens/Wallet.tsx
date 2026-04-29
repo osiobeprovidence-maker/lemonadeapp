@@ -16,6 +16,9 @@ export default function Wallet() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedCoins, setSelectedCoins] = useState(500);
   const [customCoins, setCustomCoins] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const userRole = user?.role || 'reader';
   
   const COIN_PACKAGES = [
     { coins: 150, price: 1500, label: 'Starter Pack' },
