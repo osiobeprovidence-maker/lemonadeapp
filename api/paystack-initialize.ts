@@ -13,9 +13,9 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({ error: "Paystack secret key is not configured." });
   }
 
-  const { email, amount, reference, metadata, callbackUrl } = req.body || {};
-  if (!email || !amount || amount < 100) {
-    return res.status(400).json({ error: "A valid email and amount in kobo are required." });
+  const { email, amount, reference, metadata, callbackUrl, plan } = req.body || {};
+  if (!email || (!amount && !plan)) {
+    return res.status(400).json({ error: "A valid email and either amount or plan are required." });
   }
 
   const response = await fetch(PAYSTACK_INITIALIZE_URL, {
@@ -26,7 +26,8 @@ export default async function handler(req: any, res: any) {
     },
     body: JSON.stringify({
       email,
-      amount,
+      amount: plan ? undefined : amount,
+      plan,
       reference,
       metadata,
       callback_url: callbackUrl,

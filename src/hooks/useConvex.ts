@@ -60,11 +60,24 @@ export const useCreatePayment = () => {
         throw new Error('Please sign in before starting a payment.');
       }
 
+      // Determine plan code for recurring subscriptions
+      let plan = undefined;
+      if (args.planType === 'premium') {
+        plan = args.billingCycle === 'monthly' 
+          ? import.meta.env.VITE_PAYSTACK_PLAN_MONTHLY 
+          : import.meta.env.VITE_PAYSTACK_PLAN_YEARLY;
+      } else if (args.planType === 'patron') {
+        plan = args.billingCycle === 'monthly'
+          ? import.meta.env.VITE_PAYSTACK_PLAN_PATRON_MONTHLY
+          : import.meta.env.VITE_PAYSTACK_PLAN_PATRON_YEARLY;
+      }
+
       const reference = generateReference();
       const response = await initializePayment({
         email,
-        amount: args.amount,
+        amount: plan ? 0 : Math.round(args.amount * 100), // Convert Naira to Kobo if no plan
         reference,
+        plan,
         metadata: {
           userId: args.userId,
           planType: args.planType,

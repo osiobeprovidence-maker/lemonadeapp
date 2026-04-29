@@ -13,6 +13,7 @@ export interface PaymentInitialization {
   reference?: string;
   metadata?: Record<string, any>;
   channels?: string[];
+  plan?: string;
 }
 
 export interface PaymentVerification {
@@ -47,12 +48,14 @@ export const initializePayment = async (paymentData: PaymentInitialization): Pro
         reference: paymentData.reference || generateReference(),
         metadata: paymentData.metadata,
         channels: paymentData.channels || ['card', 'bank', 'ussd'],
+        plan: paymentData.plan,
         callbackUrl: `${window.location.origin}/wallet`,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to initialize payment: ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Failed to initialize payment: ${response.statusText}`);
     }
 
     return response.json();
