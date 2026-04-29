@@ -14,21 +14,22 @@ export default function Wallet() {
   const { user, isGuest, addCoins } = useApp();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedCoins, setSelectedCoins] = useState(500);
+  const [selectedCoins, setSelectedCoins] = useState(250);
   const [customCoins, setCustomCoins] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const userRole = user?.role || 'reader';
   
   const COIN_PACKAGES = [
-    { coins: 80, price: 150, label: 'Starter' },
-    { coins: 300, price: 500, label: 'Standard', popular: true },
-    { coins: 650, price: 1000, label: 'Value Pack' },
-    { coins: 1500, price: 2000, label: 'Mega Bundle' },
+    { coins: 60, bonus: 0, price: 200, label: 'Starter', desc: 'Entry pack' },
+    { coins: 250, bonus: 0, price: 600, label: 'Standard', popular: true, desc: 'Most popular choice', savings: '27%' },
+    { coins: 700, bonus: 100, price: 1500, label: 'Value Pack', desc: 'Read more, save more', savings: '43%' },
+    { coins: 1600, bonus: 400, price: 3000, label: 'Mega Bundle', bestValue: true, desc: 'Ultimate reader experience', savings: '55%' },
   ];
 
-  const currentCoins = customCoins ? parseInt(customCoins) : selectedCoins;
-  const currentPrice = customCoins ? Math.round(parseInt(customCoins) * 1.875) : COIN_PACKAGES.find(p => p.coins === selectedCoins)?.price || 500;
+  const currentPackage = COIN_PACKAGES.find(p => p.coins === selectedCoins);
+  const currentCoins = customCoins ? parseInt(customCoins) : (currentPackage ? currentPackage.coins + currentPackage.bonus : 250);
+  const currentPrice = customCoins ? Math.round(parseInt(customCoins) * 3) : currentPackage?.price || 600;
 
   useEffect(() => {
     const reference = searchParams.get('reference') || searchParams.get('trxref');
@@ -159,45 +160,79 @@ export default function Wallet() {
               {userRole === 'creator' ? (
                 <Button size="lg" className="w-full"><ArrowUpRight size={18} className="mr-2" /> Withdraw</Button>
               ) : (
-                <div className="flex flex-col gap-4 w-full">
+                   <div className="flex items-center justify-between px-1 mb-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Select a bundle</p>
+                      <p className="text-[10px] font-bold text-lemon-muted">Save more with bigger packs</p>
+                   </div>
                    <div className="grid grid-cols-2 gap-3">
                       {COIN_PACKAGES.map(pkg => (
                         <button 
                           key={pkg.coins}
                           onClick={() => { setSelectedCoins(pkg.coins); setCustomCoins(''); }}
                           className={cn(
-                            "p-4 rounded-2xl border text-left transition-all relative group",
+                            "p-4 rounded-2xl border text-left transition-all relative group h-full flex flex-col justify-between",
                             selectedCoins === pkg.coins && !customCoins ? "bg-lemon-muted border-lemon-muted" : "bg-white/5 border-white/10 hover:border-white/20"
                           )}
                         >
-                           <div className={cn("text-[10px] font-black uppercase tracking-widest mb-1", selectedCoins === pkg.coins && !customCoins ? "text-black/50" : "text-white/30")}>{pkg.label}</div>
-                           <div className={cn("font-display font-black text-xl", selectedCoins === pkg.coins && !customCoins ? "text-black" : "text-white")}>{pkg.coins} C</div>
-                           <div className={cn("text-sm font-bold", selectedCoins === pkg.coins && !customCoins ? "text-black/70" : "text-lemon-muted")}>₦{pkg.price.toLocaleString()}</div>
+                           <div>
+                             <div className={cn("text-[10px] font-black uppercase tracking-widest mb-1", selectedCoins === pkg.coins && !customCoins ? "text-black/50" : "text-white/30")}>{pkg.label}</div>
+                             <div className={cn("font-display font-black text-2xl flex items-center gap-1.5", selectedCoins === pkg.coins && !customCoins ? "text-black" : "text-white")}>
+                               {pkg.coins + pkg.bonus}
+                               <span className="text-[10px] opacity-60">C</span>
+                             </div>
+                             {pkg.bonus > 0 && (
+                               <div className={cn("text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded bg-black/10 inline-block mt-0.5", selectedCoins === pkg.coins && !customCoins ? "text-black/60" : "text-lemon-muted")}>
+                                 incl. {pkg.bonus} bonus
+                               </div>
+                             )}
+                           </div>
+                           
+                           <div className="mt-4">
+                             <div className={cn("text-lg font-black", selectedCoins === pkg.coins && !customCoins ? "text-black" : "text-white")}>₦{pkg.price.toLocaleString()}</div>
+                             {pkg.savings && (
+                               <div className={cn("text-[8px] font-bold", selectedCoins === pkg.coins && !customCoins ? "text-black/60" : "text-lemon-muted")}>Save {pkg.savings}</div>
+                             )}
+                           </div>
+
                            {pkg.popular && (
-                             <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black text-white text-[8px] font-black uppercase tracking-widest">Best</div>
+                             <div className="absolute -top-2 -right-1 px-2 py-0.5 rounded-full bg-black text-white text-[8px] font-black uppercase tracking-widest shadow-xl">Popular</div>
+                           )}
+                           {pkg.bestValue && (
+                             <div className="absolute -top-2 -right-1 px-2 py-0.5 rounded-full bg-lemon-muted text-black text-[8px] font-black uppercase tracking-widest shadow-xl border border-black/10">Best Value</div>
                            )}
                         </button>
                       ))}
                    </div>
                    
-                   <div className="relative">
+                   <div className="relative mt-2">
                       <input 
                         type="number" 
-                        placeholder="Custom amount (min 150)" 
+                        placeholder="Custom coins (₦3/coin)" 
                         value={customCoins}
                         onChange={(e) => setCustomCoins(e.target.value)}
                         className="w-full h-14 bg-black/50 border border-white/10 rounded-2xl px-4 font-bold text-white focus:outline-none focus:border-lemon-muted transition-colors"
                       />
                       {customCoins && (
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-lemon-muted font-bold">
-                           ₦{(parseInt(customCoins) * 10).toLocaleString()}
+                           ₦{(parseInt(customCoins) * 3).toLocaleString()}
                         </div>
                       )}
                    </div>
 
-                   <Button size="lg" className="w-full h-14" disabled={paymentLoading} onClick={handleAddFunds}>
-                     <ArrowDownLeft size={18} className="mr-2" /> {paymentLoading ? 'Processing...' : `Buy ${currentCoins} Coins`}
+                   <Button size="lg" className="w-full h-14 mt-2" disabled={paymentLoading} onClick={handleAddFunds}>
+                     <ArrowDownLeft size={18} className="mr-2" /> {paymentLoading ? 'Processing...' : `Get ${currentCoins.toLocaleString()} Coins`}
                    </Button>
+                   
+                   <div className="grid grid-cols-2 gap-4 mt-4 px-2 py-4 bg-white/5 rounded-2xl border border-white/5">
+                      <div>
+                        <p className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-1">Standard Chapter</p>
+                        <p className="text-xs font-bold text-white/60">15 – 30 Coins</p>
+                      </div>
+                      <div className="border-l border-white/10 pl-4">
+                        <p className="text-[8px] font-black uppercase tracking-widest text-lemon-muted mb-1">Premium Chapter</p>
+                        <p className="text-xs font-bold text-lemon-muted/80">40 – 60 Coins</p>
+                      </div>
+                   </div>
                 </div>
               )}
             </div>
@@ -235,9 +270,9 @@ export default function Wallet() {
                   </div>
                   {isGuest || !user?.isPremium ? (
                     <>
-                      <h3 className="font-display font-bold text-2xl mb-4 leading-tight">Unlock every chapter with ease.</h3>
+                      <h3 className="font-display font-bold text-2xl mb-4 leading-tight">Read without coins. Unlock everything.</h3>
                       <Link to="/premium">
-                        <Button variant="glass" size="sm" className="bg-white/10 hover:bg-lemon-muted hover:text-black">Upgrade Now</Button>
+                        <Button variant="glass" size="sm" className="bg-white/10 hover:bg-lemon-muted hover:text-black">Best Value: ₦3,500/mo</Button>
                       </Link>
                     </>
                   ) : (
