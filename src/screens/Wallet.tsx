@@ -14,11 +14,18 @@ export default function Wallet() {
   const { user, isGuest, addCoins } = useApp();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const userRole = user?.role || 'reader';
-  const walletTopUpNaira = 5000;
-  const walletTopUpCoins = 500;
+  const [selectedCoins, setSelectedCoins] = useState(500);
+  const [customCoins, setCustomCoins] = useState('');
+  
+  const COIN_PACKAGES = [
+    { coins: 150, price: 1500, label: 'Starter Pack' },
+    { coins: 500, price: 5000, label: 'Standard', popular: true },
+    { coins: 1000, price: 9500, label: 'Value Pack' },
+    { coins: 2000, price: 18000, label: 'Mega Bundle' },
+  ];
+
+  const currentCoins = customCoins ? parseInt(customCoins) : selectedCoins;
+  const currentPrice = customCoins ? parseInt(customCoins) * 10 : COIN_PACKAGES.find(p => p.coins === selectedCoins)?.price || 5000;
 
   useEffect(() => {
     const reference = searchParams.get('reference') || searchParams.get('trxref');
@@ -37,24 +44,27 @@ export default function Wallet() {
           return;
         }
 
+        // Use the coins from metadata if available, otherwise fallback
+        const coinsToCredit = transaction.metadata?.coins || selectedCoins;
+
         if (convex && auth.currentUser) {
           const creditResult = await convex.mutation(api.payments.creditWalletAfterPaystack, {
             firebaseUid: auth.currentUser.uid,
             userId: user.id,
-            coins: walletTopUpCoins,
+            coins: coinsToCredit,
             nairaAmount: transaction.amount / 100,
             reference,
             providerPayload: transaction,
           });
 
           if (creditResult.credited) {
-            addCoins(walletTopUpCoins);
+            addCoins(coinsToCredit);
           }
         } else {
-          addCoins(walletTopUpCoins);
+          addCoins(coinsToCredit);
         }
 
-        setPaymentStatus(`Payment confirmed. ${walletTopUpCoins} coins added to your wallet.`);
+        setPaymentStatus(`Payment confirmed. ${coinsToCredit} coins added to your wallet.`);
         setSearchParams({});
       } catch (error) {
         setPaymentStatus(error instanceof Error ? error.message : 'Unable to verify payment.');
@@ -72,6 +82,11 @@ export default function Wallet() {
       return;
     }
 
+    if (currentCoins < 150 || currentCoins > 5000) {
+      alert('Please select between 150 and 5000 coins.');
+      return;
+    }
+
     setPaymentLoading(true);
     setPaymentStatus(null);
 
@@ -79,13 +94,13 @@ export default function Wallet() {
       const reference = generateReference();
       const result = await initializePayment({
         email: user.email,
-        amount: naiiraToKobo(walletTopUpNaira),
+        amount: naiiraToKobo(currentPrice),
         reference,
         metadata: {
           userId: user.id,
           username: user.username,
           product: 'wallet_topup',
-          coins: walletTopUpCoins,
+          coins: currentCoins,
         },
       });
 
@@ -138,15 +153,50 @@ export default function Wallet() {
             </div>
             
             <div className="flex gap-4 w-full">
-              <SensitiveActionWrapper intent="add funds" onClick={handleAddFunds}>
-                {userRole === 'creator' ? (
-                  <Button size="lg" className="w-full"><ArrowUpRight size={18} className="mr-2" /> Withdraw</Button>
-                ) : (
-                  <Button size="lg" className="w-full" disabled={paymentLoading}>
-                    <ArrowDownLeft size={18} className="mr-2" /> {paymentLoading ? 'Processing...' : 'Add Funds'}
-                  </Button>
-                )}
-              </SensitiveActionWrapper>
+              {userRole === 'creator' ? (
+                <Button size="lg" className="w-full"><ArrowUpRight size={18} className="mr-2" /> Withdraw</Button>
+              ) : (
+                <div className="flex flex-col gap-4 w-full">
+                   <div className="grid grid-cols-2 gap-3">
+                      {COIN_PACKAGES.map(pkg => (
+                        <button 
+                          key={pkg.coins}
+                          onClick={() => { setSelectedCoins(pkg.coins); setCustomCoins(''); }}
+                          className={cn(
+                            "p-4 rounded-2xl border text-left transition-all relative group",
+                            selectedCoins === pkg.coins && !customCoins ? "bg-lemon-muted border-lemon-muted" : "bg-white/5 border-white/10 hover:border-white/20"
+                          )}
+                        >
+                           <div className={cn("text-[10px] font-black uppercase tracking-widest mb-1", selectedCoins === pkg.coins && !customCoins ? "text-black/50" : "text-white/30")}>{pkg.label}</div>
+                           <div className={cn("font-display font-black text-xl", selectedCoins === pkg.coins && !customCoins ? "text-black" : "text-white")}>{pkg.coins} C</div>
+                           <div className={cn("text-sm font-bold", selectedCoins === pkg.coins && !customCoins ? "text-black/70" : "text-lemon-muted")}>₦{pkg.price.toLocaleString()}</div>
+                           {pkg.popular && (
+                             <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black text-white text-[8px] font-black uppercase tracking-widest">Best</div>
+                           )}
+                        </button>
+                      ))}
+                   </div>
+                   
+                   <div className="relative">
+                      <input 
+                        type="number" 
+                        placeholder="Custom amount (min 150)" 
+                        value={customCoins}
+                        onChange={(e) => setCustomCoins(e.target.value)}
+                        className="w-full h-14 bg-black/50 border border-white/10 rounded-2xl px-4 font-bold text-white focus:outline-none focus:border-lemon-muted transition-colors"
+                      />
+                      {customCoins && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-lemon-muted font-bold">
+                           ₦{(parseInt(customCoins) * 10).toLocaleString()}
+                        </div>
+                      )}
+                   </div>
+
+                   <Button size="lg" className="w-full h-14" disabled={paymentLoading} onClick={handleAddFunds}>
+                     <ArrowDownLeft size={18} className="mr-2" /> {paymentLoading ? 'Processing...' : `Buy ${currentCoins} Coins`}
+                   </Button>
+                </div>
+              )}
             </div>
             {paymentStatus && (
               <p className="mt-4 text-sm font-bold text-lemon-muted bg-lemon-muted/10 border border-lemon-muted/20 rounded-2xl p-4">
@@ -189,8 +239,8 @@ export default function Wallet() {
                     </>
                   ) : (
                     <>
-                      <h3 className="font-display font-bold text-2xl mb-2">Active Plan: Yearly</h3>
-                      <p className="text-white/40 text-xs mb-4">Next billing: Dec 12, 2024</p>
+                      <h3 className="font-display font-bold text-2xl mb-2 text-glow">Premium Active</h3>
+                      <p className="text-white/40 text-xs mb-4">Unlimited reading enabled. Next billing: Dec 12, 2024</p>
                       <Link to="/premium" className="text-sm text-lemon-muted font-bold hover:underline flex items-center gap-1">
                         Manage Subscription <ArrowUpRight size={14} />
                       </Link>
@@ -198,17 +248,12 @@ export default function Wallet() {
                   )}
                 </div>
               </div>
-              <div className="bg-ink-deep border border-white/5 rounded-3xl p-6 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center">
-                    <CreditCard size={20} className="text-white/40" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-white/30 uppercase tracking-widest font-black mb-1">Default Method</p>
-                    <h4 className="font-bold text-sm">{isGuest ? 'None Linked' : 'Visa ending in 4242'}</h4>
-                  </div>
-                </div>
-                {!isGuest && <ChevronRight size={20} className="text-white/20" />}
+              <div className="bg-ink-deep/50 border border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center">
+                 <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                    <Zap size={32} className="text-white/20" />
+                 </div>
+                 <h4 className="font-display font-bold text-xl mb-2">Instant Funding</h4>
+                 <p className="text-sm text-white/40 max-w-xs">Funds are added instantly to your wallet once the payment is confirmed.</p>
               </div>
             </>
           )}

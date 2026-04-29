@@ -15,7 +15,7 @@ export default function CreatorApplication() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     creatorName: '',
-    category: 'Artist',
+    category: [] as string[],
     location: '',
     bio: '',
     portfolioLink: '',
@@ -33,6 +33,17 @@ export default function CreatorApplication() {
     agreeOriginal: false,
     agreeReview: false,
   });
+
+  const toggleCategory = (cat: string) => {
+    setFormData(prev => {
+      const current = prev.category;
+      const exists = current.includes(cat);
+      return {
+        ...prev,
+        category: exists ? current.filter(c => c !== cat) : [...current, cat]
+      };
+    });
+  };
 
   if (isGuest) {
     navigate('/auth?mode=signup&intent=studio');
@@ -65,7 +76,7 @@ export default function CreatorApplication() {
     
     submitCreatorApplication({
       creatorName: formData.creatorName,
-      category: formData.category as any,
+      category: formData.category.join(', '),
       location: formData.location,
       bio: formData.bio,
       portfolioLink: formData.portfolioLink,
@@ -130,16 +141,16 @@ export default function CreatorApplication() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-white/40">Category</label>
+                  <label className="text-xs font-black uppercase tracking-widest text-white/40">Category (Select multiple)</label>
                   <div className="flex flex-wrap gap-2">
                     {CATEGORIES.map(cat => (
                       <button
                         key={cat}
                         type="button"
-                        onClick={() => handleInputChange('category', cat)}
+                        onClick={() => toggleCategory(cat)}
                         className={cn(
                           "px-4 py-2 rounded-full border text-sm font-bold transition-all",
-                          formData.category === cat ? "bg-lemon-muted text-black border-lemon-muted" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30"
+                          formData.category.includes(cat) ? "bg-lemon-muted text-black border-lemon-muted" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30"
                         )}
                       >
                         {cat}

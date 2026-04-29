@@ -100,8 +100,34 @@ export default function StoryDetail() {
                      {isSaved ? <Check size={20} /> : <Heart size={20} className={isSaved ? 'fill-black' : ''} />}
                    </Button>
                  </SensitiveActionWrapper>
-                 <Button size="icon" variant="glass"><Share size={20} /></Button>
-                 <Button size="icon" variant="glass"><MoreHorizontal size={20} /></Button>
+                 <Button 
+                    size="icon" 
+                    variant="glass"
+                    onClick={() => {
+                      if (navigator.share) {
+                        navigator.share({
+                          title: story.title,
+                          text: story.synopsis,
+                          url: window.location.href,
+                        });
+                      } else {
+                        navigator.clipboard.writeText(window.location.href);
+                        alert('Link copied to clipboard!');
+                      }
+                    }}
+                 >
+                   <Share size={20} />
+                 </Button>
+                 <Button 
+                    size="icon" 
+                    variant="glass"
+                    onClick={() => {
+                      navigator.clipboard.writeText(window.location.href);
+                      alert('Link copied to clipboard!');
+                    }}
+                 >
+                   <MoreHorizontal size={20} />
+                 </Button>
               </div>
             </div>
          </div>

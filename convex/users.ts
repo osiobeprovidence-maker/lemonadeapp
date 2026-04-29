@@ -167,3 +167,53 @@ export const getFullProfile = query({
     };
   },
 });
+
+export const updateProfile = mutation({
+  args: {
+    firebaseUid: v.string(),
+    name: v.optional(v.string()),
+    username: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    avatar: v.optional(v.string()),
+    settings: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    const { firebaseUid, ...updates } = args;
+    await ctx.db.patch(user._id, {
+      ...updates,
+      updatedAt: now(),
+    });
+    return user._id;
+  },
+});
+
+export const createNotification = mutation({
+  args: {
+    userId: v.string(),
+    type: v.union(
+      v.literal("follow"),
+      v.literal("save"),
+      v.literal("unlock"),
+      v.literal("premium"),
+      v.literal("support"),
+      v.literal("update"),
+      v.literal("wallet"),
+    ),
+    title: v.string(),
+    message: v.string(),
+    link: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("notifications", {
+      ...args,
+      timestamp: now(),
+      read: false,
+    });
+  },
+});

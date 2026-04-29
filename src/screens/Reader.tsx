@@ -254,8 +254,28 @@ export default function Reader() {
             className="fixed bottom-8 left-0 right-0 z-50 px-6 pointer-events-none"
           >
             <div className="max-w-xl mx-auto flex justify-between items-center bg-black-core/90 backdrop-blur-xl text-cream-soft p-1 rounded-full border border-white/10 shadow-2xl pointer-events-auto">
-              <Button variant="ghost" size="icon" className="text-white/60 hover:text-white h-11 w-11"><Heart size={20} /></Button>
-              <Button variant="ghost" className="text-white/60 px-4 h-11 w-auto flex gap-2 font-bold text-sm"><MessageCircle size={18} /> 124</Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={cn("h-11 w-11 transition-colors", user?.savedStories.includes(story.id) ? "text-lemon-muted" : "text-white/60 hover:text-white")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  alert('Added to your library!');
+                }}
+              >
+                <Heart size={20} className={user?.savedStories.includes(story.id) ? "fill-current" : ""} />
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="text-white/60 px-4 h-11 w-auto flex gap-2 font-bold text-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Simple alert for now since we don't have a comment drawer in Reader yet
+                  alert('Comments coming soon to the reader!');
+                }}
+              >
+                <MessageCircle size={18} /> 124
+              </Button>
               <div className="w-[1px] h-6 bg-white/10" />
               <Button variant="primary" className="flex-1 mr-1 h-11 font-black text-xs uppercase tracking-widest" onClick={() => navigate(`/read/${story.id}/${parseInt(chapterNum || '1') + 1}`)}>
                 Next

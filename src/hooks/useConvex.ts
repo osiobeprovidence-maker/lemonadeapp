@@ -119,21 +119,31 @@ export const useRegisterUser = () => {
 };
 
 export const useUpdateUserProfile = () => {
-  return useCallback(async () => null, []);
+  return useCallback(async (args: any) => {
+    return await convex.mutation(api.users.updateProfile, args);
+  }, []);
 };
 
 export const useApplyForCreatorAccess = () => {
-  return useCallback(async () => null, []);
+  return useCallback(async (args: any) => {
+    return await convex.mutation(api.users.submitCreatorApplication, args);
+  }, []);
 };
 
 export const useCreateStory = () => {
-  return useCallback(async () => null, []);
+  return useCallback(async (args: any) => {
+    return await convex.mutation(api.stories.create, args);
+  }, []);
 };
 
 export const useUpdateStory = () => {
-  return useCallback(async () => null, []);
+  return useCallback(async (args: any) => {
+    return await convex.mutation(api.stories.update, args);
+  }, []);
 };
 
 export const usePublishStory = () => {
-  return useCallback(async () => null, []);
+  return useCallback(async (args: any) => {
+    return await convex.mutation(api.stories.publish, args);
+  }, []);
 };

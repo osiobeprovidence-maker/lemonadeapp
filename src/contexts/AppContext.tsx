@@ -594,12 +594,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     logAdminActivity(`Updated moderator ${modId}`);
   };
 
-  const addNotification = (notif: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+  const addNotification = async (notif: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     if (!user || user.isGuest) return;
     
+    const localId = Math.random().toString(36).substr(2, 9);
     const newNotif: Notification = {
       ...notif,
-      id: Math.random().toString(36).substr(2, 9),
+      id: localId,
       timestamp: new Date().toISOString(),
       read: false,
     };
@@ -608,6 +609,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       notifications: [newNotif, ...prev.notifications]
     } : null);
+
+    if (isAuthenticated && user.id) {
+       try {
+         await convex.mutation(api.users.createNotification, {
+           userId: user.id,
+           type: notif.type as any,
+           title: notif.title,
+           message: notif.message,
+           link: notif.link,
+         });
+       } catch (error) {
+         console.error('Failed to persist notification', error);
+       }
+    }
   };
 
   const login = (role: UserRole) => {
@@ -899,11 +914,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const updateSettings = (newSettings: Partial<UserSettings>) => {
+  // Theme application
+  useEffect(() => {
+    const theme = user?.settings.themeMode || 'dark';
+    if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+  }, [user?.settings.themeMode]);
+
+  const updateSettings = async (newSettings: Partial<UserSettings>) => {
     setUser(prev => prev ? {
       ...prev,
       settings: { ...prev.settings, ...newSettings }
     } : null);
+
+    if (isAuthenticated && auth.currentUser) {
+      try {
+        await convex.mutation(api.users.updateProfile, {
+          firebaseUid: auth.currentUser.uid,
+          settings: { ...(user?.settings || {}), ...newSettings }
+        });
+      } catch (error) {
+        console.error('Failed to persist settings', error);
+      }
+    }
   };
 
   const submitCreatorApplication = (appData: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => {
