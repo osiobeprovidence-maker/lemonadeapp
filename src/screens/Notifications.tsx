@@ -53,9 +53,9 @@ export default function Notifications() {
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
                     <h4 className={cn("font-bold text-base", isUnread ? "text-white" : "text-white/80")}>{notif.title}</h4>
-                    <span className="text-xs font-medium text-white/40">{notif.time}</span>
+                    <span className="text-xs font-medium text-white/40">{new Date(notif.timestamp).toLocaleDateString()}</span>
                   </div>
-                  <p className={cn("text-sm leading-relaxed", isUnread ? "text-white/70" : "text-white/50")}>{notif.description}</p>
+                  <p className={cn("text-sm leading-relaxed", isUnread ? "text-white/70" : "text-white/50")}>{notif.message}</p>
                 </div>
               </div>
             )

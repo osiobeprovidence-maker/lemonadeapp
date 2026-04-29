@@ -313,7 +313,7 @@ export default function ReaderProfile() {
                          </div>
                          <div>
                            <h4 className="font-display font-bold text-xl">Lemonade Premium</h4>
-                           <p className="text-lemon-muted text-sm font-black uppercase tracking-widest">{isPremium ? 'Yearly' : 'Monthly'} Plan • $6.99/mo</p>
+                           <p className="text-lemon-muted text-sm font-black uppercase tracking-widest">{isPremium ? 'Yearly' : 'Monthly'} Plan • ₦3,500/mo</p>
                          </div>
                        </div>
 

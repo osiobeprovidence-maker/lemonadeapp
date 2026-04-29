@@ -39,11 +39,11 @@ export default function Premium() {
     }
   }, [user, navigate]);
 
-  // Payment amounts in Naira
-  const PREMIUM_MONTHLY = 6_99 * 100; // $6.99 in kobo
-  const PREMIUM_YEARLY = 67_00 * 100; // $67.00 in kobo
-  const PATRON_MONTHLY = 14_99 * 100; // $14.99 in kobo
-  const PATRON_YEARLY = 143_00 * 100; // $143.00 in kobo
+  // Payment amounts in Naira (converted to kobo for Paystack)
+  const PREMIUM_MONTHLY = 3500 * 100; 
+  const PREMIUM_YEARLY = 35000 * 100; 
+  const PATRON_MONTHLY = 7500 * 100; 
+  const PATRON_YEARLY = 75000 * 100; 
   
   const getPlanAmount = () => {
     if (selectedPlan === 'patron') {
@@ -54,9 +54,9 @@ export default function Premium() {
   
   const getPlanPrice = () => {
     if (selectedPlan === 'patron') {
-      return billing === 'monthly' ? '$14.99' : '$143.00';
+      return billing === 'monthly' ? '₦7,500' : '₦75,000';
     }
-    return billing === 'monthly' ? '$6.99' : '$67.00';
+    return billing === 'monthly' ? '₦3,500' : '₦35,000';
   };
   
   const handlePurchase = async () => {
@@ -185,7 +185,7 @@ export default function Premium() {
           >
             <PremiumPlanCard 
               name="Lemonade Premium"
-              price={billing === 'monthly' ? "$6.99" : "$67.00"}
+              price={billing === 'monthly' ? "₦3,500" : "₦35,000"}
               period={billing === 'monthly' ? "/month" : "/year"}
               isPopular={selectedPlan === 'premium'}
               features={[
@@ -207,7 +207,7 @@ export default function Premium() {
           >
             <PremiumPlanCard 
               name="Premium + Patron"
-              price={billing === 'monthly' ? "$14.99" : "$143.00"}
+              price={billing === 'monthly' ? "₦7,500" : "₦75,000"}
               period={billing === 'monthly' ? "/month" : "/year"}
               isPopular={selectedPlan === 'patron'}
               features={[

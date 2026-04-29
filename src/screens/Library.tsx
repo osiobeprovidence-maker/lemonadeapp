@@ -25,11 +25,17 @@ export default function Library() {
       case 'saved':
         return savedStories?.length > 0 ? savedStories : [];
       case 'reading':
-        return stories.slice(0, 2); // TODO: Load from user reading history
+        if (!user || user.isGuest) return stories.slice(0, 2);
+        // Map reading history to story objects
+        return user.readingHistory
+          .map(entry => stories.find(s => s.id === entry.storyId))
+          .filter((s): s is NonNullable<typeof s> => s !== undefined)
+          .slice(0, 10);
       case 'downloads':
         return []; // TODO: Load downloaded stories
       case 'unlocked':
-        return user?.unlockedChapters?.length > 0 ? stories.slice(0, 1) : [];
+        if (!user || user.isGuest) return [];
+        return stories.filter(s => user.unlockedChapters.some(uc => uc.startsWith(s.id)));
       default:
         return [];
     }

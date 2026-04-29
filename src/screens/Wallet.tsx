@@ -132,9 +132,9 @@ export default function Wallet() {
             <p className="text-sm font-bold text-white/50 uppercase tracking-widest mb-2">Total Balance</p>
             <div className="flex items-end gap-2 mb-8 flex-1">
               <h2 className="font-display font-black text-5xl md:text-6xl text-lemon-muted">
-                {userRole === 'creator' ? '$4,250' : (isGuest ? '0' : (user?.walletBalance ?? 0).toLocaleString())}
+                {userRole === 'creator' ? '₦4,250' : (isGuest ? '0' : (user?.walletBalance ?? 0).toLocaleString())}
               </h2>
-              <span className="text-xl font-bold text-white/40 pb-2">{userRole === 'creator' ? 'USD' : 'Coins'}</span>
+              <span className="text-xl font-bold text-white/40 pb-2">{userRole === 'creator' ? 'Naira' : 'Coins'}</span>
             </div>
             
             <div className="flex gap-4 w-full">
@@ -162,11 +162,11 @@ export default function Wallet() {
             <>
               <div className="bg-ink-deep border border-white/5 rounded-2xl p-6 flex-1 flex flex-col justify-center">
                 <p className="text-sm text-white/50 mb-1">Pending Clearance</p>
-                <h3 className="font-display font-bold text-2xl">$340.00</h3>
+                <h3 className="font-display font-bold text-2xl">₦340.00</h3>
               </div>
               <div className="bg-ink-deep border border-white/5 rounded-2xl p-6 flex-1 flex flex-col justify-center">
                 <p className="text-sm text-white/50 mb-1">Lifetime Earnings</p>
-                <h3 className="font-display font-bold text-2xl">$12,450.00</h3>
+                <h3 className="font-display font-bold text-2xl">₦12,450.00</h3>
               </div>
             </>
           ) : (
@@ -240,7 +240,7 @@ export default function Wallet() {
                     icon={Zap} 
                     title={`Supported ${support.creatorId}`} 
                     date={new Date(support.timestamp).toLocaleDateString()} 
-                    amount={`-$${support.amount}`} 
+                    amount={`-₦${support.amount}`} 
                     color="white"
                   />
                 ))}
@@ -263,7 +263,7 @@ export default function Wallet() {
                 icon={i % 2 === 0 ? ArrowDownLeft : ArrowUpRight}
                 title={i % 2 === 0 ? 'Chapter Purchase - Lagos 2099' : 'Withdrawal to Bank'}
                 date={`Oct ${12 - i}, 2024`}
-                amount={`${i % 2 === 0 ? '+' : '-'}$${i * 15}.00`}
+                amount={`${i % 2 === 0 ? '+' : '-'}₦${i * 15}.00`}
                 color={i % 2 === 0 ? 'green-400' : 'white'}
               />
             ))}
