@@ -21,14 +21,14 @@ export default function Wallet() {
   const userRole = user?.role || 'reader';
   
   const COIN_PACKAGES = [
-    { coins: 150, price: 1500, label: 'Starter Pack' },
-    { coins: 500, price: 5000, label: 'Standard', popular: true },
-    { coins: 1000, price: 9500, label: 'Value Pack' },
-    { coins: 2000, price: 18000, label: 'Mega Bundle' },
+    { coins: 80, price: 150, label: 'Starter' },
+    { coins: 300, price: 500, label: 'Standard', popular: true },
+    { coins: 650, price: 1000, label: 'Value Pack' },
+    { coins: 1500, price: 2000, label: 'Mega Bundle' },
   ];
 
   const currentCoins = customCoins ? parseInt(customCoins) : selectedCoins;
-  const currentPrice = customCoins ? parseInt(customCoins) * 10 : COIN_PACKAGES.find(p => p.coins === selectedCoins)?.price || 5000;
+  const currentPrice = customCoins ? Math.round(parseInt(customCoins) * 1.875) : COIN_PACKAGES.find(p => p.coins === selectedCoins)?.price || 500;
 
   useEffect(() => {
     const reference = searchParams.get('reference') || searchParams.get('trxref');
