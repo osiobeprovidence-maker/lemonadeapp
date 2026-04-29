@@ -208,4 +208,11 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_user_story", ["userId", "storyId"]),
+
+  platformSettings: defineTable({
+    showMockData: v.boolean(),
+    maintenanceMode: v.boolean(),
+    announcement: v.optional(v.string()),
+    updatedAt: v.string(),
+  }),
 });

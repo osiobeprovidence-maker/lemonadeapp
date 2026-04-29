@@ -5,7 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 import { cn } from '../../lib/utils';
 
 export default function AdminSettings() {
-  const { adminSession } = useApp();
+  const { adminSession, showMockData, updatePlatformSettings } = useApp();
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
   const [moderationMode, setModerationMode] = useState('adaptive');
@@ -115,6 +115,25 @@ export default function AdminSettings() {
                  <h3 className="text-lg font-bold flex items-center gap-3"><Shield size={20} className="text-lemon-muted" /> Global Moderation Rules</h3>
               </div>
               <div className="p-8 space-y-8">
+                 <div className="flex items-center justify-between group pb-8 border-b border-white/5">
+                    <div className="space-y-1">
+                       <p className="font-bold text-lemon-muted group-hover:text-lemon-muted transition-colors">Display Mock Data</p>
+                       <p className="text-xs text-white/30 font-medium">Keep mock stories and creators visible for aesthetic testing.</p>
+                    </div>
+                    <button 
+                       onClick={() => updatePlatformSettings({ showMockData: !showMockData })}
+                       className={cn(
+                          "w-12 h-6 rounded-full relative transition-all duration-300",
+                          showMockData ? "bg-lemon-muted" : "bg-white/10"
+                       )}
+                    >
+                       <div className={cn(
+                          "absolute top-1 w-4 h-4 rounded-full bg-black transition-all duration-300",
+                          showMockData ? "right-1" : "left-1"
+                       )} />
+                    </button>
+                 </div>
+
                  {settings.map((setting) => (
                     <div key={setting.id} className="flex items-center justify-between group">
                        <div className="space-y-1">

@@ -168,6 +168,10 @@ interface AppContextType {
   submitCreatorApplication: (application: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
   approveCreatorApplication: (appId: string) => void;
   rejectCreatorApplication: (appId: string, feedback: string) => void;
+  
+  // Platform Settings
+  showMockData: boolean;
+  updatePlatformSettings: (settings: { showMockData?: boolean; maintenanceMode?: boolean }) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -304,8 +308,8 @@ const storyFromDoc = (doc: any, creator: Creator): Story => ({
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
-  const [creators, setCreators] = useState<Record<string, Creator>>(MOCK_CREATORS);
-  const [stories, setStories] = useState<Story[]>(MOCK_STORIES);
+  const [liveCreators, setLiveCreators] = useState<Record<string, Creator>>({});
+  const [liveStories, setLiveStories] = useState<Story[]>([]);
   const [applications, setApplications] = useState<CreatorApplication[]>([]);
   
   // Admin State
@@ -314,16 +318,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [allUsers, setAllUsers] = useState<AppUser[]>([]);
   const [reports, setReports] = useState<ContentReport[]>([]);
   const [activityLog, setActivityLog] = useState<AdminActivity[]>([]);
+  const [showMockData, setShowMockData] = useState<boolean>(true);
 
   useEffect(() => {
     if (!convex) return;
 
     const loadLiveContent = async () => {
       try {
-        let [creatorDocs, storyDocs] = await Promise.all([
+        let [creatorDocs, storyDocs, platformSettings] = await Promise.all([
           convex.query(api.creators.list, {}),
           convex.query(api.stories.listPublished, {}),
+          convex.query(api.settings.get, {}),
         ]);
+
+        if (platformSettings) {
+          setShowMockData(platformSettings.showMockData);
+        }
 
         if (creatorDocs.length === 0 || storyDocs.length === 0) {
           await convex.mutation(api.seed.initialContent, {});
@@ -347,10 +357,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           .filter(Boolean) as Story[];
 
         if (Object.keys(liveCreators).length > 0) {
-          setCreators(liveCreators);
+          setLiveCreators(liveCreators);
         }
         if (liveStories.length > 0) {
-          setStories(liveStories);
+          setLiveStories(liveStories);
         }
       } catch (error) {
         console.error('Failed to load live Convex content; using bundled fallback.', error);
@@ -359,6 +369,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     loadLiveContent();
   }, []);
+
+  const stories = useMemo(() => {
+    if (showMockData) {
+      const mockFiltered = MOCK_STORIES.filter(ms => !liveStories.some(rs => rs.id === ms.id));
+      return [...liveStories, ...mockFiltered];
+    }
+    return liveStories;
+  }, [liveStories, showMockData]);
+
+  const creators = useMemo(() => {
+    if (showMockData) {
+      const mockFiltered: Record<string, Creator> = {};
+      Object.entries(MOCK_CREATORS).forEach(([key, value]) => {
+        if (!liveCreators[key]) {
+          mockFiltered[key] = value;
+        }
+      });
+      return { ...liveCreators, ...mockFiltered };
+    }
+    return liveCreators;
+  }, [liveCreators, showMockData]);
 
   const syncFirebaseUser = async (firebaseUser: FirebaseUser) => {
     if (!convex) {
@@ -912,6 +943,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updatePlatformSettings = async (settings: { showMockData?: boolean; maintenanceMode?: boolean }) => {
+    if (!convex) return;
+    try {
+      await convex.mutation(api.settings.update, settings);
+      if (settings.showMockData !== undefined) {
+        setShowMockData(settings.showMockData);
+      }
+    } catch (error) {
+      console.error('Failed to update platform settings', error);
+    }
+  };
+
   return (
     <AppContext.Provider value={{ 
       user, 
@@ -959,7 +1002,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       allUsers,
       reports,
       activityLog,
-      applications
+      applications,
+      showMockData,
+      updatePlatformSettings
     }}>
       {children}
     </AppContext.Provider>

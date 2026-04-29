@@ -5,8 +5,10 @@ import { cn } from '../lib/utils';
 import { Bookmark, Clock, Download, Unlock, Loader } from 'lucide-react';
 import { useCurrentUser, useSavedStories } from '../hooks/useConvex';
 
+import { useApp } from '../contexts/AppContext';
+
 export default function Library() {
-  const { user } = useCurrentUser();
+  const { user, stories } = useApp();
   const savedStories = useSavedStories(user?.id);
   const [activeTab, setActiveTab] = useState<'reading' | 'saved' | 'downloads' | 'unlocked'>('reading');
 
@@ -23,15 +25,15 @@ export default function Library() {
       case 'saved':
         return savedStories?.length > 0 ? savedStories : [];
       case 'reading':
-        return MOCK_STORIES.slice(0, 2); // TODO: Load from user reading history
+        return stories.slice(0, 2); // TODO: Load from user reading history
       case 'downloads':
         return []; // TODO: Load downloaded stories
       case 'unlocked':
-        return user?.unlockedChapters?.length > 0 ? MOCK_STORIES.slice(0, 1) : [];
+        return user?.unlockedChapters?.length > 0 ? stories.slice(0, 1) : [];
       default:
         return [];
     }
-  }, [activeTab, savedStories, user]);
+  }, [activeTab, savedStories, user, stories]);
 
   const isLoading = activeTab === 'saved' && savedStories === null;
 

@@ -5,7 +5,10 @@ import { useSearchParams } from 'react-router-dom';
 import { MOCK_STORIES } from '../data/mock';
 import { StoryCard } from '../components/ui/Cards';
 
+import { useApp } from '../contexts/AppContext';
+
 export default function SearchResults() {
+  const { stories } = useApp();
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   const [query, setQuery] = useState(initialQuery);
@@ -13,7 +16,7 @@ export default function SearchResults() {
 
   const sorts = ['Trending', 'Newest', 'Most Read', 'Highest Rated'];
 
-  const filtered = MOCK_STORIES.filter(s => 
+  const filtered = stories.filter(s => 
     !query || s.title.toLowerCase().includes(query.toLowerCase()) || 
     s.creator.name.toLowerCase().includes(query.toLowerCase())
   );

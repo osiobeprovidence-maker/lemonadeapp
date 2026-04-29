@@ -5,7 +5,10 @@ import { StoryCard } from '../components/ui/Cards';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 
+import { useApp } from '../contexts/AppContext';
+
 export default function Explore() {
+  const { stories } = useApp();
   const [activeFormat, setActiveFormat] = useState<Format | 'All'>('All');
   const [activeCategory, setActiveCategory] = useState<Genre | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,7 +17,7 @@ export default function Explore() {
   const formats: (Format | 'All')[] = ['All', 'Manga', 'Manhwa', 'Webcomic', 'Novel'];
   const categories: (Genre | 'All')[] = ['All', 'Action', 'Romance', 'Horror', 'Sci-Fi & Cyberpunk', 'African Fantasy', 'Drama', 'Mystery'];
 
-  const filtered = MOCK_STORIES.filter(s => {
+  const filtered = stories.filter(s => {
     if (activeFormat !== 'All' && s.format !== activeFormat) return false;
     if (activeCategory !== 'All' && s.genre !== activeCategory) return false;
     if (searchQuery && !s.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
