@@ -165,7 +165,7 @@ interface AppContextType {
   trackReading: (storyId: string, chapterId: string) => void;
   updateSettings: (settings: Partial<UserSettings>) => void;
   markNotificationsAsRead: () => void;
-  submitCreatorApplication: (application: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
+  submitCreatorApplication: (application: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => Promise<void>;
   approveCreatorApplication: (appId: string) => void;
   rejectCreatorApplication: (appId: string, feedback: string) => void;
 }
@@ -320,9 +320,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const loadLiveContent = async () => {
       try {
-        let [creatorDocs, storyDocs] = await Promise.all([
+        let [creatorDocs, storyDocs, applicationDocs] = await Promise.all([
           convex.query(api.creators.list, {}),
           convex.query(api.stories.listPublished, {}),
+          convex.query(api.applications.list, {}),
         ]);
 
         if (creatorDocs.length === 0 || storyDocs.length === 0) {
@@ -351,6 +352,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
         if (liveStories.length > 0) {
           setStories(liveStories);
+        }
+
+        // Load persisted creator applications from Convex
+        try {
+          if (applicationDocs && applicationDocs.length > 0) {
+            const mapped = applicationDocs.map((doc: any) => ({ ...(doc || {}), id: doc._id || doc.id }));
+            setApplications(mapped as any);
+          }
+        } catch (e) {
+          console.warn('Failed to load applications', e);
         }
       } catch (error) {
         console.error('Failed to load live Convex content; using bundled fallback.', error);
@@ -854,20 +865,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } : null);
   };
 
-  const submitCreatorApplication = (appData: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => {
+  const submitCreatorApplication = async (appData: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => {
     if (!user || user.isGuest) return;
-    
-    const newApp: CreatorApplication = {
-      ...appData,
-      id: Math.random().toString(36).substr(2, 9),
-      userId: user.id,
-      submittedAt: new Date().toISOString(),
-      status: 'pending'
-    };
-    
-    setApplications(prev => [newApp, ...prev]);
-    setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
-    
+
+    if (convex) {
+      try {
+        const res: any = await convex.mutation(api.applications.submit, {
+          userId: user.id,
+          creatorName: appData.creatorName,
+          category: appData.category,
+          location: appData.location,
+          bio: appData.bio,
+          portfolioLink: appData.portfolioLink,
+          socialLinks: appData.socialLinks,
+          dropsomethingUrl: appData.dropsomethingUrl,
+          storyIntent: appData.storyIntent,
+          mainGenre: appData.mainGenre,
+          hasStoryReady: appData.hasStoryReady,
+          whyLemonade: appData.whyLemonade,
+        });
+
+        const newApp: any = {
+          ...(res || {}),
+          id: (res && (res._id || res.id)) || Math.random().toString(36).substr(2, 9),
+        };
+
+        setApplications(prev => [newApp, ...prev]);
+        setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
+      } catch (error) {
+        console.error('Failed to submit application to Convex', error);
+        // fallback to local-only behavior
+        const newApp: CreatorApplication = {
+          ...appData,
+          id: Math.random().toString(36).substr(2, 9),
+          userId: user.id,
+          submittedAt: new Date().toISOString(),
+          status: 'pending'
+        };
+        setApplications(prev => [newApp, ...prev]);
+        setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
+      }
+    } else {
+      const newApp: CreatorApplication = {
+        ...appData,
+        id: Math.random().toString(36).substr(2, 9),
+        userId: user.id,
+        submittedAt: new Date().toISOString(),
+        status: 'pending'
+      };
+      setApplications(prev => [newApp, ...prev]);
+      setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
+    }
+
     addNotification({
       type: 'update',
       title: 'Application Submitted',

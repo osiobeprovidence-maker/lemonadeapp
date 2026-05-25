@@ -43,11 +43,27 @@ export const submit = mutation({
     whyLemonade: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("creatorApplications", {
+    const inserted = await ctx.db.insert("creatorApplications", {
       ...args,
       status: "pending",
       submittedAt: now(),
     });
+
+    // Attempt to mark the user's creatorAccessStatus as 'pending' if the user exists
+    try {
+      const user = await ctx.db.get(args.userId as any);
+      if (user) {
+        await ctx.db.patch(args.userId as any, {
+          creatorAccessStatus: 'pending',
+          updatedAt: now(),
+        });
+      }
+    } catch (e) {
+      // ignore if user not found or patch fails
+      console.warn('Failed to patch user creatorAccessStatus', e);
+    }
+
+    return inserted;
   },
 });
 
@@ -69,10 +85,19 @@ export const review = mutation({
       reviewedBy: args.adminEmail,
     });
 
-    const user = await ctx.db
+    // Try to find user by externalId index first, fall back to _id lookup
+    let user = await ctx.db
       .query("users")
       .withIndex("by_externalId", (q) => q.eq("externalId", application.userId))
       .unique();
+
+    if (!user) {
+      try {
+        user = await ctx.db.get(application.userId as any);
+      } catch (e) {
+        user = null as any;
+      }
+    }
 
     if (user) {
       await ctx.db.patch(user._id, {
