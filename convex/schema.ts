@@ -60,7 +60,12 @@ export default defineSchema({
     avatar: v.string(),
     followers: v.number(),
     bio: v.string(),
-    category: v.array(v.string()),
+    category: v.union(
+      v.array(v.string()),
+      v.literal("Artist"),
+      v.literal("Writer"),
+      v.literal("Studio"),
+    ),
     location: v.optional(v.string()),
     totalReads: v.number(),
     totalStories: v.number(),
