@@ -27,7 +27,6 @@ export default function SettingsAccountProfile() {
     avatar: ''
   });
 
-  // Load user data when available
   useEffect(() => {
     if (user) {
       setFormData({
@@ -38,7 +37,7 @@ export default function SettingsAccountProfile() {
         avatar: user.avatar || ''
       });
     }
-  }, [user]);
+  }, [user?.id, user?.name, user?.username, user?.bio, user?.email, user?.avatar]);
 
   // Handle profile picture upload
   const handlePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,6 +94,12 @@ export default function SettingsAccountProfile() {
       setError(null);
       setIsLoading(true);
       const normalizedUsername = formData.username.trim().toLowerCase().replace(/^@+/, '');
+      const usernameChanged = normalizedUsername !== user?.username;
+
+      if (usernameChanged && !canChangeUsername) {
+        setError(`Username changes are locked until ${nextUsernameChangeAt?.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`);
+        return;
+      }
 
       await updateProfile({
         firebaseUid,
@@ -106,8 +111,8 @@ export default function SettingsAccountProfile() {
       updateLocalUser({
         name: formData.name.trim(),
         username: normalizedUsername,
-        usernameUpdatedAt: normalizedUsername !== user?.username ? new Date().toISOString() : user?.usernameUpdatedAt,
-        usernameChangeLockedAt: normalizedUsername !== user?.username ? new Date().toISOString() : user?.usernameChangeLockedAt,
+        usernameUpdatedAt: usernameChanged ? new Date().toISOString() : user?.usernameUpdatedAt,
+        usernameChangeLockedAt: usernameChanged ? new Date().toISOString() : user?.usernameChangeLockedAt,
         bio: formData.bio.trim(),
       } as any);
       setFormData(prev => ({ ...prev, username: normalizedUsername }));
@@ -220,7 +225,9 @@ export default function SettingsAccountProfile() {
               value={formData.username}
               onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_@]/g, '')})}
               className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl pl-12 pr-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors disabled:opacity-50"
-              disabled={isLoading}
+              disabled={isLoading || !canChangeUsername}
+              autoComplete="off"
+              spellCheck={false}
             />
           </div>
           <p className="text-[10px] font-bold text-white/25 ml-4 italic">
