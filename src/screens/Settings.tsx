@@ -1,344 +1,228 @@
-import React, { useState } from 'react';
-import { 
-  User, 
-  Bell, 
-  Palette, 
-  CreditCard, 
-  HelpCircle, 
-  LogOut, 
+import React from 'react';
+import {
+  Bell,
+  BookOpen,
   ChevronLeft,
-  ChevronDown, 
-  ChevronRight, 
-  BookOpen, 
-  PenTool, 
-  ShieldCheck,
+  ChevronRight,
+  CreditCard,
+  HelpCircle,
   LayoutDashboard,
-  Moon,
-  Sun,
-  Type
+  LogOut,
+  Palette,
+  PenTool,
+  ShieldCheck,
+  User,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useApp } from '../contexts/AppContext';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
 
-const SETTINGS_SECTIONS = [
-  { 
+type SettingsItem = {
+  label: string;
+  description: string;
+  path: string;
+};
+
+type SettingsSection = {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  items: SettingsItem[];
+};
+
+const SETTINGS_SECTIONS: SettingsSection[] = [
+  {
     id: 'account',
-    title: "Account", 
-    icon: User, 
-    desc: "Personal info, password, and privacy",
-    items: ["Profile Info", "Change Password", "Privacy"] 
+    title: 'Account',
+    description: 'Personal info, password, and privacy',
+    icon: User,
+    items: [
+      { label: 'Profile Info', description: 'Edit your name, username, bio, and avatar', path: '/settings/account/profile' },
+      { label: 'Change Password', description: 'Update your sign-in password', path: '/settings/account/password' },
+      { label: 'Privacy', description: 'Control account visibility and safety options', path: '/settings/account/privacy' },
+    ],
   },
-  { 
+  {
     id: 'appearance',
-    title: "Appearance", 
-    icon: Palette, 
-    desc: "Theme, display mode, and aesthetics",
-    items: ["Theme", "Auto-Dark Mode"] 
+    title: 'Appearance',
+    description: 'Theme, display mode, and visual preferences',
+    icon: Palette,
+    items: [
+      { label: 'Theme', description: 'Choose the app theme and display style', path: '/settings/appearance' },
+    ],
   },
-  { 
+  {
     id: 'reading',
-    title: "Reading", 
-    icon: BookOpen, 
-    desc: "Font size, scroll mode, and layout",
-    items: ["Font Size", "Line Spacing"] 
+    title: 'Reading',
+    description: 'Reader font size, scroll mode, and layout',
+    icon: BookOpen,
+    items: [
+      { label: 'Reader Preferences', description: 'Adjust text size and reading behavior', path: '/settings/reading' },
+    ],
   },
-  { 
+  {
     id: 'notifications',
-    title: "Notifications", 
-    icon: Bell, 
-    desc: "Email and push notification alerts",
-    items: ["Email updates", "Push notifications"] 
+    title: 'Notifications',
+    description: 'Email and push notification alerts',
+    icon: Bell,
+    items: [
+      { label: 'Notification Settings', description: 'Choose which updates you receive', path: '/settings/notifications' },
+    ],
   },
-  { 
+  {
     id: 'payments',
-    title: "Payments", 
-    icon: CreditCard, 
-    desc: "Wallet and premium status",
-    items: ["Wallet", "Premium subscription"] 
+    title: 'Payments',
+    description: 'Wallet and premium status',
+    icon: CreditCard,
+    items: [
+      { label: 'Wallet', description: 'Manage balance and payment history', path: '/wallet' },
+      { label: 'Premium Subscription', description: 'Review premium plans and access', path: '/premium' },
+    ],
   },
-  { 
+  {
     id: 'creator',
-    title: "Creator", 
-    icon: PenTool, 
-    desc: "Support and portfolio settings",
-    items: ["Support Settings", "Portfolio Info"] 
+    title: 'Creator',
+    description: 'Support and portfolio settings',
+    icon: PenTool,
+    items: [
+      { label: 'Creator Settings', description: 'Manage support links and creator profile', path: '/settings/creator' },
+      { label: 'Studio', description: 'Open your creator workspace', path: '/studio' },
+    ],
   },
-  { 
+  {
+    id: 'support',
+    title: 'Support',
+    description: 'Help, reports, and legal pages',
+    icon: HelpCircle,
+    items: [
+      { label: 'Help Center', description: 'Find answers and contact support', path: '/help' },
+      { label: 'Report a Problem', description: 'Tell us about a bug or safety issue', path: '/help/report-problem' },
+    ],
+  },
+  {
     id: 'legal',
-    title: "Legal", 
-    icon: ShieldCheck, 
-    desc: "Terms and privacy rules",
-    items: ["Terms", "Privacy Policy"] 
+    title: 'Legal',
+    description: 'Terms and privacy rules',
+    icon: ShieldCheck,
+    items: [
+      { label: 'Terms', description: 'Read Lemonade terms of service', path: '/terms' },
+      { label: 'Privacy Policy', description: 'Review how your data is handled', path: '/privacy' },
+    ],
   },
-  { 
+  {
     id: 'admin',
-    title: "Platform Admin", 
-    icon: LayoutDashboard, 
-    desc: "Internal infrastructure login",
-    items: ["Admin Dashboard"],
-    link: "/admin/login"
+    title: 'Platform Admin',
+    description: 'Internal infrastructure login',
+    icon: LayoutDashboard,
+    items: [
+      { label: 'Admin Dashboard', description: 'Open the admin sign-in page', path: '/admin/login' },
+    ],
   },
 ];
 
 export default function Settings() {
-  const { logout, user, updateSettings } = useApp();
+  const { logout, user } = useApp();
   const navigate = useNavigate();
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
-  const handleBack = () => {
-    navigate('/profile');
-  };
-
-  const toggleSection = (id: string) => {
-    setExpandedSection(expandedSection === id ? null : id);
-  };
-
-  const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
-    updateSettings({ themeMode: theme as any });
-  };
-
-  const handleFontSizeChange = (size: number) => {
-    updateSettings({ readerFontSize: size });
-  };
-
-  const handleItemClick = (sectionId: string, itemName: string) => {
-    if (sectionId === 'admin' && itemName === 'Admin Dashboard') {
-      navigate('/admin/login');
-      return;
-    }
-
-    const routeMap: Record<string, Record<string, string>> = {
-      'account': {
-        'Profile Info': '/settings/account/profile',
-        'Change Password': '/settings/account/password',
-        'Privacy': '/settings/account/privacy'
-      },
-      'appearance': {
-        'Theme': '/settings/appearance',
-        'Auto-Dark Mode': '/settings/appearance'
-      },
-      'reading': {
-        'Font Size': '/settings/reading',
-        'Line Spacing': '/settings/reading'
-      },
-      'notifications': {
-        'Email updates': '/settings/notifications',
-        'Push notifications': '/settings/notifications'
-      },
-      'payments': {
-        'Wallet': '/wallet',
-        'Premium subscription': '/premium'
-      },
-      'creator': {
-        'Support Settings': '/settings/creator',
-        'Portfolio Info': '/settings/creator'
-      },
-      'legal': {
-        'Terms': '/terms',
-        'Privacy Policy': '/privacy'
-      }
-    };
-
-    const targetRoute = routeMap[sectionId]?.[itemName];
-    if (targetRoute) {
-      navigate(targetRoute);
-    }
-  };
-
   return (
-    <div className="flex flex-col w-full min-h-screen p-6 md:p-12 max-w-4xl mx-auto pb-32 md:pb-12">
-      <div className="flex items-center justify-between mb-10">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleBack}
-            className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-            aria-label="Back to profile"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <h1 className="font-display font-black text-3xl md:text-5xl">Settings</h1>
-        </div>
-        {user && (
-          <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/10">
-            <img src={user.avatar} className="w-8 h-8 rounded-full" alt="avatar" />
-            <span className="text-sm font-bold">{user.username}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-12">
-        {/* Desktop Sidebar / Section List */}
-        <div className="flex flex-col gap-2">
-          {SETTINGS_SECTIONS.map((section) => {
-            const Icon = section.icon;
-            const isExpanded = expandedSection === section.id;
-            return (
-              <div key={section.id} className="flex flex-col">
-                <button 
-                  onClick={() => toggleSection(section.id)}
-                  className={cn(
-                    "w-full flex items-center justify-between p-4 rounded-2xl transition-all text-left",
-                    isExpanded ? "bg-lemon-muted/10 border border-lemon-muted/20" : "hover:bg-white/5 border border-transparent"
-                  )}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors",
-                      isExpanded ? "bg-lemon-muted text-black shadow-lg shadow-lemon-muted/20" : "bg-white/5 text-white/40"
-                    )}>
-                      <Icon size={22} />
-                    </div>
-                    <div>
-                      <h3 className={cn("font-bold text-base md:text-lg transition-colors", isExpanded ? "text-lemon-muted" : "text-white")}>{section.title}</h3>
-                      <p className="text-[10px] text-white/30 uppercase tracking-[0.1em] font-black leading-none mt-1.5">{section.desc}</p>
-                    </div>
-                  </div>
-                  <div className="md:hidden">
-                    {isExpanded ? <ChevronDown size={18} className="text-lemon-muted" /> : <ChevronRight size={18} className="text-white/20" />}
-                  </div>
-                </button>
-
-                {/* Mobile Expanded Items */}
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div 
-                      className="md:hidden overflow-hidden"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                    >
-                      <div className="p-5 bg-ink-deep/50 border border-white/5 rounded-2xl ml-16 mt-2 mb-4">
-                        {section.id === 'appearance' ? (
-                           <div className="flex flex-col gap-6">
-                             <div className="flex items-center justify-between">
-                                <span className="text-sm font-bold text-white/80">Dark Mode</span>
-                                <div className="flex bg-black-core rounded-xl p-1.5 border border-white/10 gap-1">
-                                  <button onClick={() => handleThemeChange('dark')} className={cn("w-10 h-10 flex items-center justify-center rounded-lg transition-all", user?.settings.themeMode === 'dark' ? "bg-lemon-muted text-black" : "text-white/40 hover:text-white")}><Moon size={16}/></button>
-                                  <button onClick={() => handleThemeChange('light')} className={cn("w-10 h-10 flex items-center justify-center rounded-lg transition-all", user?.settings.themeMode === 'light' ? "bg-lemon-muted text-black" : "text-white/40 hover:text-white")}><Sun size={16}/></button>
-                                </div>
-                             </div>
-                           </div>
-                        ) : section.id === 'reading' ? (
-                          <div className="flex flex-col gap-6">
-                             <div className="flex items-center justify-between">
-                                <span className="text-sm font-bold text-white/80">Text size</span>
-                                <div className="flex items-center gap-4">
-                                   <button onClick={() => handleFontSizeChange((user?.settings.readerFontSize || 18) - 2)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 border border-white/5 text-lg font-bold">-</button>
-                                   <span className="text-sm font-black w-6 text-center text-lemon-muted">{user?.settings.readerFontSize}</span>
-                                   <button onClick={() => handleFontSizeChange((user?.settings.readerFontSize || 18) + 2)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 border border-white/5 text-lg font-bold">+</button>
-                                </div>
-                             </div>
-                           </div>
-                        ) : (
-                          <div className="flex flex-col gap-1">
-                            {section.items.map((item, i) => (
-                              <button 
-                                key={i} 
-                                onClick={() => handleItemClick(section.id, item)}
-                                className="w-full h-12 flex items-center justify-between border-b border-white/5 last:border-0 hover:text-lemon-muted transition-colors text-left text-sm font-bold text-white/60"
-                              >
-                                {item}
-                                <ChevronRight size={14} className="text-white/10" />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-
-          <div className="mt-8 md:mt-12 pt-8 border-t border-white/10">
-            <button 
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 text-red-500 hover:text-red-400 font-bold px-6 py-4 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 rounded-2xl transition-colors"
+    <div className="flex flex-col w-full min-h-screen p-5 md:p-10 xl:p-12 max-w-6xl mx-auto pb-32 md:pb-12">
+      <header className="flex flex-col gap-6 mb-8 md:mb-10">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+              aria-label="Back to profile"
             >
-              <LogOut size={20} /> Sign Out
+              <ChevronLeft size={20} />
             </button>
+            <div className="min-w-0">
+              <h1 className="font-display font-black text-3xl md:text-5xl leading-none">Settings</h1>
+              <p className="text-white/35 font-bold text-sm mt-2">Manage your account, reader, creator, and platform preferences.</p>
+            </div>
           </div>
-        </div>
 
-        {/* Desktop Content Area */}
-        <div className="hidden md:block">
-          {expandedSection ? (
-            <div className="sticky top-12">
-              <div className="bg-ink-deep border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                <div className="p-8 border-b border-white/10 bg-gradient-to-br from-white/5 to-transparent">
-                  <h2 className="font-display font-black text-2xl mb-2">{SETTINGS_SECTIONS.find(s => s.id === expandedSection)?.title}</h2>
-                  <p className="text-white/40">{SETTINGS_SECTIONS.find(s => s.id === expandedSection)?.desc}</p>
-                </div>
-                <div className="p-8">
-                   {expandedSection === 'appearance' && (
-                     <div className="flex flex-col gap-8">
-                        <div>
-                          <h4 className="font-bold mb-4 flex items-center gap-2"><Palette size={18} className="text-lemon-muted"/> Display Theme</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <button onClick={() => handleThemeChange('dark')} className={cn("p-6 rounded-2xl border flex flex-col items-center gap-4 transition-all", user?.settings.themeMode === 'dark' ? "bg-lemon-muted/10 border-lemon-muted" : "bg-black-core border-white/10 hover:border-white/20")}>
-                               <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center"><Moon size={24}/></div>
-                               <span className="font-bold">Extreme Dark</span>
-                            </button>
-                            <button onClick={() => handleThemeChange('light')} className={cn("p-6 rounded-2xl border flex flex-col items-center gap-4 transition-all", user?.settings.themeMode === 'light' ? "bg-lemon-muted/10 border-lemon-muted" : "bg-white border-white/10 hover:border-white/20")}>
-                               <div className="w-12 h-12 rounded-full bg-cream-soft flex items-center justify-center text-black"><Sun size={24}/></div>
-                               <span className="font-bold text-black">Classic Light</span>
-                            </button>
-                          </div>
-                        </div>
-                     </div>
-                   )}
-
-                  {expandedSection === 'reading' && (
-                     <div className="flex flex-col gap-8">
-                        <div>
-                          <h4 className="font-bold mb-4 flex items-center gap-2"><Type size={18} className="text-lemon-muted"/> Text Size</h4>
-                          <div className="bg-black-core p-8 rounded-2xl border border-white/10 flex items-center gap-8">
-                             <div className="flex items-center gap-4 flex-1">
-                                <button onClick={() => handleFontSizeChange((user?.settings.readerFontSize || 18) - 2)} className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 font-bold text-xl">-</button>
-                                <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                                  <div className="h-full bg-lemon-muted transition-all" style={{ width: `${((user?.settings.readerFontSize || 18) - 12) / 16 * 100}%` }} />
-                                </div>
-                                <button onClick={() => handleFontSizeChange((user?.settings.readerFontSize || 18) + 2)} className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 font-bold text-xl">+</button>
-                             </div>
-                             <div className="shrink-0 font-display font-black text-3xl text-lemon-muted">{user?.settings.readerFontSize}pt</div>
-                          </div>
-                        </div>
-                     </div>
-                   )}
-
-                   {expandedSection !== 'appearance' && expandedSection !== 'reading' && (
-                     <div className="flex flex-col gap-4">
-                        {SETTINGS_SECTIONS.find(s => s.id === expandedSection)?.items.map((item, i) => (
-                          <button 
-                            key={i} 
-                            onClick={() => handleItemClick(expandedSection!, item)}
-                            className="w-full flex items-center justify-between p-5 rounded-2xl hover:bg-white/5 transition-all text-left group"
-                          >
-                            <span className="font-bold text-lg group-hover:text-lemon-muted transition-colors">{item}</span>
-                            <ChevronRight size={20} className="text-white/10 group-hover:text-lemon-muted transition-colors" />
-                          </button>
-                        ))}
-                     </div>
-                   )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-20 py-24 border-2 border-dashed border-white/10 rounded-3xl">
-              <LayoutDashboard size={64} className="mb-4" />
-              <p className="font-display font-bold text-xl uppercase tracking-widest">Select a section to edit settings</p>
-            </div>
+          {user && (
+            <button
+              onClick={() => navigate('/settings/account/profile')}
+              className="hidden md:flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-colors text-left max-w-xs"
+            >
+              <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover bg-white/5 shrink-0" alt="" referrerPolicy="no-referrer" />
+              <span className="min-w-0">
+                <span className="block text-sm font-black truncate">{user.name}</span>
+                <span className="block text-xs text-white/40 font-bold truncate">@{user.username}</span>
+              </span>
+            </button>
           )}
         </div>
+
+        {user && (
+          <button
+            onClick={() => navigate('/settings/account/profile')}
+            className="md:hidden flex items-center gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-colors text-left"
+          >
+            <img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover bg-white/5 shrink-0" alt="" referrerPolicy="no-referrer" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-black truncate">{user.name}</span>
+              <span className="block text-xs text-white/40 font-bold truncate">@{user.username}</span>
+            </span>
+            <ChevronRight size={18} className="text-white/20" />
+          </button>
+        )}
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {SETTINGS_SECTIONS.map((section) => {
+          const Icon = section.icon;
+
+          return (
+            <section key={section.id} className="bg-ink-deep/70 border border-white/10 rounded-2xl overflow-hidden">
+              <div className="p-5 border-b border-white/5 flex items-start gap-4">
+                <div className="w-11 h-11 rounded-xl bg-lemon-muted/10 text-lemon-muted border border-lemon-muted/20 flex items-center justify-center shrink-0">
+                  <Icon size={21} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="font-display font-black text-xl leading-tight">{section.title}</h2>
+                  <p className="text-xs text-white/35 font-bold mt-1 leading-relaxed">{section.description}</p>
+                </div>
+              </div>
+
+              <div className="p-2">
+                {section.items.map((item) => (
+                  <button
+                    key={`${section.id}-${item.label}`}
+                    onClick={() => navigate(item.path)}
+                    className="w-full min-h-[72px] rounded-xl px-4 py-3 flex items-center justify-between gap-4 text-left hover:bg-white/5 transition-colors group"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-black text-white group-hover:text-lemon-muted transition-colors">{item.label}</span>
+                      <span className="block text-xs text-white/35 font-bold mt-1 leading-relaxed">{item.description}</span>
+                    </span>
+                    <ChevronRight size={18} className="text-white/15 group-hover:text-lemon-muted transition-colors shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+
+      <div className="mt-6">
+        <button
+          onClick={handleLogout}
+          className={cn(
+            'w-full md:w-auto min-h-12 flex items-center justify-center gap-3 text-red-400 hover:text-red-300',
+            'font-black px-6 py-3 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 rounded-xl transition-colors',
+          )}
+        >
+          <LogOut size={18} /> Sign Out
+        </button>
       </div>
     </div>
   );
