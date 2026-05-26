@@ -461,16 +461,9 @@ function ActivityHistory({ userRole, isGuest, user }: { userRole: string; isGues
             </div>
           )}
 
-          {userRole === 'creator' && [1, 2, 3, 4, 5].map((i) => (
-            <HistoryItem
-              key={i}
-              icon={i % 2 === 0 ? ArrowDownLeft : ArrowUpRight}
-              title={i % 2 === 0 ? 'Chapter Purchase - Lagos 2099' : 'Withdrawal to Bank'}
-              date={`Oct ${12 - i}, 2024`}
-              amount={`${i % 2 === 0 ? '+' : '-'}${formatNaira(i * 15)}`}
-              color={i % 2 === 0 ? 'green-400' : 'white'}
-            />
-          ))}
+          {userRole === 'creator' && user?.topupHistory.length === 0 && user?.supportHistory.length === 0 && user?.unlockHistory.length === 0 && (
+            <p className="text-sm text-white/40 font-bold">No creator wallet activity yet.</p>
+          )}
         </div>
       )}
     </div>

@@ -1,26 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MOCK_STORIES } from '../data/mock';
 import { StoryCard, FormatBadge } from '../components/ui/Cards';
 import { Button } from '../components/ui/Button';
 import { useStories, useTrendingStories } from '../hooks/useConvex';
 import { useApp } from '../contexts/AppContext';
 
 export default function Home() {
-  const { showMockData, user } = useApp();
+  const { user } = useApp();
   const stories = useStories();
   const trendingStories = useTrendingStories();
 
-  // Use real stories from Convex, and append mock stories only if enabled
   const allStories = useMemo(() => {
-    const realStories = stories || [];
-    if (showMockData && import.meta.env.DEV) {
-      // Avoid duplicates if real stories have same IDs as mock (unlikely but safe)
-      const mockFiltered = MOCK_STORIES.filter(ms => !realStories.some(rs => rs.id === ms.id));
-      return [...realStories, ...mockFiltered];
-    }
-    return realStories;
-  }, [stories, showMockData]);
+    return stories || [];
+  }, [stories]);
   const featured = allStories[0];
   
   // Organize stories into sections

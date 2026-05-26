@@ -9,7 +9,7 @@ import {
   updateProfile,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { MOCK_CREATORS, MOCK_STORIES, Creator, Story, SupportTransaction, CreatorApplication, CreatorAccessStatus } from '../data/mock';
+import type { Creator, Story, SupportTransaction, CreatorApplication, CreatorAccessStatus } from '../data/types';
 import { api } from '../../convex/_generated/api';
 import { auth, googleProvider } from '../lib/firebase';
 import { convex } from '../lib/convex';
@@ -197,7 +197,7 @@ const GUEST_USER: AppUser = {
   id: 'guest',
   name: 'Guest',
   username: 'guest',
-  avatar: 'https://picsum.photos/seed/guest/100/100',
+  avatar: '',
   role: 'guest',
   creatorAccessStatus: 'none',
   isAuthenticated: false,
@@ -218,36 +218,26 @@ const GUEST_USER: AppUser = {
 };
 
 const INITIAL_READER: AppUser = {
-  id: 'r1',
-  name: 'Leke Adesina',
-  username: 'leke_adesina',
-  avatar: 'https://picsum.photos/seed/leke/100/100',
+  id: 'reader',
+  name: 'Reader',
+  username: 'reader',
+  avatar: '',
   role: 'reader',
   creatorAccessStatus: 'none',
   isAuthenticated: true,
   isGuest: false,
   isPremium: false,
   premiumStatus: 'free',
-  walletBalance: 1250,
-  followedCreators: ['ovo_studios'],
-  savedStories: ['s1'],
+  walletBalance: 0,
+  followedCreators: [],
+  savedStories: [],
   unlockedChapters: [],
   unlockHistory: [],
   supportHistory: [],
   topupHistory: [],
   readingHistory: [],
-  badges: ['b1'],
-  notifications: [
-    {
-      id: 'n1',
-      type: 'update',
-      title: 'New Chapter',
-      message: 'Lagos 2099 Chapter 43 is out now.',
-      timestamp: new Date().toISOString(),
-      read: false,
-      link: '/story/lagos-2099'
-    }
-  ],
+  badges: [],
+  notifications: [],
   settings: DEFAULT_SETTINGS,
 };
 
@@ -412,25 +402,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const stories = useMemo(() => {
-    if (showMockData && import.meta.env.DEV) {
-      const mockFiltered = MOCK_STORIES.filter(ms => !liveStories.some(rs => rs.id === ms.id));
-      return [...liveStories, ...mockFiltered];
-    }
     return liveStories;
-  }, [liveStories, showMockData]);
+  }, [liveStories]);
 
   const creators = useMemo(() => {
-    if (showMockData && import.meta.env.DEV) {
-      const mockFiltered: Record<string, Creator> = {};
-      Object.entries(MOCK_CREATORS).forEach(([key, value]) => {
-        if (!liveCreators[key]) {
-          mockFiltered[key] = value;
-        }
-      });
-      return { ...liveCreators, ...mockFiltered };
-    }
     return liveCreators;
-  }, [liveCreators, showMockData]);
+  }, [liveCreators]);
   const isAuthenticated = !!user?.isAuthenticated && !user.isGuest;
 
   const syncFirebaseUser = async (firebaseUser: FirebaseUser) => {
@@ -541,7 +518,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           id: 'r1',
           type: 'story',
           targetId: 's1',
-          targetName: 'Lagos 2099',
+          targetName: 'Sample story',
           reportedBy: 'tunde_b',
           reason: 'Inappropriate content',
           message: 'The chapter 4 has some graphic scenes that violate rules.',

@@ -2,7 +2,7 @@ import React from 'react';
 import { UserPlus, UserCheck, ExternalLink, Coffee } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from '../lib/utils';
-import { Creator } from '../data/mock';
+import type { Creator } from '../data/types';
 import { SensitiveActionWrapper } from './SensitiveActionWrapper';
 import { useApp } from '../contexts/AppContext';
 

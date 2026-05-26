@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Eye, Play, Lock, Crown, Check, BookOpen, Users, Star, Flame, Trophy } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { Story, Genre, Reader, Badge, Creator } from '../../data/mock';
+import type { Story, Genre, Reader, Badge, Creator } from '../../data/types';
 import { Button } from './Button';
 
 export function FormatBadge({ format, className }: { format: string, className?: string }) {

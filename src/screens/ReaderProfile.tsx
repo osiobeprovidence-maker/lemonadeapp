@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MOCK_BADGES } from '../data/mock';
+import { BADGES } from '../data/badges';
 import { Button } from '../components/ui/Button';
 import { MapPin, Calendar, Edit3, Settings, Crown, Flame, Share2, Award, Lock, Trophy, Heart, Coffee, Wallet, ChevronRight, LogIn, UserPlus } from 'lucide-react';
 import { AchievementBadge, PremiumBadge, StoryCard } from '../components/ui/Cards';
@@ -219,7 +219,7 @@ export default function ReaderProfile() {
                        </div>
                        <div className="flex gap-4">
                           {user?.badges.slice(0, 3).map(id => {
-                            const badge = MOCK_BADGES[id];
+                            const badge = BADGES[id];
                             return badge ? (
                               <div key={id} className="w-16 h-16 rounded-2xl bg-ink-deep border border-white/5 flex items-center justify-center text-3xl group cursor-help transition-all hover:bg-lemon-muted/10 hover:border-lemon-muted/30 shadow-lg" title={badge.name}>
                                 {badge.icon}
@@ -299,7 +299,7 @@ export default function ReaderProfile() {
 
              {activeTab === 'badges' && (
                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 animate-fade-in">
-                 {Object.values(MOCK_BADGES).map(badge => {
+                 {Object.values(BADGES).map(badge => {
                    const isUnlocked = user?.badges.includes(badge.id);
                    return (
                      <div key={badge.id} className={cn(

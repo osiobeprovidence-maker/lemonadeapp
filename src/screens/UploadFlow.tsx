@@ -155,7 +155,7 @@ export default function UploadFlow() {
                 type="text" 
                 value={formData.title}
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                placeholder="e.g. Lagos 2099" 
+                placeholder="e.g. Your Story Title" 
                 className="w-full h-14 bg-black border border-white/10 rounded-xl px-4 text-white placeholder:text-white/20 focus:border-lemon-muted outline-none" 
               />
              </div>

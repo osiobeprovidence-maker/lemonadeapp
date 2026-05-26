@@ -22,7 +22,7 @@ import {
   Info
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { CreatorApplication } from '../../data/mock';
+import type { CreatorApplication } from '../../data/types';
 import { cn } from '../../lib/utils';
 
 export default function AdminApplications() {

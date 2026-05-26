@@ -26,5 +26,6 @@ execFileSync('node', ['scripts/sync-convex-env.mjs'], {
 run(npxCommand, ['convex', 'deploy']);
 
 process.env.VITE_CONVEX_URL = 'https://rosy-poodle-754.eu-west-1.convex.cloud';
+process.env.VITE_CONVEX_SITE_URL = 'https://rosy-poodle-754.eu-west-1.convex.site';
 
 run(npmCommand, ['run', 'build']);

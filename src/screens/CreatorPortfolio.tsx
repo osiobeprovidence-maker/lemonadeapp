@@ -27,7 +27,7 @@ import {
   Eye,
   Lock
 } from 'lucide-react';
-import { Creator, Story, GalleryItem, CreatorActivity, PortfolioAchievement } from '../data/mock';
+import type { Creator, Story, GalleryItem, CreatorActivity, PortfolioAchievement } from '../data/types';
 import { Button } from '../components/ui/Button';
 import { FollowButton, SupportButton } from '../components/InteractionButtons';
 import { cn } from '../lib/utils';

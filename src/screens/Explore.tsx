@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
-import { Genre, Format } from '../data/mock';
+import type { Genre, Format } from '../data/types';
 import { StoryCard } from '../components/ui/Cards';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';

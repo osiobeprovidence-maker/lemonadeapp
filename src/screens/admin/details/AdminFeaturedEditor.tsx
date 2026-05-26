@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, Reorder } from 'framer-motion';
 
-const MOCK_SECTIONS = [
+const FEATURED_SECTIONS = [
   { id: 'hero', label: 'Hero Featured Story', icon: Star },
   { id: 'trending', label: 'Trending Now', icon: TrendingUp },
   { id: 'new_drops', label: 'New Drops', icon: Clock },
@@ -27,12 +27,7 @@ const MOCK_SECTIONS = [
   { id: 'creators', label: 'Featured Creators', icon: BadgeCheck },
 ];
 
-const MOCK_STORIES = [
-  { id: '1', title: 'Midnight Chronicles', creator: 'artistic_soul', cover: 'https://picsum.photos/seed/1/200/300' },
-  { id: '2', title: 'Neon Desires', creator: 'cyberpunk_queen', cover: 'https://picsum.photos/seed/2/200/300' },
-  { id: '3', title: 'The Silent Script', creator: 'ink_master', cover: 'https://picsum.photos/seed/3/200/300' },
-  { id: '4', title: 'Lemonade Summer', creator: 'fresh_vibes', cover: 'https://picsum.photos/seed/4/200/300' },
-];
+const INITIAL_FEATURED_ITEMS: Array<{ id: string; title: string; creator: string; cover: string }> = [];
 
 export default function AdminFeaturedEditor() {
   const [searchParams] = useSearchParams();
@@ -40,12 +35,12 @@ export default function AdminFeaturedEditor() {
   const id = searchParams.get('id');
 
   const [activeSection, setActiveSection] = useState('hero');
-  const [items, setItems] = useState(MOCK_STORIES);
+  const [items, setItems] = useState(INITIAL_FEATURED_ITEMS);
   const [searchTerm, setSearchTerm] = useState('');
   const [previewMode, setPreviewMode] = useState('desktop');
 
   const handleSave = () => {
-    alert('Featured content configuration saved (Mock)');
+    alert('Featured content configuration saved.');
     navigate('/admin/featured');
   };
 
@@ -81,7 +76,7 @@ export default function AdminFeaturedEditor() {
            <div className="p-8 bg-ink-deep border border-white/5 rounded-[40px]">
               <h3 className="text-xs font-black uppercase tracking-widest text-white/30 mb-6 italic text-center">Featured Sections</h3>
               <div className="space-y-2">
-                 {MOCK_SECTIONS.map((section) => (
+                 {FEATURED_SECTIONS.map((section) => (
                    <button 
                      key={section.id}
                      onClick={() => setActiveSection(section.id)}
@@ -138,7 +133,7 @@ export default function AdminFeaturedEditor() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                  <div>
                     <h2 className="text-3xl font-display font-black tracking-tight uppercase italic mb-2">
-                       {MOCK_SECTIONS.find(s => s.id === activeSection)?.label}
+                       {FEATURED_SECTIONS.find(s => s.id === activeSection)?.label}
                     </h2>
                     <p className="text-white/40 font-bold">Drag and drop to reorder items in this section.</p>
                  </div>

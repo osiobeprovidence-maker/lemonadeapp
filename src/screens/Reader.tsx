@@ -223,23 +223,13 @@ export default function Reader() {
             className="max-w-2xl mx-auto px-6 py-8 font-sans leading-[1.8]"
             style={{ fontSize: `${fontSize}px` }}
           >
-            <h2 className="font-display font-black text-3xl md:text-5xl mb-12">The Arrival</h2>
-            {/* Novel Content */}
-            <p className="mb-6">The sky above the sprawling metropolis of Lagos 2099 was chaotic...</p>
-            <p className="mb-6">Kael checked his wrist-comm...</p>
-            {/* (Repeated paragraphs omitted for brevity in thought, but included in actual update if needed) */}
+            <h2 className="font-display font-black text-3xl md:text-5xl mb-6">Chapter content unavailable</h2>
+            <p className="mb-6 text-white/60">This chapter has not been uploaded yet.</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center max-w-[800px] mx-auto bg-black">
-             {[1, 2, 3, 4, 5].map((i) => (
-                <img 
-                  key={i} 
-                  src={`https://picsum.photos/seed/comic${story.id}${i}/800/1200`} 
-                  className="w-full h-auto object-contain"
-                  alt={`Panel ${i}`}
-                  referrerPolicy="no-referrer"
-                />
-             ))}
+          <div className="flex flex-col items-center max-w-[800px] mx-auto bg-black px-6 py-16 text-center">
+            <h2 className="font-display font-black text-3xl md:text-5xl mb-6">Chapter pages unavailable</h2>
+            <p className="text-white/60">The creator has not uploaded pages for this chapter yet.</p>
           </div>
         )}
       </div>
