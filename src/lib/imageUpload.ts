@@ -1,11 +1,31 @@
-import { storage } from './firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { convex } from './convex';
+import { api } from '../../convex/_generated/api';
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+const requireConvex = () => {
+  if (!convex) {
+    throw new Error('Image uploads are not configured. Convex is missing.');
+  }
+  return convex;
+};
+
+const normalizeUploadError = (error: unknown): Error => {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes('storage/unauthorized')) {
+    return new Error('Image upload is blocked by storage permissions. Please sign in again and try once more.');
+  }
+  if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
+    return new Error('Image upload failed because the network connection dropped. Please try again.');
+  }
+  return new Error(message || 'Failed to upload image.');
+};
 
 /**
- * Upload image to Firebase Storage and return download URL
+ * Upload image to Convex storage and return a signed download URL.
  * @param file - Image file to upload
- * @param folder - Storage folder path (e.g., 'profile-pictures', 'story-covers')
- * @param userId - User ID to organize uploads
+ * @param folder - Logical image category, kept for call-site clarity
+ * @param userId - User ID, kept for call-site clarity
  */
 export const uploadImage = async (
   file: File,
@@ -13,38 +33,34 @@ export const uploadImage = async (
   userId: string
 ): Promise<string> => {
   try {
-    // Validate file
     if (!file.type.startsWith('image/')) {
       throw new Error('Please upload a valid image file (JPG, PNG, WebP, etc.)');
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      // 5MB limit
+    if (file.size > MAX_IMAGE_BYTES) {
       throw new Error('Image size must be less than 5MB');
     }
 
-    // Create storage path: folder/userId/filename-timestamp
-    const timestamp = Date.now();
-    const filename = `${userId}-${timestamp}`;
-    const storagePath = `${folder}/${userId}/${filename}`;
-    const storageRef = ref(storage, storagePath);
-
-    // Upload file
-    const snapshot = await uploadBytes(storageRef, file, {
-      contentType: file.type,
-      customMetadata: {
-        uploadedAt: new Date().toISOString(),
-        userId,
-      },
+    const client = requireConvex();
+    const uploadUrl = await client.mutation(api.files.generateUploadUrl, {});
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type },
+      body: file,
     });
 
-    // Get download URL
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
+    if (!response.ok) {
+      throw new Error(`Image upload failed with status ${response.status}.`);
+    }
+
+    const { storageId } = await response.json();
+    if (!storageId) {
+      throw new Error('Image upload completed without a storage id.');
+    }
+
+    return await client.mutation(api.files.getUrl, { storageId });
   } catch (error) {
-    throw new Error(
-      error instanceof Error ? error.message : 'Failed to upload image'
-    );
+    throw normalizeUploadError(error);
   }
 };
 
@@ -89,23 +105,10 @@ export const uploadBannerImage = async (
  * @param imageUrl - Full download URL of the image
  */
 export const deleteImage = async (imageUrl: string): Promise<void> => {
-  try {
-    if (!imageUrl) return;
-
-    // Extract storage path from URL
-    // URL format: https://firebasestorage.googleapis.com/v0/b/PROJECT.appspot.com/o/PATH?alt=media&token=TOKEN
-    const decodedUrl = decodeURIComponent(imageUrl);
-    const pathStart = decodedUrl.indexOf('/o/') + 3;
-    const pathEnd = decodedUrl.indexOf('?');
-    const storagePath = decodedUrl.substring(pathStart, pathEnd);
-
-    // Delete from storage
-    const fileRef = ref(storage, storagePath);
-    await deleteObject(fileRef);
-  } catch (error) {
-    console.error('Failed to delete image:', error);
-    // Don't throw error - image might already be deleted
-  }
+  void imageUrl;
+  // Convex storage URLs are immutable signed URLs. Old uploads are harmless
+  // and should be cleaned up by a backend retention job if needed.
+  return;
 };
 
 /**

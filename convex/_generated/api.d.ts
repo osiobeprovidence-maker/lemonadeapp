@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as applications from "../applications.js";
 import type * as creators from "../creators.js";
+import type * as files from "../files.js";
 import type * as interactions from "../interactions.js";
 import type * as payments from "../payments.js";
 import type * as paystack from "../paystack.js";
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   applications: typeof applications;
   creators: typeof creators;
+  files: typeof files;
   interactions: typeof interactions;
   payments: typeof payments;
   paystack: typeof paystack;
