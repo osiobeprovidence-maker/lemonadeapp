@@ -27,7 +27,7 @@ import {
   Eye,
   Lock
 } from 'lucide-react';
-import { MOCK_CREATORS, MOCK_STORIES, Creator, Story, GalleryItem, CreatorActivity, PortfolioAchievement } from '../data/mock';
+import { Creator, Story, GalleryItem, CreatorActivity, PortfolioAchievement } from '../data/mock';
 import { Button } from '../components/ui/Button';
 import { FollowButton, SupportButton } from '../components/InteractionButtons';
 import { cn } from '../lib/utils';
@@ -411,12 +411,12 @@ export default function CreatorPortfolioPage() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [isCollabModalOpen, setIsCollabModalOpen] = useState(false);
 
-  // For mock purposes, find creator by ID or username
   const creator = useMemo(() => {
-    return Object.values(creators as Record<string, any>).find(c => c.username === username || c.id === username) || MOCK_CREATORS.ovo;
+    return Object.values(creators as Record<string, any>).find(c => c.username === username || c.id === username) || null;
   }, [creators, username]);
 
   const creatorStories = useMemo(() => {
+    if (!creator) return [];
     return stories.filter(s => s.creator.username === creator.username || s.creator.id === creator.id);
   }, [stories, creator]);
 
@@ -431,15 +431,25 @@ export default function CreatorPortfolioPage() {
   }, [activeCategory, creatorStories]);
 
   const filteredGallery = useMemo(() => {
+    if (!creator) return [];
     if (activeCategory === 'All') return creator.galleryItems || [];
     if (['Concept Art', 'Character Design', 'Animation'].includes(activeCategory)) {
         return (creator.galleryItems || []).filter(item => item.category === activeCategory);
     }
     return (creator.galleryItems || []); // Show all for story categories or filter by project?
-  }, [activeCategory, creator.galleryItems]);
+  }, [activeCategory, creator]);
 
   const featuredStory = filteredStories[0];
   const otherStories = filteredStories.slice(1);
+
+  if (!creator) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center bg-black-core">
+        <h1 className="font-display text-3xl font-black mb-3">Portfolio not found</h1>
+        <p className="max-w-md text-white/50 font-bold">This creator portfolio is not available yet.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-black-core pb-24 selection:bg-lemon-muted selection:text-black">

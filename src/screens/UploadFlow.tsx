@@ -72,10 +72,24 @@ export default function UploadFlow() {
 
         const coverImage = coverFile
           ? await uploadStoryCover(await compressImage(coverFile, 0.82), user.id)
-          : `https://picsum.photos/seed/${Math.random()}/600/800`;
+          : '';
         const bannerImage = bannerFile
           ? await uploadBannerImage(await compressImage(bannerFile, 0.86), user.id)
-          : `https://picsum.photos/seed/${Math.random()}/1200/600`;
+          : '';
+
+        if (!coverImage || !bannerImage) {
+          throw new Error('Please upload both a cover image and a banner image before publishing.');
+        }
+
+        await convex.mutation(api.creators.upsert, {
+          userId: user.id,
+          name: user.name,
+          username: user.username,
+          avatar: user.avatar,
+          bio: user.bio || 'Creator on Lemonade.',
+          category: [formData.genre],
+          supportEnabled: true,
+        });
 
         await convex.mutation(api.stories.create, {
           externalId: `story_${Date.now()}`,

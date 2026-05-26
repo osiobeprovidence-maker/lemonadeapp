@@ -490,8 +490,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [adminSession]);
 
-  // Mock Initialization for Admin
+  // Local admin sample data only exists in development.
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
     // Populate with some mock data if empty
     if (allUsers.length === 0) {
       setAllUsers([

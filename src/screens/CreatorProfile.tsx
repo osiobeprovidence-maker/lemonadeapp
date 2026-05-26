@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { MOCK_STORIES, MOCK_CREATORS } from '../data/mock';
 import { CreatorStatsCard, StoryCard } from '../components/ui/Cards';
 import { Button } from '../components/ui/Button';
 import { FollowButton, SupportButton } from '../components/InteractionButtons';
@@ -12,17 +11,27 @@ import { useApp } from '../contexts/AppContext';
 export default function CreatorProfile() {
   const { username } = useParams();
   const { creators, stories } = useApp();
+  const [activeTab, setActiveTab] = React.useState<'works' | 'about'>('works');
   
   const creator = useMemo(() => {
-    return Object.values(creators as Record<string, any>).find(c => c.username === username || c.id === username) || MOCK_CREATORS.ovo;
+    return Object.values(creators as Record<string, any>).find(c => c.username === username || c.id === username) || null;
   }, [creators, username]);
 
   const creatorStories = useMemo(() => {
+    if (!creator) return [];
     return stories.filter(s => s.creator.username === creator.username || s.creator.id === creator.id);
   }, [stories, creator]);
 
+  if (!creator) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
+        <h1 className="font-display text-3xl font-black mb-3">Creator not found</h1>
+        <p className="max-w-md text-white/50 font-bold">This creator profile is not available yet.</p>
+      </div>
+    );
+  }
+
   const featuredStory = creatorStories[0]; // Simple logic for featured
-  const [activeTab, setActiveTab] = React.useState<'works' | 'about'>('works');
 
   return (
     <div className="flex flex-col w-full min-h-screen pb-24">

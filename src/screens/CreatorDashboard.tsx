@@ -3,17 +3,12 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Plus, Eye, UserPlus, DollarSign, BookOpen, MessageCircle, Coffee, ExternalLink, Settings as SettingsIcon, Loader } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { MOCK_STORIES } from '../data/mock';
 import { useCurrentUser, useStories } from '../hooks/useConvex';
 
 export default function CreatorDashboard() {
   const { user, firebaseUid } = useCurrentUser();
   const creatorStories = useStories(user?._id);
-  
-  // Use real stories if available, fallback to mock
-  const myStories = creatorStories && creatorStories.length > 0 
-    ? creatorStories.slice(0, 6) 
-    : MOCK_STORIES.slice(0, 3);
+  const myStories = (creatorStories || []).slice(0, 6);
   
   // Calculate stats from real data
   const stats = useMemo(() => {
@@ -24,7 +19,7 @@ export default function CreatorDashboard() {
     return [
       { label: "Total Reads", value: totalReads.toLocaleString(), icon: Eye, color: "text-blue-400" },
       { label: "Followers", value: followers.toLocaleString(), icon: UserPlus, color: "text-green-400" },
-      { label: "Earnings (30d)", value: "$4,250", icon: DollarSign, color: "text-lemon-muted" },
+      { label: "Earnings (30d)", value: "NGN 0", icon: DollarSign, color: "text-lemon-muted" },
       { label: "Active Stories", value: activeStories.toString(), icon: BookOpen, color: "text-purple-400" },
     ];
   }, [myStories, user]);
@@ -117,19 +112,8 @@ export default function CreatorDashboard() {
            {/* Recent Comments */}
            <div className="bg-ink-deep border border-white/5 rounded-3xl p-6">
              <h3 className="font-semibold text-lg mb-6 flex items-center gap-2"><MessageCircle size={18} className="text-lemon-muted" /> New Comments</h3>
-             <div className="flex flex-col gap-5">
-               {[1,2,3].map(i => (
-                 <div key={i} className="flex gap-3 pb-5 border-b border-white/5 last:border-0 last:pb-0">
-                    <img src={`https://picsum.photos/seed/user${i}/100`} className="w-8 h-8 rounded-full bg-white/10 shrink-0" referrerPolicy="no-referrer" />
-                    <div>
-                      <div className="flex items-center gap-2 mb-1 text-xs">
-                        <span className="font-bold">reader_{i}99</span>
-                        <span className="text-white/40">on Lagos 2099 Ch.4</span>
-                      </div>
-                      <p className="text-sm text-white/80 line-clamp-2">This is the best chapter yet. I can't believe what happened at the end!</p>
-                    </div>
-                 </div>
-               ))}
+             <div className="rounded-2xl border border-white/5 bg-black/20 p-5 text-sm font-bold text-white/40">
+               No comments yet.
              </div>
              <Button variant="outline" size="sm" fullWidth className="mt-6 text-white/70">View All Comments</Button>
            </div>
@@ -182,11 +166,11 @@ export default function CreatorDashboard() {
                <div className="grid grid-cols-2 gap-4 mt-2">
                   <div className="bg-ink-deep p-4 rounded-2xl">
                     <p className="text-xs text-white/40 mb-1">Support Clicks (30d)</p>
-                    <p className="font-display font-bold text-2xl">1,245</p>
+                    <p className="font-display font-bold text-2xl">0</p>
                   </div>
                   <div className="bg-ink-deep p-4 rounded-2xl">
                     <p className="text-xs text-white/40 mb-1">Est. Revenue</p>
-                    <p className="font-display font-bold text-2xl text-lemon-muted">$840.00</p>
+                    <p className="font-display font-bold text-2xl text-lemon-muted">NGN 0</p>
                   </div>
                </div>
              </div>

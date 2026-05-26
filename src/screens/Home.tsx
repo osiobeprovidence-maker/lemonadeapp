@@ -5,7 +5,6 @@ import { StoryCard, FormatBadge } from '../components/ui/Cards';
 import { Button } from '../components/ui/Button';
 import { useStories, useTrendingStories } from '../hooks/useConvex';
 import { useApp } from '../contexts/AppContext';
-import { Loader } from 'lucide-react';
 
 export default function Home() {
   const { showMockData, user } = useApp();
@@ -51,8 +50,9 @@ export default function Home() {
 
   if (!featured) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader className="animate-spin" size={32} />
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center">
+        <h1 className="font-display text-3xl font-black mb-3">No published stories yet</h1>
+        <p className="max-w-md text-white/50 font-bold">Stories published from Creator Studio will appear here when Convex is connected.</p>
       </div>
     );
   }
