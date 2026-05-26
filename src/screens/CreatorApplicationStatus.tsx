@@ -8,6 +8,11 @@ import { cn } from '../lib/utils';
 export default function CreatorApplicationStatus() {
   const navigate = useNavigate();
   const { user } = useApp();
+
+  if (!user) {
+    return null;
+  }
+
   const status = user?.creatorAccessStatus || 'none';
 
   const renderContent = () => {

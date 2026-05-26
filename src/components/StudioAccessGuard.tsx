@@ -10,6 +10,10 @@ export default function StudioAccessGuard({ children }: StudioAccessGuardProps) 
   const { user, isGuest } = useApp();
   const location = useLocation();
 
+  if (!user) {
+    return null;
+  }
+
   if (isGuest) {
     return <Navigate to={`/auth?mode=signup&intent=studio&redirect=${encodeURIComponent(location.pathname)}`} replace />;
   }

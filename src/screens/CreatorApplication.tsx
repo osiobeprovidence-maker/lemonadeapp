@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { Button } from '../components/ui/Button';
 import { PenTool, CheckCircle, Globe, ChevronRight, ArrowLeft } from 'lucide-react';
@@ -45,16 +45,6 @@ export default function CreatorApplication() {
     });
   };
 
-  if (isGuest) {
-    navigate('/auth?mode=signup&intent=studio');
-    return null;
-  }
-
-  if (user?.creatorAccessStatus !== 'none') {
-    navigate('/creator-application/status');
-    return null;
-  }
-
   const handleInputChange = (field: string, value: any) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
@@ -69,6 +59,18 @@ export default function CreatorApplication() {
       setFormData(prev => ({ ...prev, [field]: value }));
     }
   };
+
+  if (!user) {
+    return null;
+  }
+
+  if (isGuest) {
+    return <Navigate to="/auth?mode=signup&intent=studio" replace />;
+  }
+
+  if (user.creatorAccessStatus !== 'none') {
+    return <Navigate to="/creator-application/status" replace />;
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
