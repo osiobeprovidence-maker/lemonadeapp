@@ -9,7 +9,7 @@ export default function SettingsAccountProfile() {
   const { user, firebaseUid } = useCurrentUser();
   const { updateLocalUser } = useApp();
   const updateProfile = useUpdateUserProfile();
-  const usernameChangedAt = user?.usernameUpdatedAt ? new Date(user.usernameUpdatedAt) : null;
+  const usernameChangedAt = user?.usernameChangeLockedAt ? new Date(user.usernameChangeLockedAt) : null;
   const nextUsernameChangeAt = usernameChangedAt ? new Date(usernameChangedAt.getTime() + 90 * 24 * 60 * 60 * 1000) : null;
   const canChangeUsername = !nextUsernameChangeAt || Date.now() >= nextUsernameChangeAt.getTime();
   
@@ -107,6 +107,7 @@ export default function SettingsAccountProfile() {
         name: formData.name.trim(),
         username: normalizedUsername,
         usernameUpdatedAt: normalizedUsername !== user?.username ? new Date().toISOString() : user?.usernameUpdatedAt,
+        usernameChangeLockedAt: normalizedUsername !== user?.username ? new Date().toISOString() : user?.usernameChangeLockedAt,
         bio: formData.bio.trim(),
       } as any);
       setFormData(prev => ({ ...prev, username: normalizedUsername }));

@@ -28,6 +28,7 @@ export default defineSchema({
     name: v.string(),
     username: v.string(),
     usernameUpdatedAt: v.optional(v.string()),
+    usernameChangeLockedAt: v.optional(v.string()),
     bio: v.optional(v.string()),
     avatar: v.optional(v.string()),
     role: userRole,

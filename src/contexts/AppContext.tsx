@@ -94,6 +94,7 @@ export interface AppUser {
   name: string;
   username: string;
   usernameUpdatedAt?: string;
+  usernameChangeLockedAt?: string;
   bio?: string;
   avatar: string;
   role: UserRole;
@@ -290,6 +291,7 @@ const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppU
     name: convexUser?.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Reader',
     username: convexUser?.username || usernameFromUser(firebaseUser),
     usernameUpdatedAt: convexUser?.usernameUpdatedAt,
+    usernameChangeLockedAt: convexUser?.usernameChangeLockedAt,
     bio: convexUser?.bio,
     avatar: convexUser?.avatar || firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/100/100`,
     role: convexUser?.role || 'reader',

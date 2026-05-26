@@ -210,7 +210,7 @@ export const updateProfile = mutation({
       assertValidUsername(normalizedUsername);
 
       if (normalizedUsername !== user.username) {
-        const lastUsernameChange = user.usernameUpdatedAt ? Date.parse(user.usernameUpdatedAt) : 0;
+        const lastUsernameChange = user.usernameChangeLockedAt ? Date.parse(user.usernameChangeLockedAt) : 0;
         const nextAllowedChange = lastUsernameChange + USERNAME_CHANGE_INTERVAL_MS;
 
         if (lastUsernameChange > 0 && Date.now() < nextAllowedChange) {
@@ -228,6 +228,7 @@ export const updateProfile = mutation({
 
         updates.username = normalizedUsername;
         updates.usernameUpdatedAt = timestamp;
+        updates.usernameChangeLockedAt = timestamp;
       }
     }
 

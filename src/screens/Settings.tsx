@@ -6,6 +6,7 @@ import {
   CreditCard, 
   HelpCircle, 
   LogOut, 
+  ChevronLeft,
   ChevronDown, 
   ChevronRight, 
   BookOpen, 
@@ -92,6 +93,10 @@ export default function Settings() {
     navigate('/');
   };
 
+  const handleBack = () => {
+    navigate('/profile');
+  };
+
   const toggleSection = (id: string) => {
     setExpandedSection(expandedSection === id ? null : id);
   };
@@ -151,7 +156,16 @@ export default function Settings() {
   return (
     <div className="flex flex-col w-full min-h-screen p-6 md:p-12 max-w-4xl mx-auto pb-32 md:pb-12">
       <div className="flex items-center justify-between mb-10">
-        <h1 className="font-display font-black text-3xl md:text-5xl">Settings</h1>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleBack}
+            className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Back to profile"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h1 className="font-display font-black text-3xl md:text-5xl">Settings</h1>
+        </div>
         {user && (
           <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/10">
             <img src={user.avatar} className="w-8 h-8 rounded-full" alt="avatar" />
