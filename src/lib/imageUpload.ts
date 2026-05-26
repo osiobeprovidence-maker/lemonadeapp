@@ -73,6 +73,18 @@ export const uploadStoryCover = async (
 };
 
 /**
+ * Upload banner image
+ * @param file - Image file to upload
+ * @param userId - User ID
+ */
+export const uploadBannerImage = async (
+  file: File,
+  userId: string
+): Promise<string> => {
+  return uploadImage(file, 'banners', userId);
+};
+
+/**
  * Delete image from Firebase Storage
  * @param imageUrl - Full download URL of the image
  */

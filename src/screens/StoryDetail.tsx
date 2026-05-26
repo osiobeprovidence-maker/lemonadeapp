@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Star, Heart, Share, Play, Eye, MoreHorizontal, Coffee, Lock, ArrowRight, Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -7,15 +7,17 @@ import { FormatBadge, GenreBadge, LockedContentCTA, SupportStatusBadge } from '.
 import { FollowButton, SupportButton } from '../components/InteractionButtons';
 import { SensitiveActionWrapper } from '../components/SensitiveActionWrapper';
 import { cn } from '../lib/utils';
-import { useCurrentUser, useStoryById, useSaveStory, useUpdateStory } from '../hooks/useConvex';
+import { useCurrentUser, useStoryById, useSaveStory, useUpdateStory, useUnlockChapter } from '../hooks/useConvex';
 import { useEffect } from 'react';
 
 export default function StoryDetail() {
   const { id } = useParams();
-  const { user } = useCurrentUser();
+  const { user, firebaseUid } = useCurrentUser();
   const story = useStoryById(id ?? '');
+  const unlockChapter = useUnlockChapter();
   const saveMutations = useSaveStory();
   const updateStory = useUpdateStory();
+  const navigate = useNavigate();
   const [hasIncremented, setHasIncremented] = React.useState(false);
   const [activeTab, setActiveTab] = useState<'chapters' | 'about' | 'comments'>('chapters');
 
@@ -32,15 +34,33 @@ export default function StoryDetail() {
     }
   };
 
-  const handleUnlock = (e: React.MouseEvent, chapterId: string, price: number) => {
+  const handleUnlock = async (e: React.MouseEvent, chapterId: string, price: number) => {
     e.preventDefault();
     e.stopPropagation();
-    // unlock flow should be implemented via payments; fallback to wallet check
-    if (user && user.walletBalance >= price) {
-      // Ideally call an API to unlock; placeholder for now
-      console.warn('Unlock chapter not yet implemented in hooks');
-    } else {
-      // Navigate to wallet or show modal
+    
+    if (!user || !story) {
+      navigate('/auth');
+      return;
+    }
+
+    if (user.walletBalance < price) {
+      if (confirm(`Insufficient coins. You need ${price} coins to unlock this chapter. Go to wallet?`)) {
+        navigate('/wallet');
+      }
+      return;
+    }
+
+    try {
+      await unlockChapter({
+        firebaseUid: firebaseUid || user.id,
+        storyId: story.id,
+        chapterId: chapterId,
+        price: price
+      });
+      alert('Chapter unlocked successfully!');
+    } catch (err) {
+      console.error('Failed to unlock chapter', err);
+      alert('Failed to unlock chapter. Please try again.');
     }
   };
 

@@ -35,7 +35,7 @@ export default function AdminPaymentDetail() {
     status: status,
     date: 'Apr 26, 2026',
     time: '4:20 PM',
-    paymentMethod: 'Visa ending in 4242',
+    paymentMethod: 'Paystack Gateway',
     reference: 'ch_3NfG99L2eZvKYlo21A6J3n5',
     notes: 'Standard top-up for story unlocks.'
   };

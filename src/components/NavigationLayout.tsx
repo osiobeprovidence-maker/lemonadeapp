@@ -100,7 +100,14 @@ export default function NavigationLayout() {
           <div className="mt-auto">
             {isAuthenticated ? (
               <Link to="/profile" id="sidebar-profile-link" className="flex items-center gap-3 p-3 hover:bg-ink-deep rounded-2xl transition relative group">
-                <img src={user?.avatar} alt="User" className="w-10 h-10 rounded-full object-cover ring-2 ring-transparent group-hover:ring-lemon-muted/50 transition-all shadow-lg" referrerPolicy="no-referrer" />
+                <div className="relative">
+                  <img src={user?.avatar} alt="User" className={cn("w-10 h-10 rounded-full object-cover transition-all shadow-lg", user?.isPremium ? "ring-2 ring-lemon-muted ring-offset-2 ring-offset-black" : "group-hover:ring-lemon-muted/50")} referrerPolicy="no-referrer" />
+                  {user?.isPremium && (
+                    <div className="absolute -top-1 -right-1 bg-lemon-muted text-black rounded-full p-0.5 shadow-lg border border-black">
+                      <Crown size={8} fill="currentColor" />
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-col overflow-hidden">
                   <span className="font-bold text-sm truncate">{user?.name}</span>
                   <span className="text-[10px] text-white/40 font-black uppercase tracking-widest truncate">View Profile</span>
@@ -132,6 +139,11 @@ export default function NavigationLayout() {
               LEMONADE<span className="text-white">.</span>
             </Link>
             <div className="flex items-center gap-5">
+              {user?.isPremium && (
+                <Link to="/premium" className="w-8 h-8 rounded-lg bg-lemon-muted/10 flex items-center justify-center text-lemon-muted">
+                  <Crown size={18} fill="currentColor" />
+                </Link>
+              )}
               <SensitiveActionWrapper intent="studio">
                 <Link to="/studio" id="mobile-studio-trigger" className="text-white/70 hover:text-white transition-colors">
                   <PenTool size={22} />

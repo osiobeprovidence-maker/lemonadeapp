@@ -2,10 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import SettingsDetailLayout from '../../components/SettingsDetailLayout';
 import { User, Camera, Mail, AtSign, FileText, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { useCurrentUser, useUpdateUserProfile } from '../../hooks/useConvex';
-import { uploadProfilePicture, compressImage, formatFileSize } from '../../lib/imageUpload';
+import { uploadProfilePicture, compressImage } from '../../lib/imageUpload';
+import { useApp } from '../../contexts/AppContext';
 
 export default function SettingsAccountProfile() {
   const { user, firebaseUid } = useCurrentUser();
+  const { updateLocalUser } = useApp();
   const updateProfile = useUpdateUserProfile();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +40,11 @@ export default function SettingsAccountProfile() {
   // Handle profile picture upload
   const handlePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !firebaseUid) return;
+    if (!file) return;
+    if (!firebaseUid) {
+      setError('Please sign in again before changing your profile picture.');
+      return;
+    }
 
     try {
       setError(null);
@@ -58,6 +64,7 @@ export default function SettingsAccountProfile() {
 
       // Update local form state
       setFormData(prev => ({ ...prev, avatar: downloadURL }));
+      updateLocalUser({ avatar: downloadURL });
       setSuccess('Profile picture updated successfully!');
       
       // Clear success message after 3 seconds
@@ -89,8 +96,14 @@ export default function SettingsAccountProfile() {
         firebaseUid,
         name: formData.name,
         username: formData.username,
+        bio: formData.bio,
       });
 
+      updateLocalUser({
+        name: formData.name,
+        username: formData.username,
+        bio: formData.bio,
+      } as any);
       setSuccess('Profile updated successfully!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -200,6 +213,20 @@ export default function SettingsAccountProfile() {
               value={formData.username}
               onChange={(e) => setFormData({...formData, username: e.target.value})}
               className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl pl-12 pr-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors disabled:opacity-50"
+              disabled={isLoading}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Bio</label>
+          <div className="relative">
+             <FileText className="absolute left-5 top-5 text-white/20" size={18} />
+             <textarea 
+              value={formData.bio}
+              onChange={(e) => setFormData({...formData, bio: e.target.value})}
+              className="w-full h-32 bg-white/5 border border-white/5 rounded-2xl pl-12 pr-6 py-4 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors disabled:opacity-50 resize-none"
+              placeholder="Tell us about yourself..."
               disabled={isLoading}
             />
           </div>

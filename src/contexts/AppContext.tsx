@@ -106,6 +106,7 @@ export interface AppUser {
   unlockedChapters: string[]; // Chapter IDs (e.g. "s1-c42")
   unlockHistory: UnlockTransaction[];
   supportHistory: SupportTransaction[];
+  topupHistory: any[];
   readingHistory: ReadingHistoryItem[];
   badges: string[]; // Badge IDs
   notifications: Notification[];
@@ -164,6 +165,7 @@ interface AppContextType {
   markAllNotificationsAsRead: () => void;
   trackReading: (storyId: string, chapterId: string) => void;
   updateSettings: (settings: Partial<UserSettings>) => void;
+  updateLocalUser: (updates: Partial<AppUser>) => void;
   markNotificationsAsRead: () => void;
   submitCreatorApplication: (application: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
   approveCreatorApplication: (appId: string) => void;
@@ -205,6 +207,7 @@ const GUEST_USER: AppUser = {
   unlockedChapters: [],
   unlockHistory: [],
   supportHistory: [],
+  topupHistory: [],
   readingHistory: [],
   badges: [],
   notifications: [],
@@ -228,6 +231,7 @@ const INITIAL_READER: AppUser = {
   unlockedChapters: [],
   unlockHistory: [],
   supportHistory: [],
+  topupHistory: [],
   readingHistory: [],
   badges: ['b1'],
   notifications: [
@@ -269,6 +273,15 @@ const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppU
       timestamp: t.createdAt,
     }));
 
+  const topupHistory = walletTransactions
+    .filter((t: any) => t.type === 'wallet_topup' && t.status === 'success')
+    .map((t: any) => ({
+      amount: t.amount,
+      nairaAmount: t.metadata?.nairaAmount,
+      timestamp: t.createdAt,
+      reference: t.reference,
+    }));
+
   return {
     id: convexUser?._id || firebaseUser.uid,
     email: firebaseUser.email || convexUser?.email,
@@ -287,6 +300,7 @@ const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppU
     unlockedChapters: convexUser?.unlockedChapters || [],
     unlockHistory,
     supportHistory,
+    topupHistory,
     readingHistory: convexUser?.readingHistory || [],
     badges: convexUser?.badges || [],
     notifications: convexUser?.notifications || [],
@@ -411,6 +425,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     return liveCreators;
   }, [liveCreators, showMockData]);
+  const isAuthenticated = !!user?.isAuthenticated && !user.isGuest;
 
   const syncFirebaseUser = async (firebaseUser: FirebaseUser) => {
     if (!convex) {
@@ -610,7 +625,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       notifications: [newNotif, ...prev.notifications]
     } : null);
 
-    if (isAuthenticated && user.id) {
+    if (convex && isAuthenticated && user.id) {
        try {
          await convex.mutation(api.users.createNotification, {
            userId: user.id,
@@ -710,28 +725,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUser(GUEST_USER);
   };
 
-  const followCreator = (username: string) => {
+  const followCreator = async (username: string) => {
     if (!user || user.isGuest) return;
-    if (user.followedCreators.includes(username)) return;
-
+    
     setUser(prev => prev ? {
       ...prev,
       followedCreators: [...prev.followedCreators, username]
     } : null);
 
-    // Update creator follower count (locally)
-    setCreators(prev => {
-      const updated = { ...prev };
-      const creatorKey = Object.keys(updated).find(k => updated[k].username === username);
-      if (creatorKey) {
-        updated[creatorKey] = {
-          ...updated[creatorKey],
-          followers: updated[creatorKey].followers + 1,
-          isFollowed: true
-        };
+    if (convex && isAuthenticated && auth.currentUser) {
+      try {
+        await convex.mutation(api.users.toggleFollow, {
+          firebaseUid: auth.currentUser.uid,
+          creatorUsername: username,
+        });
+      } catch (error) {
+        console.error('Failed to follow creator', error);
       }
-      return updated;
-    });
+    }
 
     addNotification({
       type: 'follow',
@@ -741,7 +752,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const unfollowCreator = (username: string) => {
+  const unfollowCreator = async (username: string) => {
     if (!user || user.isGuest) return;
     
     setUser(prev => prev ? {
@@ -749,21 +760,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       followedCreators: prev.followedCreators.filter(u => u !== username)
     } : null);
 
-    setCreators(prev => {
-      const updated = { ...prev };
-      const creatorKey = Object.keys(updated).find(k => updated[k].username === username);
-      if (creatorKey) {
-        updated[creatorKey] = {
-          ...updated[creatorKey],
-          followers: Math.max(0, updated[creatorKey].followers - 1),
-          isFollowed: false
-        };
+    if (convex && isAuthenticated && auth.currentUser) {
+      try {
+        await convex.mutation(api.users.toggleFollow, {
+          firebaseUid: auth.currentUser.uid,
+          creatorUsername: username,
+        });
+      } catch (error) {
+        console.error('Failed to unfollow creator', error);
       }
-      return updated;
-    });
+    }
   };
 
-  const saveStory = (storyId: string) => {
+  const saveStory = async (storyId: string) => {
     if (!user || user.isGuest) return;
     if (user.savedStories.includes(storyId)) return;
 
@@ -771,6 +780,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       savedStories: [...prev.savedStories, storyId]
     } : null);
+
+    if (convex && isAuthenticated && auth.currentUser) {
+      try {
+        await convex.mutation(api.users.toggleSave, {
+          firebaseUid: auth.currentUser.uid,
+          storyId: storyId,
+        });
+      } catch (error) {
+        console.error('Failed to save story', error);
+      }
+    }
 
     const story = stories.find(s => s.id === storyId);
     addNotification({
@@ -781,12 +801,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const unsaveStory = (storyId: string) => {
+  const unsaveStory = async (storyId: string) => {
     if (!user || user.isGuest) return;
     setUser(prev => prev ? {
       ...prev,
       savedStories: prev.savedStories.filter(id => id !== storyId)
     } : null);
+
+    if (convex && isAuthenticated && auth.currentUser) {
+      try {
+        await convex.mutation(api.users.toggleSave, {
+          firebaseUid: auth.currentUser.uid,
+          storyId: storyId,
+        });
+      } catch (error) {
+        console.error('Failed to unsave story', error);
+      }
+    }
   };
 
   const unlockChapter = (storyId: string, chapterId: string, price: number) => {
@@ -894,7 +925,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } : null);
   };
 
-  const trackReading = (storyId: string, chapterId: string) => {
+  const trackReading = async (storyId: string, chapterId: string) => {
     if (!user || user.isGuest) return;
     
     const newItem: ReadingHistoryItem = {
@@ -912,6 +943,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         readingHistory: [newItem, ...filtered].slice(0, 50) // Keep last 50
       };
     });
+
+    if (convex && isAuthenticated && auth.currentUser) {
+      try {
+        await convex.mutation(api.interactions.trackReadingByFirebaseUid, {
+          firebaseUid: auth.currentUser.uid,
+          storyId,
+          chapterId
+        });
+      } catch (error) {
+        console.error('Failed to persist reading history', error);
+      }
+    }
   };
 
   // Theme application
@@ -930,7 +973,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       settings: { ...prev.settings, ...newSettings }
     } : null);
 
-    if (isAuthenticated && auth.currentUser) {
+    if (convex && isAuthenticated && auth.currentUser) {
       try {
         await convex.mutation(api.users.updateProfile, {
           firebaseUid: auth.currentUser.uid,
@@ -942,7 +985,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const submitCreatorApplication = (appData: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => {
+  const updateLocalUser = (updates: Partial<AppUser>) => {
+    setUser(prev => prev ? { ...prev, ...updates } : null);
+  };
+
+  const submitCreatorApplication = async (appData: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => {
     if (!user || user.isGuest) return;
     
     const newApp: CreatorApplication = {
@@ -955,6 +1002,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     
     setApplications(prev => [newApp, ...prev]);
     setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
+
+    if (convex && isAuthenticated && auth.currentUser) {
+      try {
+        await convex.mutation(api.applications.submit, {
+          userId: user.id,
+          firebaseUid: auth.currentUser.uid,
+          ...appData,
+        } as any);
+      } catch (error) {
+        console.error('Failed to persist application', error);
+      }
+    }
     
     addNotification({
       type: 'update',
@@ -1042,6 +1101,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       markNotificationsAsRead,
       trackReading,
       updateSettings,
+      updateLocalUser,
       submitCreatorApplication,
       approveCreatorApplication,
       rejectCreatorApplication,

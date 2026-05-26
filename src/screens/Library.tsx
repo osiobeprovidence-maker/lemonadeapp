@@ -27,10 +27,26 @@ export default function Library() {
       case 'reading':
         if (!user || user.isGuest) return stories.slice(0, 2);
         // Map reading history to story objects
-        return user.readingHistory
-          .map(entry => stories.find(s => s.id === entry.storyId))
-          .filter((s): s is NonNullable<typeof s> => s !== undefined)
-          .slice(0, 10);
+        // Get unique stories from reading history, sorted by most recent
+        const history = [...user.readingHistory].sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+        
+        const uniqueStoryIds = new Set();
+        const readingStories: any[] = [];
+        
+        for (const entry of history) {
+          if (!uniqueStoryIds.has(entry.storyId)) {
+            const story = stories.find(s => s.id === entry.storyId);
+            if (story) {
+              readingStories.push(story);
+              uniqueStoryIds.add(entry.storyId);
+            }
+          }
+          if (readingStories.length >= 10) break;
+        }
+        
+        return readingStories;
       case 'downloads':
         return []; // TODO: Load downloaded stories
       case 'unlocked':

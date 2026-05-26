@@ -1,22 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SettingsDetailLayout from '../../components/SettingsDetailLayout';
 import { Shield, Eye, BookOpen, BadgeCheck, Lock } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
 
 export default function SettingsAccountPrivacy() {
+  const { user, updateSettings } = useApp();
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState({
-    publicProfile: true,
-    showReadingActivity: false,
-    showSupportBadges: true,
-    allowDirectMessages: true
+    publicProfile: user?.settings?.privacy?.publicProfile ?? true,
+    showReadingActivity: user?.settings?.privacy?.showReadingActivity ?? false,
+    showSupportBadges: user?.settings?.privacy?.showSupportBadges ?? true,
+    allowDirectMessages: user?.settings?.privacy?.allowDirectMessages ?? true
   });
 
-  const handleSave = () => {
+  useEffect(() => {
+    if (user?.settings?.privacy) {
+      setSettings(user.settings.privacy);
+    }
+  }, [user?.settings?.privacy]);
+
+  const handleSave = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await updateSettings({ privacy: settings });
+      setTimeout(() => setIsLoading(false), 500);
+    } catch (error) {
+      console.error('Failed to update privacy settings', error);
       setIsLoading(false);
-      alert('Privacy settings updated! (Mock)');
-    }, 1000);
+    }
   };
 
   const toggleSetting = (key: keyof typeof settings) => {

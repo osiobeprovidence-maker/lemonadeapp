@@ -32,6 +32,7 @@ import { Button } from '../components/ui/Button';
 import { FollowButton, SupportButton } from '../components/InteractionButtons';
 import { cn } from '../lib/utils';
 import { FormatBadge, GenreBadge } from '../components/ui/Cards';
+import { useApp } from '../contexts/AppContext';
 
 // --- Sub-Components ---
 
@@ -406,17 +407,18 @@ const PortfolioFilterTabs = ({ categories, activeCategory, onSelect }: { categor
 
 export default function CreatorPortfolioPage() {
   const { username } = useParams<{ username: string }>();
+  const { creators, stories } = useApp();
   const [activeCategory, setActiveCategory] = useState('All');
   const [isCollabModalOpen, setIsCollabModalOpen] = useState(false);
 
   // For mock purposes, find creator by ID or username
   const creator = useMemo(() => {
-    return Object.values(MOCK_CREATORS).find(c => c.username === username || c.id === username) || MOCK_CREATORS.ovo;
-  }, [username]);
+    return Object.values(creators as Record<string, any>).find(c => c.username === username || c.id === username) || MOCK_CREATORS.ovo;
+  }, [creators, username]);
 
   const creatorStories = useMemo(() => {
-    return MOCK_STORIES.filter(s => s.creator.id === creator.id);
-  }, [creator.id]);
+    return stories.filter(s => s.creator.username === creator.username || s.creator.id === creator.id);
+  }, [stories, creator]);
 
   const categories = ['All', 'Manga', 'Manhwa', 'Webcomic', 'Novel', 'Concept Art', 'Character Design', 'Animation'];
 

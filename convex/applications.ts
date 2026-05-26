@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 
 const now = () => new Date().toISOString();
 
@@ -30,8 +31,9 @@ export const listByStatus = query({
 export const submit = mutation({
   args: {
     userId: v.string(),
+    firebaseUid: v.optional(v.string()),
     creatorName: v.string(),
-    category: v.string(),
+    category: v.array(v.string()),
     location: v.string(),
     bio: v.string(),
     portfolioLink: v.string(),
@@ -43,8 +45,31 @@ export const submit = mutation({
     whyLemonade: v.string(),
   },
   handler: async (ctx, args) => {
+    const { firebaseUid, ...application } = args;
+    let user = firebaseUid
+      ? await ctx.db
+          .query("users")
+          .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", firebaseUid))
+          .unique()
+      : null;
+
+    if (!user) {
+      try {
+        user = await ctx.db.get(args.userId as Id<"users">);
+      } catch {
+        user = null;
+      }
+    }
+
+    if (user) {
+      await ctx.db.patch(user._id, {
+        creatorAccessStatus: "pending",
+        updatedAt: now(),
+      });
+    }
+
     return await ctx.db.insert("creatorApplications", {
-      ...args,
+      ...application,
       status: "pending",
       submittedAt: now(),
     });

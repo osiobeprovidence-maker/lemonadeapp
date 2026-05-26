@@ -1,20 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SettingsDetailLayout from '../../components/SettingsDetailLayout';
 import { Type, Scroll, Layers, Sun, Moon } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
 
 export default function SettingsReading() {
+  const { user, updateSettings } = useApp();
   const [isLoading, setIsLoading] = useState(false);
-  const [fontSize, setFontSize] = useState(16);
-  const [lineHeight, setLineHeight] = useState(1.5);
-  const [mode, setMode] = useState('scroll');
-  const [theme, setTheme] = useState('sepia');
+  const [fontSize, setFontSize] = useState(user?.settings.readerFontSize || 18);
+  const [lineHeight, setLineHeight] = useState(1.6);
+  const [mode, setMode] = useState(user?.settings.comicScrollMode || 'scroll');
+  const [theme, setTheme] = useState(user?.settings.novelTheme || 'sepia');
 
-  const handleSave = () => {
+  useEffect(() => {
+    if (user?.settings) {
+      setFontSize(user.settings.readerFontSize || 18);
+      setMode(user.settings.comicScrollMode || 'scroll');
+      setTheme(user.settings.novelTheme || 'sepia');
+    }
+  }, [user?.settings]);
+
+  const handleSave = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await updateSettings({ 
+        readerFontSize: fontSize,
+        comicScrollMode: mode as any,
+        novelTheme: theme as any
+      });
+      setTimeout(() => setIsLoading(false), 500);
+    } catch (error) {
+      console.error('Failed to save reading preferences', error);
       setIsLoading(false);
-      alert('Reading preferences saved! (Mock)');
-    }, 1000);
+    }
   };
 
   return (

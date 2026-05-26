@@ -217,3 +217,94 @@ export const createNotification = mutation({
     });
   },
 });
+export const unlockChapter = mutation({
+  args: {
+    firebaseUid: v.string(),
+    storyId: v.string(),
+    chapterId: v.string(),
+    price: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
+      .unique();
+    if (!user) throw new Error("User not found");
+    if (user.walletBalance < args.price) throw new Error("Insufficient balance");
+
+    const chapterKey = `${args.storyId}-${args.chapterId}`;
+    if (user.unlockedChapters.includes(chapterKey)) return user._id;
+
+    const timestamp = now();
+    
+    // Update user balance and unlocked chapters
+    await ctx.db.patch(user._id, {
+      walletBalance: user.walletBalance - args.price,
+      unlockedChapters: [...user.unlockedChapters, chapterKey],
+      updatedAt: timestamp,
+    });
+
+    // Record transaction
+    await ctx.db.insert("walletTransactions", {
+      userId: user._id,
+      type: "chapter_unlock",
+      amount: args.price,
+      currency: "NGN",
+      status: "success",
+      reference: `unlock_${Date.now()}`,
+      metadata: { storyId: args.storyId, chapterId: args.chapterId },
+      createdAt: timestamp,
+    });
+
+    return user._id;
+  },
+});
+export const toggleSave = mutation({
+  args: { firebaseUid: v.string(), storyId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    const savedStories = user.savedStories || [];
+    const isSaved = savedStories.includes(args.storyId);
+    
+    const newSavedStories = isSaved 
+      ? savedStories.filter(id => id !== args.storyId)
+      : [...savedStories, args.storyId];
+
+    await ctx.db.patch(user._id, {
+      savedStories: newSavedStories,
+      updatedAt: now(),
+    });
+
+    return { isSaved: !isSaved };
+  },
+});
+
+export const toggleFollow = mutation({
+  args: { firebaseUid: v.string(), creatorUsername: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    const followedCreators = user.followedCreators || [];
+    const isFollowed = followedCreators.includes(args.creatorUsername);
+    
+    const newFollowedCreators = isFollowed 
+      ? followedCreators.filter(u => u !== args.creatorUsername)
+      : [...followedCreators, args.creatorUsername];
+
+    await ctx.db.patch(user._id, {
+      followedCreators: newFollowedCreators,
+      updatedAt: now(),
+    });
+
+    return { isFollowed: !isFollowed };
+  },
+});

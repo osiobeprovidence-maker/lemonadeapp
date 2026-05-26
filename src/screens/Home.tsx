@@ -5,9 +5,10 @@ import { StoryCard, FormatBadge } from '../components/ui/Cards';
 import { Button } from '../components/ui/Button';
 import { useStories, useTrendingStories } from '../hooks/useConvex';
 import { useApp } from '../contexts/AppContext';
+import { Loader } from 'lucide-react';
 
 export default function Home() {
-  const { showMockData } = useApp();
+  const { showMockData, user } = useApp();
   const stories = useStories();
   const trendingStories = useTrendingStories();
 
@@ -34,6 +35,19 @@ export default function Home() {
       { title: "Sci-Fi & Cyberpunk", stories: allStories.filter(s => s.genre === "Sci-Fi & Cyberpunk") },
     ].filter(section => section.stories.length > 0);
   }, [allStories, trendingStories]);
+
+  // Get the most recent story from reading history
+  const continueReadingStory = useMemo(() => {
+    if (!user || user.isGuest || !user.readingHistory || user.readingHistory.length === 0) {
+      return allStories.length > 1 ? allStories[1] : null;
+    }
+    
+    const latest = [...user.readingHistory].sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    )[0];
+    
+    return allStories.find(s => s.id === latest.storyId) || allStories[1];
+  }, [user, allStories]);
 
   if (!featured) {
     return (
@@ -77,21 +91,23 @@ export default function Home() {
       <div className="flex flex-col gap-12 mt-8">
         
         {/* Continue Reading - Custom horizontal scroll item */}
-        {allStories.length > 1 && (
+        {continueReadingStory && (
           <section className="px-6 md:px-12">
             <h2 className="font-display font-bold text-2xl mb-4">Continue Reading</h2>
-            <Link to={`/story/${allStories[1].id}`} className="group flex items-center gap-4 bg-ink-deep p-4 rounded-2xl border border-white/5 hover:border-lemon-muted/30 transition-colors w-full max-w-xl">
+            <Link to={`/story/${continueReadingStory.id}`} className="group flex items-center gap-4 bg-ink-deep p-4 rounded-2xl border border-white/5 hover:border-lemon-muted/30 transition-colors w-full max-w-xl">
                <div className="w-16 h-20 rounded-xl overflow-hidden shrink-0 bg-black">
-                 <img src={allStories[1].coverImage} alt="Story" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                 <img src={continueReadingStory.coverImage} alt="Story" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
                </div>
                <div className="flex-1 flex flex-col justify-center min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-semibold text-lemon-muted uppercase tracking-wider">Chapter 1</span>
-                    <span className="text-xs text-white/50">0%</span>
+                    <span className="text-xs font-semibold text-lemon-muted uppercase tracking-wider">
+                      {user?.readingHistory?.find(h => h.storyId === continueReadingStory.id)?.chapterId?.split('-')?.pop()?.toUpperCase() || 'Chapter 1'}
+                    </span>
+                    <span className="text-xs text-white/50">Keep reading</span>
                   </div>
-                  <h3 className="font-display font-bold text-lg truncate">{allStories[1].title}</h3>
+                  <h3 className="font-display font-bold text-lg truncate">{continueReadingStory.title}</h3>
                   <div className="w-full h-1 bg-black rounded-full overflow-hidden mt-3">
-                    <div className="h-full bg-lemon-muted w-[0%]" />
+                    <div className="h-full bg-lemon-muted w-[30%]" />
                   </div>
                </div>
             </Link>

@@ -324,7 +324,7 @@ export default function ReaderProfile() {
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-white/50 font-medium">Payment Method</span>
-                            <span className="font-bold text-white flex items-center gap-2 underline decoration-white/20 underline-offset-4">Visa ending in 4421 <ChevronRight size={14} /></span>
+                             <span className="font-bold text-white flex items-center gap-2 underline decoration-white/20 underline-offset-4">Secured via Paystack <ChevronRight size={14} /></span>
                           </div>
                        </div>
 

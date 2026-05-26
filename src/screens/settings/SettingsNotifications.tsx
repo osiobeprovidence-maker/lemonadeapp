@@ -1,24 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SettingsDetailLayout from '../../components/SettingsDetailLayout';
 import { Bell, BookOpen, MessageSquare, Star, CreditCard, Mail, Smartphone } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
 
 export default function SettingsNotifications() {
+  const { user, updateSettings } = useApp();
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState({
-    newChapters: true,
-    creatorReplies: true,
-    premiumUpdates: true,
-    paymentAlerts: true,
-    emailMarketing: false,
-    pushActivity: true
+    newChapters: user?.settings?.notifications?.newChapters ?? true,
+    creatorReplies: user?.settings?.notifications?.creatorReplies ?? true,
+    premiumUpdates: user?.settings?.notifications?.premiumUpdates ?? true,
+    paymentAlerts: user?.settings?.notifications?.paymentAlerts ?? true,
+    emailMarketing: user?.settings?.notifications?.emailMarketing ?? false,
+    pushActivity: user?.settings?.notifications?.pushActivity ?? true
   });
 
-  const handleSave = () => {
+  useEffect(() => {
+    if (user?.settings?.notifications) {
+      setSettings(user.settings.notifications);
+    }
+  }, [user?.settings?.notifications]);
+
+  const handleSave = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await updateSettings({ notifications: settings });
+      setTimeout(() => setIsLoading(false), 500);
+    } catch (error) {
+      console.error('Failed to update notification settings', error);
       setIsLoading(false);
-      alert('Notification settings updated! (Mock)');
-    }, 1000);
+    }
   };
 
   const toggleSetting = (key: keyof typeof settings) => {

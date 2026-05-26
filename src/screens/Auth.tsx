@@ -3,7 +3,9 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, User, PenTool, Globe } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { StatusMessage } from '../components/ui/StatusMessage';
 import { useAuth } from '../contexts/AppContext';
+import { AppErrorMessage, getAuthErrorMessage } from '../lib/errorMessages';
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -15,7 +17,7 @@ export default function Auth() {
   
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'role'>(defaultMode as any);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppErrorMessage | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const handleAuthSuccess = async (role: 'reader' | 'creator') => {
@@ -62,8 +64,10 @@ export default function Auth() {
         handleAuthSuccess('reader');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Authentication failed. Please try again.';
-      setError(errorMessage);
+      setError(getAuthErrorMessage(err, {
+        title: mode === 'signup' ? 'Could not create account' : 'Could not sign in',
+        message: 'Something went wrong. Check your details and try again.',
+      }));
       console.error('Auth error:', err);
     } finally {
       setLoading(false);
@@ -86,7 +90,10 @@ export default function Auth() {
         handleAuthSuccess('reader');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed. Please try again.');
+      setError(getAuthErrorMessage(err, {
+        title: 'Google sign-in failed',
+        message: 'We could not finish Google sign-in. Please try again.',
+      }));
     } finally {
       setLoading(false);
     }
@@ -210,15 +217,17 @@ export default function Auth() {
                   </form>
 
                   {error && (
-                    <p className="text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-4">
-                      {error}
-                    </p>
+                    <StatusMessage
+                      tone="error"
+                      title={error.title}
+                      message={error.message}
+                      code={error.code}
+                      onDismiss={() => setError(null)}
+                    />
                   )}
 
                   {notice && (
-                    <p className="text-sm font-bold text-lemon-muted bg-lemon-muted/10 border border-lemon-muted/20 rounded-xl p-4">
-                      {notice}
-                    </p>
+                    <StatusMessage tone="success" title="Check your inbox" message={notice} onDismiss={() => setNotice(null)} />
                   )}
 
                   <div className="mt-6 text-center text-sm text-white/50">

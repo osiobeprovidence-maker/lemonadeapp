@@ -1,18 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SettingsDetailLayout from '../../components/SettingsDetailLayout';
 import { Sun, Moon, Monitor, Palette, Layout } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
 
 export default function SettingsAppearance() {
+  const { user, updateSettings } = useApp();
   const [isLoading, setIsLoading] = useState(false);
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(user?.settings.themeMode || 'dark');
   const [accent, setAccent] = useState('lemon');
 
-  const handleSave = () => {
+  useEffect(() => {
+    if (user?.settings.themeMode) {
+      setTheme(user.settings.themeMode);
+    }
+  }, [user?.settings.themeMode]);
+
+  const handleSave = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await updateSettings({ themeMode: theme as any });
+      // Simulate slight delay for UX
+      setTimeout(() => setIsLoading(false), 500);
+    } catch (error) {
+      console.error('Failed to save appearance settings', error);
       setIsLoading(false);
-      alert('Appearance settings saved! (Mock)');
-    }, 1000);
+    }
   };
 
   return (

@@ -154,18 +154,18 @@ export default function CreatorDashboard() {
                <div className="flex flex-col gap-2">
                   <label className="text-xs font-black uppercase tracking-widest text-white/40">DropSomething Handle</label>
                   <div className="flex gap-2">
-                    <div className="flex-1 relative">
+                     <div className="flex-1 relative">
                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-medium">dropsomething.sbs/</span>
                        <input 
                          type="text" 
-                         defaultValue="ovo_studios" 
+                         defaultValue={user?.username || "yourname"} 
                          className="w-full bg-black border border-white/10 rounded-xl py-3 pl-[145px] pr-4 text-sm font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors" 
                        />
                     </div>
                     <Button variant="primary" className="bg-lemon-muted text-black">Save</Button>
                   </div>
                </div>
-
+ 
                <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -174,7 +174,7 @@ export default function CreatorDashboard() {
                       <p className="text-sm font-bold">Support Button Enabled</p>
                     </div>
                   </div>
-                  <Link to="/creator/ovo_studios/portfolio">
+                  <Link to={`/creator/${user?.username || 'ovo_studios'}/portfolio`}>
                     <Button variant="outline" size="sm" className="bg-black/40 border-white/10">View Portfolio</Button>
                   </Link>
                </div>

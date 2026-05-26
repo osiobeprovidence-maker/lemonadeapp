@@ -80,3 +80,30 @@ export const trackReading = mutation({
     });
   },
 });
+export const trackReadingByFirebaseUid = mutation({
+  args: { firebaseUid: v.string(), storyId: v.string(), chapterId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    // Try to find existing history for this story and user to update/replace
+    const existing = await ctx.db
+      .query("readingHistory")
+      .withIndex("by_user_story", (q) => q.eq("userId", user._id).eq("storyId", args.storyId))
+      .unique();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+
+    return await ctx.db.insert("readingHistory", {
+      userId: user._id,
+      storyId: args.storyId,
+      chapterId: args.chapterId,
+      timestamp: now(),
+    });
+  },
+});

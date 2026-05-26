@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Search, BookOpen, MessageSquare, AlertCircle, ChevronRight, HelpCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Button } from '../../components/ui/Button';
 
 const HELP_TOPICS = [
   { 

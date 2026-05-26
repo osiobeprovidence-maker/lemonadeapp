@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 const now = () => new Date().toISOString();
+const normalizeCategory = (category: string | string[]) => Array.isArray(category) ? category : [category];
 
 export const list = query({
   args: {},
@@ -27,7 +28,12 @@ export const upsert = mutation({
     username: v.string(),
     avatar: v.string(),
     bio: v.string(),
-    category: v.union(v.literal("Artist"), v.literal("Writer"), v.literal("Studio")),
+    category: v.union(
+      v.array(v.string()),
+      v.literal("Artist"),
+      v.literal("Writer"),
+      v.literal("Studio"),
+    ),
     location: v.optional(v.string()),
     dropsomethingUrl: v.optional(v.string()),
     supportEnabled: v.boolean(),
@@ -39,14 +45,18 @@ export const upsert = mutation({
       .withIndex("by_username", (q) => q.eq("username", args.username))
       .unique();
     const timestamp = now();
+    const creator = {
+      ...args,
+      category: normalizeCategory(args.category),
+    };
 
     if (existing) {
-      await ctx.db.patch(existing._id, { ...args, updatedAt: timestamp });
+      await ctx.db.patch(existing._id, { ...creator, updatedAt: timestamp });
       return existing._id;
     }
 
     return await ctx.db.insert("creators", {
-      ...args,
+      ...creator,
       followers: 0,
       totalReads: 0,
       totalStories: 0,

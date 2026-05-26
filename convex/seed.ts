@@ -222,6 +222,7 @@ export const initialContent = mutation({
       if (!existing) {
         await ctx.db.insert("creators", {
           ...creator,
+          category: Array.isArray(creator.category) ? creator.category : [creator.category],
           createdAt: now,
           updatedAt: now,
         });

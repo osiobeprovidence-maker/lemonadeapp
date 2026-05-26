@@ -56,21 +56,68 @@ export const create = mutation({
     bannerImage: v.string(),
     tags: v.array(v.string()),
     isOriginal: v.boolean(),
+    status: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("hidden"),
+      v.literal("archived"),
+    )),
     media: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
     const timestamp = now();
+    const { status, ...story } = args;
     return await ctx.db.insert("stories", {
-      ...args,
+      ...story,
       rating: 0,
       views: 0,
       saves: 0,
       episodes: 0,
       isFeatured: false,
-      status: "draft",
+      status: status ?? "draft",
       createdAt: timestamp,
       updatedAt: timestamp,
     });
+  },
+});
+
+export const update = mutation({
+  args: {
+    externalId: v.string(),
+    title: v.optional(v.string()),
+    genre: v.optional(v.string()),
+    format: v.optional(v.string()),
+    rating: v.optional(v.number()),
+    views: v.optional(v.number()),
+    saves: v.optional(v.number()),
+    episodes: v.optional(v.number()),
+    synopsis: v.optional(v.string()),
+    coverImage: v.optional(v.string()),
+    bannerImage: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    isOriginal: v.optional(v.boolean()),
+    isFeatured: v.optional(v.boolean()),
+    status: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("hidden"),
+      v.literal("archived"),
+    )),
+    media: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const story = await ctx.db
+      .query("stories")
+      .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
+      .unique();
+    if (!story) return null;
+
+    const { externalId, ...updates } = args;
+    await ctx.db.patch(story._id, {
+      ...updates,
+      updatedAt: now(),
+    });
+    return story._id;
   },
 });
 

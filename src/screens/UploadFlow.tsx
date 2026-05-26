@@ -1,16 +1,24 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Check, Upload, Image as ImageIcon } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ArrowLeft, Check, Upload, Image as ImageIcon, Loader } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 
 import { useApp } from '../contexts/AppContext';
 import { convex } from '../lib/convex';
 import { api } from '../../convex/_generated/api';
+import { compressImage, uploadBannerImage, uploadStoryCover } from '../lib/imageUpload';
 
 export default function UploadFlow() {
   const { user } = useApp();
   const [step, setStep] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState('');
+  const [bannerPreview, setBannerPreview] = useState('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   // Form State
@@ -24,6 +32,29 @@ export default function UploadFlow() {
 
   const steps = ["Story Info", "Visuals", "First Chapter", "Monetization"];
 
+  const selectImage = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    setFile: (file: File | null) => void,
+    setPreview: (url: string) => void,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select a valid image file.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Image size must be less than 5MB.');
+      return;
+    }
+
+    setUploadError(null);
+    setFile(file);
+    setPreview(URL.createObjectURL(file));
+  };
+
   const handleNext = async () => {
     if (step < steps.length) {
       setStep(s => s + 1);
@@ -35,23 +66,37 @@ export default function UploadFlow() {
 
       setIsUploading(true);
       try {
+        if (!convex) {
+          throw new Error('Convex is not configured. Set VITE_CONVEX_URL before publishing.');
+        }
+
+        const coverImage = coverFile
+          ? await uploadStoryCover(await compressImage(coverFile, 0.82), user.id)
+          : `https://picsum.photos/seed/${Math.random()}/600/800`;
+        const bannerImage = bannerFile
+          ? await uploadBannerImage(await compressImage(bannerFile, 0.86), user.id)
+          : `https://picsum.photos/seed/${Math.random()}/1200/600`;
+
         await convex.mutation(api.stories.create, {
+          externalId: `story_${Date.now()}`,
           creatorId: user.id,
           creatorUsername: user.username,
           title: formData.title || 'Untitled Story',
           genre: formData.genre,
           format: formData.format,
           synopsis: formData.synopsis || 'No synopsis provided.',
-          coverImage: `https://picsum.photos/seed/${Math.random()}/600/800`,
-          bannerImage: `https://picsum.photos/seed/${Math.random()}/1200/600`,
+          coverImage,
+          bannerImage,
           tags: formData.tags,
           isOriginal: true,
+          status: 'published',
         });
         
         // Short delay for aesthetic effect
         setTimeout(() => navigate('/studio'), 1500);
       } catch (error) {
         console.error('Failed to publish story', error);
+        setUploadError(error instanceof Error ? error.message : 'Failed to publish story.');
         setIsUploading(false);
       }
     }
@@ -147,18 +192,51 @@ export default function UploadFlow() {
           <div className="flex flex-col gap-8 animate-fade-in">
              <div>
                <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-2 block">Cover Art (3:4)</label>
-               <div className="w-40 aspect-[3/4] rounded-2xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 hover:border-lemon-muted hover:bg-white/5 transition-colors cursor-pointer text-white/40 hover:text-white">
-                 <ImageIcon size={32} />
-                 <span className="text-xs font-bold uppercase">Upload</span>
+               <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => selectImage(event, setCoverFile, setCoverPreview)}
+               />
+               <div
+                onClick={() => coverInputRef.current?.click()}
+                className="w-40 aspect-[3/4] rounded-2xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 hover:border-lemon-muted hover:bg-white/5 transition-colors cursor-pointer text-white/40 hover:text-white overflow-hidden"
+               >
+                 {coverPreview ? (
+                  <img src={coverPreview} alt="Cover preview" className="w-full h-full object-cover" />
+                 ) : (
+                  <>
+                   <ImageIcon size={32} />
+                   <span className="text-xs font-bold uppercase">Upload</span>
+                  </>
+                 )}
                </div>
              </div>
              <div>
                <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-2 block">Banner Art (16:9)</label>
-               <div className="w-full aspect-video rounded-2xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 hover:border-lemon-muted hover:bg-white/5 transition-colors cursor-pointer text-white/40 hover:text-white">
-                 <Upload size={32} />
-                 <span className="text-xs font-bold uppercase">Drag & Drop Banner</span>
+               <input
+                ref={bannerInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => selectImage(event, setBannerFile, setBannerPreview)}
+               />
+               <div
+                onClick={() => bannerInputRef.current?.click()}
+                className="w-full aspect-video rounded-2xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 hover:border-lemon-muted hover:bg-white/5 transition-colors cursor-pointer text-white/40 hover:text-white overflow-hidden"
+               >
+                 {bannerPreview ? (
+                  <img src={bannerPreview} alt="Banner preview" className="w-full h-full object-cover" />
+                 ) : (
+                  <>
+                   <Upload size={32} />
+                   <span className="text-xs font-bold uppercase">Upload Banner</span>
+                  </>
+                 )}
                </div>
              </div>
+             {uploadError && <p className="text-sm font-bold text-red-300">{uploadError}</p>}
           </div>
         )}
 

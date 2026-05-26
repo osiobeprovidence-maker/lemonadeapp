@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MOCK_STORIES, MOCK_CREATORS } from '../data/mock';
 import { CreatorStatsCard, StoryCard } from '../components/ui/Cards';
 import { Button } from '../components/ui/Button';
@@ -7,12 +7,20 @@ import { MapPin, Link as LinkIcon, Calendar, Share2, MoreHorizontal, LayoutGrid,
 import { useParams, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
+import { useApp } from '../contexts/AppContext';
 
 export default function CreatorProfile() {
   const { username } = useParams();
-  // Use first creator if username not found for mock purposes
-  const creator = Object.values(MOCK_CREATORS).find(c => c.username === username || c.id === username) || MOCK_CREATORS.ovo;
-  const creatorStories = MOCK_STORIES.filter(s => s.creator.id === creator.id);
+  const { creators, stories } = useApp();
+  
+  const creator = useMemo(() => {
+    return Object.values(creators as Record<string, any>).find(c => c.username === username || c.id === username) || MOCK_CREATORS.ovo;
+  }, [creators, username]);
+
+  const creatorStories = useMemo(() => {
+    return stories.filter(s => s.creator.username === creator.username || s.creator.id === creator.id);
+  }, [stories, creator]);
+
   const featuredStory = creatorStories[0]; // Simple logic for featured
   const [activeTab, setActiveTab] = React.useState<'works' | 'about'>('works');
 
@@ -20,7 +28,7 @@ export default function CreatorProfile() {
     <div className="flex flex-col w-full min-h-screen pb-24">
       {/* Banner */}
       <div className="h-64 md:h-80 bg-ink-deep relative overflow-hidden">
-        <img src={`https://picsum.photos/seed/${creator.id}banner/1200/400`} alt="Banner" className="w-full h-full object-cover opacity-30 blur-sm scale-110" referrerPolicy="no-referrer" />
+        <img src={creator.banner || `https://picsum.photos/seed/${creator.id}banner/1200/400`} alt="Banner" className="w-full h-full object-cover opacity-30 blur-sm scale-110" referrerPolicy="no-referrer" />
         <div className="absolute inset-0 bg-gradient-to-t from-black-core via-black-core/40 to-transparent" />
       </div>
 

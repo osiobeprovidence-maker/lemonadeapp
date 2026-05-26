@@ -14,6 +14,7 @@ export interface PaymentInitialization {
   metadata?: Record<string, any>;
   channels?: string[];
   plan?: string;
+  callbackUrl?: string;
 }
 
 export interface PaymentVerification {
@@ -30,55 +31,38 @@ export const getPaystackConfig = (): PaystackConfig => {
   return { publicKey };
 };
 
+import { convex } from './convex';
+import { api } from '../../convex/_generated/api';
+
 /**
- * Initialize a Paystack payment
+ * Initialize a Paystack payment via Convex Action
  */
 export const initializePayment = async (paymentData: PaymentInitialization): Promise<any> => {
-  getPaystackConfig();
-
   try {
-    const response = await fetch('/api/paystack-initialize', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: paymentData.email,
-        amount: paymentData.amount,
-        reference: paymentData.reference || generateReference(),
-        metadata: paymentData.metadata,
-        channels: paymentData.channels || ['card', 'bank', 'ussd'],
-        plan: paymentData.plan,
-        callbackUrl: `${window.location.origin}/wallet`,
-      }),
+    const data = await convex.action(api.paystack.initialize, {
+      email: paymentData.email,
+      amount: paymentData.amount,
+      reference: paymentData.reference || generateReference(),
+      plan: paymentData.plan,
+      metadata: paymentData.metadata,
+      callbackUrl: paymentData.callbackUrl || `${window.location.origin}/wallet`,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `Failed to initialize payment: ${response.statusText}`);
-    }
-
-    return response.json();
+    return { data };
   } catch (error) {
-    console.error('Error initializing payment:', error);
+    console.error('Error initializing payment via Convex:', error);
     throw error;
   }
 };
 
 /**
- * Verify a Paystack payment
+ * Verify a Paystack payment via Convex Action
  */
 export const verifyPayment = async (reference: string): Promise<any> => {
   try {
-    const response = await fetch(`/api/paystack-verify?reference=${encodeURIComponent(reference)}`);
-
-    if (!response.ok) {
-      throw new Error(`Failed to verify payment: ${response.statusText}`);
-    }
-
-    return response.json();
+    return await convex.action(api.paystack.verify, { reference });
   } catch (error) {
-    console.error('Error verifying payment:', error);
+    console.error('Error verifying payment via Convex:', error);
     throw error;
   }
 };

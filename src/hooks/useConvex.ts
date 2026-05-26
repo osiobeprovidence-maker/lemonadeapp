@@ -2,6 +2,15 @@ import { useCallback } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { generateReference, initializePayment } from '../lib/paystack';
 import { auth } from '../lib/firebase';
+import { convex } from '../lib/convex';
+import { api } from '../../convex/_generated/api';
+
+const requireConvex = () => {
+  if (!convex) {
+    throw new Error('Convex is not configured. Set VITE_CONVEX_URL in your environment.');
+  }
+  return convex;
+};
 
 export const useCurrentUser = () => {
   const { user } = useApp();
@@ -127,36 +136,66 @@ export const useFollowedCreators = (_userId?: string) => {
   return (Object.values(creators) as any[]).filter((creator) => user.followedCreators.includes(creator.username));
 };
 
+export const useUpdateCreatorProfile = () => {
+  return useCallback(
+    async (args: { 
+      name: string; 
+      username: string; 
+      avatar: string; 
+      bio: string; 
+      category: string[] | "Artist" | "Writer" | "Studio";
+      dropsomethingUrl?: string;
+      supportEnabled: boolean;
+      userId?: string;
+      profile?: any;
+    }) => {
+      return await requireConvex().mutation(api.creators.upsert, args);
+    },
+    [],
+  );
+};
+
 export const useRegisterUser = () => {
   return useCallback(async () => null, []);
 };
 
 export const useUpdateUserProfile = () => {
   return useCallback(async (args: any) => {
-    return await convex.mutation(api.users.updateProfile, args);
+    return await requireConvex().mutation(api.users.updateProfile, args);
   }, []);
 };
 
 export const useApplyForCreatorAccess = () => {
   return useCallback(async (args: any) => {
-    return await convex.mutation(api.users.submitCreatorApplication, args);
+    return await requireConvex().mutation(api.applications.submit, args);
   }, []);
 };
 
 export const useCreateStory = () => {
   return useCallback(async (args: any) => {
-    return await convex.mutation(api.stories.create, args);
+    return await requireConvex().mutation(api.stories.create, args);
   }, []);
 };
 
 export const useUpdateStory = () => {
   return useCallback(async (args: any) => {
-    return await convex.mutation(api.stories.update, args);
+    const normalizedArgs = args?.storyId && args?.updates
+      ? { externalId: args.storyId, ...args.updates }
+      : args;
+    return await requireConvex().mutation(api.stories.update, normalizedArgs);
   }, []);
 };
 
 export const usePublishStory = () => {
   return useCallback(async (args: any) => {
-    return await convex.mutation(api.stories.publish, args);
+    return await requireConvex().mutation(api.stories.publish, args);
   }, []);
+};
+export const useUnlockChapter = () => {
+  return useCallback(
+    async (args: { firebaseUid: string; storyId: string; chapterId: string; price: number }) => {
+      return await requireConvex().mutation(api.users.unlockChapter, args);
+    },
+    [],
+  );
 };

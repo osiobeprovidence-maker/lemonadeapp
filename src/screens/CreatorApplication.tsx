@@ -76,7 +76,7 @@ export default function CreatorApplication() {
     
     submitCreatorApplication({
       creatorName: formData.creatorName,
-      category: formData.category.join(', '),
+      category: formData.category,
       location: formData.location,
       bio: formData.bio,
       portfolioLink: formData.portfolioLink,
