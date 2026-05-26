@@ -79,7 +79,7 @@ export default function ReaderProfile() {
                 <PremiumBadge className="px-3 py-1 shadow-xl shadow-lemon-muted/20" />
               </div>
             )}
-            <SensitiveActionWrapper intent="edit profile">
+            <SensitiveActionWrapper intent="edit profile" onClick={() => navigate('/settings/account/profile')}>
               <button className="absolute inset-0 bg-black/60 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
                 <Edit3 className="text-white mb-1" size={24} />
                 <span className="text-white text-[10px] font-black uppercase tracking-widest">Update</span>
@@ -98,7 +98,7 @@ export default function ReaderProfile() {
             </p>
 
             <div className="flex flex-col gap-3 w-full mb-10">
-              <SensitiveActionWrapper intent="edit profile">
+              <SensitiveActionWrapper intent="edit profile" onClick={() => navigate('/settings/account/profile')}>
                 <Button fullWidth variant="outline" className="border-white/10 font-bold">Edit Profile</Button>
               </SensitiveActionWrapper>
               <div className="grid grid-cols-2 gap-2">
