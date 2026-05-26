@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node scripts/sync-convex-env.mjs && npx convex deploy --cmd \"npm run build\" --cmd-url-env-var-name VITE_CONVEX_URL",
+  "buildCommand": "node scripts/vercel-build.mjs",
   "devCommand": "npm run dev",
   "outputDirectory": "dist",
   "rewrites": [
