@@ -9,6 +9,9 @@ export default function SettingsAccountProfile() {
   const { user, firebaseUid } = useCurrentUser();
   const { updateLocalUser } = useApp();
   const updateProfile = useUpdateUserProfile();
+  const usernameChangedAt = user?.usernameUpdatedAt ? new Date(user.usernameUpdatedAt) : null;
+  const nextUsernameChangeAt = usernameChangedAt ? new Date(usernameChangedAt.getTime() + 90 * 24 * 60 * 60 * 1000) : null;
+  const canChangeUsername = !nextUsernameChangeAt || Date.now() >= nextUsernameChangeAt.getTime();
   
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
@@ -91,19 +94,22 @@ export default function SettingsAccountProfile() {
     try {
       setError(null);
       setIsLoading(true);
+      const normalizedUsername = formData.username.trim().toLowerCase().replace(/^@+/, '');
 
       await updateProfile({
         firebaseUid,
-        name: formData.name,
-        username: formData.username,
-        bio: formData.bio,
+        name: formData.name.trim(),
+        username: normalizedUsername,
+        bio: formData.bio.trim(),
       });
 
       updateLocalUser({
-        name: formData.name,
-        username: formData.username,
-        bio: formData.bio,
+        name: formData.name.trim(),
+        username: normalizedUsername,
+        usernameUpdatedAt: normalizedUsername !== user?.username ? new Date().toISOString() : user?.usernameUpdatedAt,
+        bio: formData.bio.trim(),
       } as any);
+      setFormData(prev => ({ ...prev, username: normalizedUsername }));
       setSuccess('Profile updated successfully!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -211,11 +217,16 @@ export default function SettingsAccountProfile() {
              <input 
               type="text" 
               value={formData.username}
-              onChange={(e) => setFormData({...formData, username: e.target.value})}
+              onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_@]/g, '')})}
               className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl pl-12 pr-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors disabled:opacity-50"
               disabled={isLoading}
             />
           </div>
+          <p className="text-[10px] font-bold text-white/25 ml-4 italic">
+            {canChangeUsername
+              ? 'You can change your username once every 90 days.'
+              : `Username changes are locked until ${nextUsernameChangeAt?.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}.`}
+          </p>
         </div>
 
         <div className="space-y-2">

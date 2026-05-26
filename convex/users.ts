@@ -2,6 +2,15 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 const now = () => new Date().toISOString();
+const USERNAME_CHANGE_INTERVAL_MS = 90 * 24 * 60 * 60 * 1000;
+
+const normalizeUsername = (username: string) => username.trim().toLowerCase().replace(/^@+/, "");
+
+const assertValidUsername = (username: string) => {
+  if (!/^[a-z0-9_]{3,24}$/.test(username)) {
+    throw new Error("Username must be 3-24 characters and can only contain letters, numbers, and underscores.");
+  }
+};
 
 export const list = query({
   args: {},
@@ -48,19 +57,22 @@ export const upsertFromAuth = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         email: args.email,
-        name: args.name,
-        username: args.username,
-        avatar: args.avatar,
+        name: existing.name || args.name,
+        username: existing.username || normalizeUsername(args.username),
+        avatar: existing.avatar || args.avatar,
         updatedAt: timestamp,
       });
       return existing._id;
     }
 
+    const username = normalizeUsername(args.username);
+    assertValidUsername(username);
+
     return await ctx.db.insert("users", {
       firebaseUid: args.firebaseUid,
       email: args.email,
       name: args.name,
-      username: args.username,
+      username,
       avatar: args.avatar,
       role: "reader",
       creatorAccessStatus: "none",
@@ -184,10 +196,44 @@ export const updateProfile = mutation({
       .unique();
     if (!user) throw new Error("User not found");
 
-    const { firebaseUid, ...updates } = args;
+    const timestamp = now();
+    const { firebaseUid, username, name, bio, avatar, settings } = args;
+    const updates: Record<string, unknown> = {};
+
+    if (name !== undefined) updates.name = name.trim();
+    if (bio !== undefined) updates.bio = bio.trim();
+    if (avatar !== undefined) updates.avatar = avatar;
+    if (settings !== undefined) updates.settings = settings;
+
+    if (username !== undefined) {
+      const normalizedUsername = normalizeUsername(username);
+      assertValidUsername(normalizedUsername);
+
+      if (normalizedUsername !== user.username) {
+        const lastUsernameChange = user.usernameUpdatedAt ? Date.parse(user.usernameUpdatedAt) : 0;
+        const nextAllowedChange = lastUsernameChange + USERNAME_CHANGE_INTERVAL_MS;
+
+        if (lastUsernameChange > 0 && Date.now() < nextAllowedChange) {
+          throw new Error(`Username can only be changed once every 90 days. Try again after ${new Date(nextAllowedChange).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`);
+        }
+
+        const usernameOwner = await ctx.db
+          .query("users")
+          .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
+          .unique();
+
+        if (usernameOwner && usernameOwner._id !== user._id) {
+          throw new Error("That username is already taken.");
+        }
+
+        updates.username = normalizedUsername;
+        updates.usernameUpdatedAt = timestamp;
+      }
+    }
+
     await ctx.db.patch(user._id, {
       ...updates,
-      updatedAt: now(),
+      updatedAt: timestamp,
     });
     return user._id;
   },
