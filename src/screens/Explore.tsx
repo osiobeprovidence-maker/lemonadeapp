@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
-import { MOCK_STORIES, Genre, Format } from '../data/mock';
+import { Genre, Format } from '../data/mock';
 import { StoryCard } from '../components/ui/Cards';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';

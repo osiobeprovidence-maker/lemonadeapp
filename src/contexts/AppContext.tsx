@@ -9,7 +9,7 @@ import {
   updateProfile,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { MOCK_CREATORS, MOCK_STORIES, Creator, Story, Reader, SupportTransaction, CreatorApplication, CreatorAccessStatus } from '../data/mock';
+import { MOCK_CREATORS, MOCK_STORIES, Creator, Story, SupportTransaction, CreatorApplication, CreatorAccessStatus } from '../data/mock';
 import { api } from '../../convex/_generated/api';
 import { auth, googleProvider } from '../lib/firebase';
 import { convex } from '../lib/convex';
@@ -93,6 +93,7 @@ export interface AppUser {
   email?: string;
   name: string;
   username: string;
+  bio?: string;
   avatar: string;
   role: UserRole;
   creatorAccessStatus: CreatorAccessStatus;
@@ -287,6 +288,7 @@ const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppU
     email: firebaseUser.email || convexUser?.email,
     name: convexUser?.name || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Reader',
     username: convexUser?.username || usernameFromUser(firebaseUser),
+    bio: convexUser?.bio,
     avatar: convexUser?.avatar || firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/100/100`,
     role: convexUser?.role || 'reader',
     creatorAccessStatus: convexUser?.creatorAccessStatus || 'none',
@@ -353,7 +355,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [allUsers, setAllUsers] = useState<AppUser[]>([]);
   const [reports, setReports] = useState<ContentReport[]>([]);
   const [activityLog, setActivityLog] = useState<AdminActivity[]>([]);
-  const [showMockData, setShowMockData] = useState<boolean>(true);
+  const [showMockData, setShowMockData] = useState<boolean>(import.meta.env.DEV);
 
   useEffect(() => {
     if (!convex) return;
@@ -370,7 +372,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setShowMockData(platformSettings.showMockData);
         }
 
-        if (creatorDocs.length === 0 || storyDocs.length === 0) {
+        if (import.meta.env.DEV && (creatorDocs.length === 0 || storyDocs.length === 0)) {
           await convex.mutation(api.seed.initialContent, {});
           [creatorDocs, storyDocs] = await Promise.all([
             convex.query(api.creators.list, {}),
@@ -406,7 +408,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const stories = useMemo(() => {
-    if (showMockData) {
+    if (showMockData && import.meta.env.DEV) {
       const mockFiltered = MOCK_STORIES.filter(ms => !liveStories.some(rs => rs.id === ms.id));
       return [...liveStories, ...mockFiltered];
     }
@@ -414,7 +416,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [liveStories, showMockData]);
 
   const creators = useMemo(() => {
-    if (showMockData) {
+    if (showMockData && import.meta.env.DEV) {
       const mockFiltered: Record<string, Creator> = {};
       Object.entries(MOCK_CREATORS).forEach(([key, value]) => {
         if (!liveCreators[key]) {

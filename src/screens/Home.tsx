@@ -15,7 +15,7 @@ export default function Home() {
   // Use real stories from Convex, and append mock stories only if enabled
   const allStories = useMemo(() => {
     const realStories = stories || [];
-    if (showMockData) {
+    if (showMockData && import.meta.env.DEV) {
       // Avoid duplicates if real stories have same IDs as mock (unlikely but safe)
       const mockFiltered = MOCK_STORIES.filter(ms => !realStories.some(rs => rs.id === ms.id));
       return [...realStories, ...mockFiltered];
@@ -39,14 +39,14 @@ export default function Home() {
   // Get the most recent story from reading history
   const continueReadingStory = useMemo(() => {
     if (!user || user.isGuest || !user.readingHistory || user.readingHistory.length === 0) {
-      return allStories.length > 1 ? allStories[1] : null;
+      return null;
     }
     
     const latest = [...user.readingHistory].sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     )[0];
     
-    return allStories.find(s => s.id === latest.storyId) || allStories[1];
+    return allStories.find(s => s.id === latest.storyId) || null;
   }, [user, allStories]);
 
   if (!featured) {

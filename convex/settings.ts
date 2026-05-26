@@ -7,7 +7,7 @@ export const get = query({
     const settings = await ctx.db.query("platformSettings").first();
     if (!settings) {
       return {
-        showMockData: true,
+        showMockData: false,
         maintenanceMode: false,
         updatedAt: new Date().toISOString(),
       };
@@ -34,7 +34,7 @@ export const update = mutation({
       return existing._id;
     } else {
       return await ctx.db.insert("platformSettings", {
-        showMockData: args.showMockData ?? true,
+        showMockData: args.showMockData ?? false,
         maintenanceMode: args.maintenanceMode ?? false,
         announcement: args.announcement,
         updatedAt: new Date().toISOString(),

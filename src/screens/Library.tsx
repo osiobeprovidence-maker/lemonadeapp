@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { MOCK_STORIES } from '../data/mock';
 import { HorizontalStoryCard } from '../components/ui/Cards';
 import { cn } from '../lib/utils';
 import { Bookmark, Clock, Download, Unlock, Loader } from 'lucide-react';
@@ -25,7 +24,7 @@ export default function Library() {
       case 'saved':
         return savedStories?.length > 0 ? savedStories : [];
       case 'reading':
-        if (!user || user.isGuest) return stories.slice(0, 2);
+        if (!user || user.isGuest) return [];
         // Map reading history to story objects
         // Get unique stories from reading history, sorted by most recent
         const history = [...user.readingHistory].sort((a, b) => 

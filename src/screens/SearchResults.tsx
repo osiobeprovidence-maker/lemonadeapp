@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Search } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { MOCK_STORIES } from '../data/mock';
 import { StoryCard } from '../components/ui/Cards';
 
 import { useApp } from '../contexts/AppContext';

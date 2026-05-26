@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MOCK_READERS, MOCK_BADGES, MOCK_STORIES, MOCK_CREATORS } from '../data/mock';
+import { MOCK_BADGES } from '../data/mock';
 import { Button } from '../components/ui/Button';
 import { MapPin, Calendar, Edit3, Settings, Crown, Flame, Share2, Award, Lock, Trophy, Heart, Coffee, Wallet, ChevronRight, LogIn, UserPlus } from 'lucide-react';
 import { AchievementBadge, PremiumBadge, StoryCard } from '../components/ui/Cards';
@@ -9,13 +9,22 @@ import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AppContext';
 import { SensitiveActionWrapper } from '../components/SensitiveActionWrapper';
+import { useFollowedCreators, useSavedStories } from '../hooks/useConvex';
 
 export default function ReaderProfile() {
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, stories } = useAuth();
   const navigate = useNavigate();
-  const reader = MOCK_READERS.current;
   const isPremium = user?.isPremium || false;
-  const savedStories = MOCK_STORIES.slice(0, 3);
+  const savedStories = useSavedStories(user?.id);
+  const followedCreators = useFollowedCreators(user?.id);
+  const activeStories = stories || [];
+  const readStoryIds = new Set(user?.readingHistory.map(item => item.storyId) || []);
+  const readingStories = activeStories.filter(story => readStoryIds.has(story.id));
+  const favoriteGenres = Array.from(new Set(
+    [...savedStories, ...readingStories].map(story => story.genre)
+  )).slice(0, 5);
+  const chaptersRead = user?.readingHistory.length || 0;
+  const dailyStreak = chaptersRead > 0 ? 1 : 0;
   
   const [activeTab, setActiveTab] = useState<'overview' | 'library' | 'following' | 'badges' | 'premium' | 'activity'>('overview');
   const tabs = ['overview', 'library', 'following', 'badges', 'premium', 'activity'] as const;
@@ -57,8 +66,8 @@ export default function ReaderProfile() {
         <div className="flex flex-col items-center md:items-start w-full md:w-80 shrink-0">
           <div className="relative mb-6 group">
             <img 
-              src={user?.avatar || reader.avatar} 
-              alt={user?.name || reader.username} 
+              src={user?.avatar} 
+              alt={user?.name || user?.username} 
               className={cn(
                 "w-36 h-36 md:w-44 md:h-44 rounded-full border-4 bg-ink-deep object-cover shadow-2xl relative z-10",
                 isPremium ? "border-lemon-muted" : "border-black-core"
@@ -80,12 +89,12 @@ export default function ReaderProfile() {
           
           <div className="text-center md:text-left w-full">
             <h1 className="font-display font-black text-3xl mb-1 flex items-center justify-center md:justify-start gap-2">
-              {user?.name || reader.displayName}
+              {user?.name}
             </h1>
-            <p className="text-white/40 font-medium mb-6">@{user?.username || reader.username}</p>
+            <p className="text-white/40 font-medium mb-6">@{user?.username}</p>
 
             <p className="text-white/80 text-sm mb-8 leading-relaxed max-w-xs mx-auto md:mx-0 font-medium">
-              {reader.bio}
+              {user?.bio || 'No bio added yet.'}
             </p>
 
             <div className="flex flex-col gap-3 w-full mb-10">
@@ -111,7 +120,7 @@ export default function ReaderProfile() {
                  <div>
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-xs font-bold text-white/50 uppercase tracking-widest">Chapters Read</span>
-                      <span className="font-display font-black text-white text-lg">{reader.totalChaptersRead}</span>
+                      <span className="font-display font-black text-white text-lg">{chaptersRead}</span>
                     </div>
                     <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
                       <div className="h-full bg-lemon-muted w-[75%] shadow-[0_0_8px_#E8C547]" />
@@ -122,7 +131,7 @@ export default function ReaderProfile() {
                      <Flame size={18} className="text-orange-500" />
                      <span className="text-xs font-bold uppercase tracking-widest">Daily Streak</span>
                    </div>
-                   <span className="font-display font-black text-orange-500">{reader.readingStreak} Days</span>
+                   <span className="font-display font-black text-orange-500">{dailyStreak} Days</span>
                  </div>
               </div>
             </div>
@@ -194,11 +203,13 @@ export default function ReaderProfile() {
                     <div>
                       <h3 className="font-display font-bold text-xl mb-6">Favorite Genres</h3>
                       <div className="flex flex-wrap gap-2">
-                         {reader.favoriteGenres.map(genre => (
+                         {favoriteGenres.length > 0 ? favoriteGenres.map(genre => (
                            <div key={genre} className="px-4 py-2 rounded-xl bg-ink-deep border border-white/5 text-sm font-semibold hover:border-lemon-muted/30 transition-colors">
                              {genre}
                            </div>
-                         ))}
+                         )) : (
+                           <p className="text-sm text-white/40">Genres will appear after you save or read stories.</p>
+                         )}
                       </div>
                     </div>
                     <div>
@@ -207,7 +218,7 @@ export default function ReaderProfile() {
                          <button onClick={() => setActiveTab('badges')} className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors">View All &rarr;</button>
                        </div>
                        <div className="flex gap-4">
-                          {reader.badges.slice(0, 3).map(id => {
+                          {user?.badges.slice(0, 3).map(id => {
                             const badge = MOCK_BADGES[id];
                             return badge ? (
                               <div key={id} className="w-16 h-16 rounded-2xl bg-ink-deep border border-white/5 flex items-center justify-center text-3xl group cursor-help transition-all hover:bg-lemon-muted/10 hover:border-lemon-muted/30 shadow-lg" title={badge.name}>
@@ -215,6 +226,9 @@ export default function ReaderProfile() {
                               </div>
                             ) : null;
                           })}
+                          {(user?.badges.length || 0) === 0 && (
+                            <p className="text-sm text-white/40">No badges yet.</p>
+                          )}
                           <div className="w-16 h-16 rounded-2xl bg-black border border-white/5 border-dashed flex items-center justify-center text-white/10">
                             <Lock size={16} />
                           </div>
@@ -228,9 +242,14 @@ export default function ReaderProfile() {
                        <button onClick={() => setActiveTab('library')} className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors">Full Library &rarr;</button>
                      </div>
                      <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                       {savedStories.map(story => (
+                       {savedStories.slice(0, 3).map(story => (
                          <StoryCard key={story.id} story={story} />
                        ))}
+                       {savedStories.length === 0 && (
+                         <div className="col-span-full rounded-2xl border border-white/5 bg-ink-deep/40 p-8 text-center text-sm text-white/45">
+                           Saved stories will appear here.
+                         </div>
+                       )}
                      </div>
                   </div>
 
@@ -241,11 +260,8 @@ export default function ReaderProfile() {
                <div className="flex flex-col gap-4 animate-fade-in">
                   <h3 className="font-display font-bold text-2xl mb-4">Followed Creators</h3>
                   <div className="grid sm:grid-cols-2 gap-4">
-                     {reader.followedCreators.map(id => {
-                        const creator = Object.values(MOCK_CREATORS).find(c => c.id === id);
-                        if (!creator) return null;
-                        return (
-                          <div key={id} className="flex items-center justify-between p-4 bg-ink-deep/50 border border-white/5 rounded-3xl hover:border-white/20 transition-all group">
+                     {followedCreators.map(creator => (
+                          <div key={creator.id} className="flex items-center justify-between p-4 bg-ink-deep/50 border border-white/5 rounded-3xl hover:border-white/20 transition-all group">
                              <Link to={`/creator/${creator.username}`} className="flex items-center gap-4 flex-1">
                                 <img src={creator.avatar} alt={creator.name} className="w-14 h-14 rounded-full object-cover group-hover:ring-4 ring-lemon-muted/20 transition-all duration-300" referrerPolicy="no-referrer" />
                                 <div>
@@ -255,8 +271,12 @@ export default function ReaderProfile() {
                              </Link>
                              <FollowButton creator={creator} size="sm" />
                           </div>
-                        )
-                     })}
+                     ))}
+                     {followedCreators.length === 0 && (
+                       <div className="rounded-3xl border border-white/5 bg-ink-deep/40 p-8 text-center text-sm text-white/45">
+                         Followed creators will appear here.
+                       </div>
+                     )}
                   </div>
                </div>
              )}
@@ -265,9 +285,14 @@ export default function ReaderProfile() {
                <div className="animate-fade-in">
                   <h3 className="font-display font-bold text-2xl mb-8">Full Library</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {MOCK_STORIES.map(story => (
+                    {savedStories.map(story => (
                       <StoryCard key={story.id} story={story} />
                     ))}
+                    {savedStories.length === 0 && (
+                      <div className="col-span-full rounded-3xl border border-white/5 bg-ink-deep/40 p-8 text-center text-sm text-white/45">
+                        Your saved library is empty.
+                      </div>
+                    )}
                   </div>
                </div>
              )}
@@ -275,7 +300,7 @@ export default function ReaderProfile() {
              {activeTab === 'badges' && (
                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 animate-fade-in">
                  {Object.values(MOCK_BADGES).map(badge => {
-                   const isUnlocked = reader.badges.includes(badge.id);
+                   const isUnlocked = user?.badges.includes(badge.id);
                    return (
                      <div key={badge.id} className={cn(
                        "flex flex-col items-center text-center p-8 rounded-3xl border transition-all duration-500",
@@ -340,21 +365,27 @@ export default function ReaderProfile() {
              {activeTab === 'activity' && (
                 <div className="flex flex-col gap-4 animate-fade-in max-w-2xl">
                   <h3 className="font-display font-bold text-2xl mb-4">Activity Timeline</h3>
-                  {[1,2,3,4,5].map(i => (
-                     <div key={i} className="flex gap-5 p-5 rounded-3xl bg-ink-deep/30 border border-white/5 items-center hover:bg-ink-deep/60 transition-all cursor-default">
+                  {user?.readingHistory.slice(0, 10).map((item, i) => {
+                    const story = activeStories.find(story => story.id === item.storyId);
+                    return (
+                     <div key={`${item.storyId}-${item.chapterId}-${item.timestamp}`} className="flex gap-5 p-5 rounded-3xl bg-ink-deep/30 border border-white/5 items-center hover:bg-ink-deep/60 transition-all cursor-default">
                        <div className="w-12 h-12 rounded-2xl bg-white/5 flex flex-col items-center justify-center shrink-0 border border-white/5">
-                          {i % 3 === 0 ? <Heart size={20} className="text-lemon-muted" /> : i % 3 === 1 ? <Coffee size={20} className="text-orange-400" /> : <Flame size={20} className="text-orange-500" />}
+                          <Flame size={20} className="text-orange-500" />
                        </div>
                        <div className="flex-1">
                          <p className="text-sm text-white/90 font-bold leading-tight mb-1">
-                           {i % 3 === 0 ? "Saved 'Lagos 2099' to your library." : 
-                            i % 3 === 1 ? "Supported 'AdaVerse' with a coffee!" : 
-                            "Reached a 12-day reading streak! Keep going!"}
+                           Read {story?.title || item.storyId} - {item.chapterId}
                          </p>
-                         <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">{i} {i === 1 ? 'hour' : 'days'} ago</p>
+                         <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">{new Date(item.timestamp).toLocaleDateString()}</p>
                        </div>
                      </div>
-                  ))}
+                    );
+                  })}
+                  {(user?.readingHistory.length || 0) === 0 && (
+                    <div className="rounded-3xl border border-white/5 bg-ink-deep/40 p-8 text-center text-sm text-white/45">
+                      Reading activity will appear here.
+                    </div>
+                  )}
                 </div>
               )}
           </div>
