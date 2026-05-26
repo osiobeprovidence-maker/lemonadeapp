@@ -34,6 +34,22 @@ export const getPaystackConfig = (): PaystackConfig => {
 import { convex } from './convex';
 import { api } from '../../convex/_generated/api';
 
+const paymentSetupError =
+  'Payments are not configured yet. Add PAYSTACK_SECRET_KEY to the Convex production environment.';
+
+const normalizePaymentError = (error: unknown): Error => {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (
+    message.includes('PAYSTACK_SECRET_KEY') ||
+    message.includes('Paystack public key is missing')
+  ) {
+    return new Error(paymentSetupError);
+  }
+
+  return error instanceof Error ? error : new Error('Payment request failed.');
+};
+
 /**
  * Initialize a Paystack payment via Convex Action
  */
@@ -51,7 +67,7 @@ export const initializePayment = async (paymentData: PaymentInitialization): Pro
     return { data };
   } catch (error) {
     console.error('Error initializing payment via Convex:', error);
-    throw error;
+    throw normalizePaymentError(error);
   }
 };
 
@@ -63,7 +79,7 @@ export const verifyPayment = async (reference: string): Promise<any> => {
     return await convex.action(api.paystack.verify, { reference });
   } catch (error) {
     console.error('Error verifying payment via Convex:', error);
-    throw error;
+    throw normalizePaymentError(error);
   }
 };
 
