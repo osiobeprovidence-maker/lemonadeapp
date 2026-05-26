@@ -53,12 +53,21 @@ export const creditWalletAfterPaystack = mutation({
   args: {
     firebaseUid: v.string(),
     userId: v.string(),
-    coins: v.number(),
-    nairaAmount: v.number(),
+    coins: v.union(v.number(), v.string()),
+    nairaAmount: v.union(v.number(), v.string()),
     reference: v.string(),
     providerPayload: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
+    const coins = Number(args.coins);
+    const nairaAmount = Number(args.nairaAmount);
+    if (!Number.isFinite(coins) || coins <= 0) {
+      throw new Error("Invalid coin amount from payment provider.");
+    }
+    if (!Number.isFinite(nairaAmount) || nairaAmount <= 0) {
+      throw new Error("Invalid naira amount from payment provider.");
+    }
+
     const existing = await ctx.db
       .query("walletTransactions")
       .withIndex("by_reference", (q) => q.eq("reference", args.reference))
@@ -78,25 +87,126 @@ export const creditWalletAfterPaystack = mutation({
     }
 
     await ctx.db.patch(user._id, {
-      walletBalance: user.walletBalance + args.coins,
+      walletBalance: user.walletBalance + coins,
       updatedAt: new Date().toISOString(),
     });
 
     const transactionId = await ctx.db.insert("walletTransactions", {
       userId: args.userId,
       type: "wallet_topup",
-      amount: args.coins,
+      amount: coins,
       currency: "NGN",
       status: "success",
       reference: args.reference,
       provider: "paystack",
       providerPayload: args.providerPayload,
       metadata: {
-        nairaAmount: args.nairaAmount,
+        nairaAmount,
       },
       createdAt: new Date().toISOString(),
     });
 
     return { credited: true, transactionId };
+  },
+});
+
+export const activatePremiumAfterPaystack = mutation({
+  args: {
+    firebaseUid: v.string(),
+    userId: v.string(),
+    reference: v.string(),
+    planType: v.union(v.literal("premium"), v.literal("patron")),
+    billingCycle: v.union(v.literal("monthly"), v.literal("yearly")),
+    amount: v.union(v.number(), v.string()),
+    providerPayload: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const amount = Number(args.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("Invalid premium payment amount.");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found for premium activation.");
+    }
+
+    const existing = await ctx.db
+      .query("walletTransactions")
+      .withIndex("by_reference", (q) => q.eq("reference", args.reference))
+      .unique();
+
+    if (existing) {
+      return { activated: false, transactionId: existing._id, renewsAt: user.premiumRenewsAt };
+    }
+
+    const now = new Date();
+    const renewsAt = new Date(now);
+    if (args.billingCycle === "yearly") {
+      renewsAt.setFullYear(renewsAt.getFullYear() + 1);
+    } else {
+      renewsAt.setMonth(renewsAt.getMonth() + 1);
+    }
+
+    await ctx.db.patch(user._id, {
+      premiumStatus: "premium",
+      premiumPlan: args.planType,
+      premiumBillingCycle: args.billingCycle,
+      premiumStartedAt: user.premiumStartedAt || now.toISOString(),
+      premiumRenewsAt: renewsAt.toISOString(),
+      premiumCancelAtPeriodEnd: false,
+      premiumProvider: "paystack",
+      premiumReference: args.reference,
+      updatedAt: now.toISOString(),
+    });
+
+    const transactionId = await ctx.db.insert("walletTransactions", {
+      userId: args.userId,
+      type: "premium",
+      amount,
+      currency: "NGN",
+      status: "success",
+      reference: args.reference,
+      provider: "paystack",
+      providerPayload: args.providerPayload,
+      metadata: {
+        planType: args.planType,
+        billingCycle: args.billingCycle,
+      },
+      createdAt: now.toISOString(),
+    });
+
+    return { activated: true, transactionId, renewsAt: renewsAt.toISOString() };
+  },
+});
+
+export const cancelPremium = mutation({
+  args: { firebaseUid: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found for premium cancellation.");
+    }
+
+    if (user.premiumStatus !== "premium") {
+      return { cancelled: false, premiumStatus: user.premiumStatus };
+    }
+
+    const timestamp = new Date().toISOString();
+    await ctx.db.patch(user._id, {
+      premiumCancelAtPeriodEnd: true,
+      premiumCancelledAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    return { cancelled: true, premiumRenewsAt: user.premiumRenewsAt };
   },
 });

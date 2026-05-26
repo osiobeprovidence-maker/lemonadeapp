@@ -52,6 +52,8 @@ export interface AdminActivity {
   timestamp: string;
 }
 export type PremiumStatus = 'free' | 'trial' | 'premium' | 'expired';
+export type PremiumPlan = 'premium' | 'patron';
+export type PremiumBillingCycle = 'monthly' | 'yearly';
 
 export interface Notification {
   id: string;
@@ -104,6 +106,14 @@ export interface AppUser {
   isGuest: boolean;
   isPremium: boolean;
   premiumStatus: PremiumStatus;
+  premiumPlan?: PremiumPlan;
+  premiumBillingCycle?: PremiumBillingCycle;
+  premiumStartedAt?: string;
+  premiumRenewsAt?: string;
+  premiumCancelledAt?: string;
+  premiumCancelAtPeriodEnd?: boolean;
+  premiumProvider?: string;
+  premiumReference?: string;
   walletBalance: number;
   followedCreators: string[]; // Creator usernames
   savedStories: string[]; // Story IDs
@@ -292,6 +302,14 @@ const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppU
     isGuest: false,
     isPremium: convexUser?.premiumStatus === 'premium',
     premiumStatus: convexUser?.premiumStatus || 'free',
+    premiumPlan: convexUser?.premiumPlan,
+    premiumBillingCycle: convexUser?.premiumBillingCycle,
+    premiumStartedAt: convexUser?.premiumStartedAt,
+    premiumRenewsAt: convexUser?.premiumRenewsAt,
+    premiumCancelledAt: convexUser?.premiumCancelledAt,
+    premiumCancelAtPeriodEnd: convexUser?.premiumCancelAtPeriodEnd,
+    premiumProvider: convexUser?.premiumProvider,
+    premiumReference: convexUser?.premiumReference,
     walletBalance: convexUser?.walletBalance || 0,
     followedCreators: convexUser?.followedCreators || [],
     savedStories: convexUser?.savedStories || [],

@@ -87,11 +87,13 @@ export const useCreatePayment = () => {
         amount: plan ? 0 : Math.round(args.amount * 100), // Convert Naira to Kobo if no plan
         reference,
         plan: plan || undefined, // Ensure it's undefined if empty string
+        callbackUrl: `${window.location.origin}/premium`,
         metadata: {
           userId: args.userId,
           planType: args.planType,
           billingCycle: args.billingCycle,
           product: 'premium',
+          amount: args.amount,
         },
       });
 

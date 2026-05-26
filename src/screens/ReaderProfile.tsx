@@ -11,6 +11,8 @@ import { useAuth } from '../contexts/AppContext';
 import { SensitiveActionWrapper } from '../components/SensitiveActionWrapper';
 import { useCurrentUser, useFollowedCreators, useSavedStories, useUpdateUserProfile } from '../hooks/useConvex';
 import { compressImage, uploadBannerImage } from '../lib/imageUpload';
+import { convex } from '../lib/convex';
+import { api } from '../../convex/_generated/api';
 
 export default function ReaderProfile() {
   const { user, isGuest, stories, updateLocalUser } = useAuth();
@@ -33,6 +35,8 @@ export default function ReaderProfile() {
   const [activeTab, setActiveTab] = useState<'overview' | 'library' | 'following' | 'badges' | 'premium' | 'activity'>('overview');
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [bannerError, setBannerError] = useState<string | null>(null);
+  const [subscriptionMessage, setSubscriptionMessage] = useState<string | null>(null);
+  const [isCancellingPremium, setIsCancellingPremium] = useState(false);
   const tabs = ['overview', 'library', 'following', 'badges', 'premium', 'activity'] as const;
 
   const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,6 +62,47 @@ export default function ReaderProfile() {
       if (bannerInputRef.current) {
         bannerInputRef.current.value = '';
       }
+    }
+  };
+
+  const formatDate = (value?: string) => {
+    if (!value) return 'Not available';
+    return new Date(value).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const handleCancelPremium = async () => {
+    if (!firebaseUid || !user) {
+      setSubscriptionMessage('Please sign in again before changing your subscription.');
+      return;
+    }
+    if (!convex) {
+      setSubscriptionMessage('Subscription management is not configured.');
+      return;
+    }
+    if (!window.confirm('Cancel premium renewal? You will keep access until the current billing period ends.')) {
+      return;
+    }
+
+    try {
+      setIsCancellingPremium(true);
+      const result = await convex.mutation(api.payments.cancelPremium, { firebaseUid });
+      if (result.cancelled) {
+        updateLocalUser({
+          premiumCancelAtPeriodEnd: true,
+          premiumCancelledAt: new Date().toISOString(),
+        } as any);
+        setSubscriptionMessage('Premium renewal cancelled. Access remains active until the billing period ends.');
+      } else {
+        setSubscriptionMessage('No active premium subscription was found.');
+      }
+    } catch (error) {
+      setSubscriptionMessage(error instanceof Error ? error.message : 'Unable to cancel subscription.');
+    } finally {
+      setIsCancellingPremium(false);
     }
   };
 
@@ -393,7 +438,12 @@ export default function ReaderProfile() {
                <div className="animate-fade-in flex flex-col gap-10">
                   <div className="max-w-xl">
                     <h3 className="font-display font-bold text-3xl mb-4">Subscription</h3>
-                    <p className="text-white/60 mb-8 font-medium">Manage your membership, billing cycles, and premium features.</p>
+                    <p className="text-white/60 mb-8 font-medium">Manage your membership, billing cycle, and premium access.</p>
+                    {subscriptionMessage && (
+                      <div className="mb-6 rounded-2xl border border-lemon-muted/20 bg-lemon-muted/10 p-4 text-sm font-bold text-lemon-muted">
+                        {subscriptionMessage}
+                      </div>
+                    )}
                     
                     <div className="bg-ink-deep border border-lemon-muted/20 rounded-3xl p-8 relative overflow-hidden shadow-2xl">
                        <div className="absolute top-0 right-0 p-6 opacity-10">
@@ -405,25 +455,54 @@ export default function ReaderProfile() {
                            <Crown size={24} />
                          </div>
                          <div>
-                           <h4 className="font-display font-bold text-xl">Lemonade Premium</h4>
-                           <p className="text-lemon-muted text-sm font-black uppercase tracking-widest">{isPremium ? 'Yearly' : 'Monthly'} Plan • ₦3,500/mo</p>
+                           <h4 className="font-display font-bold text-xl">
+                             {isPremium ? (user?.premiumPlan === 'patron' ? 'Premium + Patron' : 'Lemonade Premium') : 'No active subscription'}
+                           </h4>
+                           <p className="text-lemon-muted text-sm font-black uppercase tracking-widest">
+                             {isPremium ? `${user?.premiumBillingCycle || 'monthly'} plan` : 'Free account'}
+                           </p>
                          </div>
                        </div>
 
                        <div className="flex flex-col gap-4 mb-8">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-white/50 font-medium">Next Billing Date</span>
-                            <span className="font-bold text-white">November 26, 2024</span>
+                          <div className="flex justify-between gap-4 text-sm">
+                            <span className="text-white/50 font-medium">{user?.premiumCancelAtPeriodEnd ? 'Access Ends' : 'Next Billing Date'}</span>
+                            <span className="font-bold text-white">{isPremium ? formatDate(user?.premiumRenewsAt) : 'None'}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
+                          <div className="flex justify-between gap-4 text-sm">
                             <span className="text-white/50 font-medium">Payment Method</span>
-                             <span className="font-bold text-white flex items-center gap-2 underline decoration-white/20 underline-offset-4">Secured via Paystack <ChevronRight size={14} /></span>
+                            <span className="font-bold text-white flex items-center gap-2">
+                              {isPremium ? `Secured via ${user?.premiumProvider || 'Paystack'}` : 'No payment method'}
+                              {isPremium && <ChevronRight size={14} />}
+                            </span>
+                          </div>
+                          <div className="flex justify-between gap-4 text-sm">
+                            <span className="text-white/50 font-medium">Status</span>
+                            <span className="font-bold text-white">
+                              {isPremium ? (user?.premiumCancelAtPeriodEnd ? 'Cancels at period end' : 'Active') : 'Free'}
+                            </span>
                           </div>
                        </div>
 
                        <div className="flex flex-col sm:flex-row gap-4">
-                          <Button fullWidth className="bg-white text-black hover:bg-lemon-muted font-black uppercase tracking-wider">Update Details</Button>
-                          <Button fullWidth variant="outline" className="border-white/10 hover:border-red-500/50 hover:text-red-500 font-bold">Cancel Subscription</Button>
+                          <Button
+                            fullWidth
+                            className="bg-white text-black hover:bg-lemon-muted font-black uppercase tracking-wider"
+                            onClick={() => navigate('/premium')}
+                          >
+                            {isPremium ? 'Update Plan' : 'Choose Premium'}
+                          </Button>
+                          {isPremium && (
+                            <Button
+                              fullWidth
+                              variant="outline"
+                              disabled={isCancellingPremium || user?.premiumCancelAtPeriodEnd}
+                              onClick={handleCancelPremium}
+                              className="border-white/10 hover:border-red-500/50 hover:text-red-500 font-bold"
+                            >
+                              {user?.premiumCancelAtPeriodEnd ? 'Cancellation Scheduled' : isCancellingPremium ? 'Cancelling...' : 'Cancel Subscription'}
+                            </Button>
+                          )}
                        </div>
                     </div>
                   </div>

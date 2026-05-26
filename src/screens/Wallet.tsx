@@ -63,14 +63,14 @@ export default function Wallet() {
           return;
         }
 
-        const coinsToCredit = transaction.metadata?.coins || selectedCoins;
+        const coinsToCredit = Number(transaction.metadata?.coins || selectedCoins);
 
         if (convex && auth.currentUser) {
           const creditResult = await convex.mutation(api.payments.creditWalletAfterPaystack, {
             firebaseUid: auth.currentUser.uid,
             userId: user.id,
             coins: coinsToCredit,
-            nairaAmount: transaction.amount / 100,
+            nairaAmount: Number(transaction.amount) / 100,
             reference,
             providerPayload: transaction,
           });
@@ -100,8 +100,8 @@ export default function Wallet() {
       return;
     }
 
-    if (currentCoins < 150 || currentCoins > 5000) {
-      alert('Please select between 150 and 5000 coins.');
+    if (currentCoins < 60 || currentCoins > 5000) {
+      alert('Please select between 60 and 5000 coins.');
       return;
     }
 
@@ -358,7 +358,7 @@ function TopUpPanel({
           <input
             type="number"
             inputMode="numeric"
-            min={150}
+            min={60}
             max={5000}
             placeholder="Custom amount"
             value={customCoins}

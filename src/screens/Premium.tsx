@@ -1,15 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Check, CheckCircle2, ChevronRight, Crown, Download, ShieldCheck, Sparkles, Star, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { PremiumPlanCard } from '../components/ui/Cards';
 import { Button } from '../components/ui/Button';
 import { useCurrentUser, useCreatePayment } from '../hooks/useConvex';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useApp } from '../contexts/AppContext';
+import { verifyPayment } from '../lib/paystack';
+import { convex } from '../lib/convex';
+import { api } from '../../convex/_generated/api';
 
 export default function Premium() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, firebaseUid } = useCurrentUser();
+  const { updateLocalUser } = useApp();
   const createPayment = useCreatePayment();
   
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
@@ -17,27 +22,79 @@ export default function Premium() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const processedReferenceRef = useRef<string | null>(null);
   
-  // Check if payment was successful from redirect
   useEffect(() => {
+    const reference = searchParams.get('reference') || searchParams.get('trxref');
     const status = searchParams.get('status');
-    if (status === 'success') {
-      setSuccess('Payment successful! Your premium membership is now active.');
-      setTimeout(() => navigate('/home'), 2000);
-    } else if (status === 'failed') {
+
+    if (status === 'failed') {
       setError('Payment failed. Please try again.');
+      return;
     }
-  }, [searchParams, navigate]);
-  
-  // Auto-redirect if already premium
+    if (!reference || !firebaseUid || !user) return;
+    if (processedReferenceRef.current === reference) return;
+    processedReferenceRef.current = reference;
+
+    const confirmPremiumPayment = async () => {
+      try {
+        setIsProcessing(true);
+        setError(null);
+        setSuccess('Verifying premium payment...');
+        const result = await verifyPayment(reference);
+        const transaction = result?.data;
+
+        if (transaction?.status !== 'success') {
+          setSuccess(null);
+          setError('Payment was not successful. Premium was not activated.');
+          return;
+        }
+
+        if (!convex) throw new Error('Convex is not configured. Premium could not be activated.');
+
+        const metadata = transaction.metadata || {};
+        const planType = metadata.planType === 'patron' ? 'patron' : 'premium';
+        const billingCycle = metadata.billingCycle === 'yearly' ? 'yearly' : 'monthly';
+        const amount = Number(transaction.amount || 0) / 100;
+
+        const activation = await convex.mutation(api.payments.activatePremiumAfterPaystack, {
+          firebaseUid,
+          userId: user._id || user.id,
+          reference,
+          planType,
+          billingCycle,
+          amount,
+          providerPayload: transaction,
+        });
+
+        updateLocalUser({
+          isPremium: true,
+          premiumStatus: 'premium',
+          premiumPlan: planType,
+          premiumBillingCycle: billingCycle,
+          premiumRenewsAt: activation.renewsAt,
+          premiumCancelAtPeriodEnd: false,
+          premiumProvider: 'paystack',
+          premiumReference: reference,
+        } as any);
+        setSuccess('Payment successful. Your premium membership is now active.');
+        window.history.replaceState(null, '', '/premium');
+      } catch (error) {
+        setSuccess(null);
+        setError(error instanceof Error ? error.message : 'Unable to activate premium.');
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    confirmPremiumPayment();
+  }, [searchParams, firebaseUid, user, updateLocalUser]);
+
   useEffect(() => {
-    if (user?.premiumStatus === 'premium' || user?.premiumStatus === 'patron') {
-      setTimeout(() => {
-        setSuccess('You already have premium access!');
-        setTimeout(() => navigate('/home'), 1500);
-      }, 500);
+    if (user?.premiumStatus === 'premium') {
+      setSuccess('You already have premium access. You can update your plan below.');
     }
-  }, [user, navigate]);
+  }, [user?.premiumStatus]);
 
   // Payment amounts in Naira (converted to kobo for Paystack)
   // Payment amounts in Naira (converted to kobo for Paystack in the hook)
@@ -74,7 +131,6 @@ export default function Premium() {
       const amount = getPlanAmount();
       const planType = selectedPlan === 'patron' ? 'patron' : 'premium';
       
-      // Create payment intent with Convex
       const { reference, authorizationUrl } = await createPayment({
         userId: user?._id || firebaseUid,
         amount,
@@ -83,7 +139,6 @@ export default function Premium() {
       });
       
       if (authorizationUrl) {
-        // Redirect to Paystack
         window.location.href = authorizationUrl;
       } else {
         setError('Failed to initialize payment. Please try again.');
@@ -127,7 +182,7 @@ export default function Premium() {
       {user?.premiumStatus === 'premium' && (
         <div className="max-w-4xl mx-auto w-full relative z-20 mb-6 p-4 bg-lemon-muted/10 border border-lemon-muted/30 rounded-2xl flex items-start gap-3">
           <CheckCircle size={20} className="text-lemon-muted mt-0.5 flex-shrink-0" />
-          <p className="text-lemon-muted text-sm font-medium">You already have premium access! Enjoy unlimited reading.</p>
+          <p className="text-lemon-muted text-sm font-medium">You already have premium access. You can update your plan below.</p>
         </div>
       )}
 
