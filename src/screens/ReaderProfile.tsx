@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { BADGES } from '../data/badges';
 import { Button } from '../components/ui/Button';
-import { MapPin, Calendar, Edit3, Settings, Crown, Flame, Share2, Award, Lock, Trophy, Heart, Coffee, Wallet, ChevronRight, LogIn, UserPlus } from 'lucide-react';
+import { MapPin, Calendar, Edit3, Settings, Crown, Flame, Share2, Award, Lock, Trophy, Heart, Coffee, Wallet, ChevronRight, LogIn, UserPlus, Loader } from 'lucide-react';
 import { AchievementBadge, PremiumBadge, StoryCard } from '../components/ui/Cards';
 import { FollowButton } from '../components/InteractionButtons';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,11 +9,15 @@ import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AppContext';
 import { SensitiveActionWrapper } from '../components/SensitiveActionWrapper';
-import { useFollowedCreators, useSavedStories } from '../hooks/useConvex';
+import { useCurrentUser, useFollowedCreators, useSavedStories, useUpdateUserProfile } from '../hooks/useConvex';
+import { compressImage, uploadBannerImage } from '../lib/imageUpload';
 
 export default function ReaderProfile() {
-  const { user, isGuest, stories } = useAuth();
+  const { user, isGuest, stories, updateLocalUser } = useAuth();
+  const { firebaseUid } = useCurrentUser();
+  const updateProfile = useUpdateUserProfile();
   const navigate = useNavigate();
+  const bannerInputRef = useRef<HTMLInputElement>(null);
   const isPremium = user?.isPremium || false;
   const savedStories = useSavedStories(user?.id);
   const followedCreators = useFollowedCreators(user?.id);
@@ -27,7 +31,35 @@ export default function ReaderProfile() {
   const dailyStreak = chaptersRead > 0 ? 1 : 0;
   
   const [activeTab, setActiveTab] = useState<'overview' | 'library' | 'following' | 'badges' | 'premium' | 'activity'>('overview');
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [bannerError, setBannerError] = useState<string | null>(null);
   const tabs = ['overview', 'library', 'following', 'badges', 'premium', 'activity'] as const;
+
+  const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!firebaseUid || !user) {
+      setBannerError('Please sign in again before changing your banner.');
+      return;
+    }
+
+    try {
+      setBannerError(null);
+      setIsUploadingBanner(true);
+      const bannerUrl = await uploadBannerImage(await compressImage(file, 0.86), firebaseUid);
+      await updateProfile({ firebaseUid, banner: bannerUrl });
+      updateLocalUser({ banner: bannerUrl });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to upload banner.';
+      setBannerError(message);
+      setTimeout(() => setBannerError(null), 5000);
+    } finally {
+      setIsUploadingBanner(false);
+      if (bannerInputRef.current) {
+        bannerInputRef.current.value = '';
+      }
+    }
+  };
 
   if (isGuest) {
     return (
@@ -53,10 +85,46 @@ export default function ReaderProfile() {
     <div className="flex flex-col w-full min-h-screen pb-32 md:pb-24">
       {/* Banner */}
       <div className="h-48 md:h-64 relative overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-black to-emerald-900/40 opacity-80" />
+        {user?.banner ? (
+          <img
+            src={user.banner}
+            alt="Profile banner"
+            className="absolute inset-0 h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-black to-emerald-900/40 opacity-80" />
+        )}
         <div className="absolute inset-0 bg-black/50" />
-        <div className="absolute bottom-4 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button size="sm" variant="glass" className="bg-white/5 border-white/10"><Edit3 size={14} className="mr-2" /> Change Banner</Button>
+        <input
+          ref={bannerInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleBannerUpload}
+          disabled={isUploadingBanner}
+          className="hidden"
+          aria-label="Upload profile banner"
+        />
+        {bannerError && (
+          <div className="absolute left-6 bottom-4 max-w-md rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
+            {bannerError}
+          </div>
+        )}
+        <div className="absolute bottom-4 right-6 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            size="sm"
+            variant="glass"
+            className="bg-white/10 border-white/15"
+            disabled={isUploadingBanner}
+            onClick={() => bannerInputRef.current?.click()}
+          >
+            {isUploadingBanner ? (
+              <Loader size={14} className="mr-2 animate-spin" />
+            ) : (
+              <Edit3 size={14} className="mr-2" />
+            )}
+            {isUploadingBanner ? 'Uploading...' : 'Change Banner'}
+          </Button>
         </div>
       </div>
 

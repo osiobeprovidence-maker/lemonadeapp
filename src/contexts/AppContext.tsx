@@ -97,6 +97,7 @@ export interface AppUser {
   usernameChangeLockedAt?: string;
   bio?: string;
   avatar: string;
+  banner?: string;
   role: UserRole;
   creatorAccessStatus: CreatorAccessStatus;
   isAuthenticated: boolean;
@@ -284,6 +285,7 @@ const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppU
     usernameChangeLockedAt: convexUser?.usernameChangeLockedAt,
     bio: convexUser?.bio,
     avatar: convexUser?.avatar || firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/100/100`,
+    banner: convexUser?.banner,
     role: convexUser?.role || 'reader',
     creatorAccessStatus: convexUser?.creatorAccessStatus || 'none',
     isAuthenticated: true,

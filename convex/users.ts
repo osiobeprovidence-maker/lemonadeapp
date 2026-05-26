@@ -187,6 +187,7 @@ export const updateProfile = mutation({
     username: v.optional(v.string()),
     bio: v.optional(v.string()),
     avatar: v.optional(v.string()),
+    banner: v.optional(v.string()),
     settings: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
@@ -197,12 +198,13 @@ export const updateProfile = mutation({
     if (!user) throw new Error("User not found");
 
     const timestamp = now();
-    const { firebaseUid, username, name, bio, avatar, settings } = args;
+    const { firebaseUid, username, name, bio, avatar, banner, settings } = args;
     const updates: Record<string, unknown> = {};
 
     if (name !== undefined) updates.name = name.trim();
     if (bio !== undefined) updates.bio = bio.trim();
     if (avatar !== undefined) updates.avatar = avatar;
+    if (banner !== undefined) updates.banner = banner;
     if (settings !== undefined) updates.settings = settings;
 
     if (username !== undefined) {

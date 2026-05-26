@@ -31,6 +31,7 @@ export default defineSchema({
     usernameChangeLockedAt: v.optional(v.string()),
     bio: v.optional(v.string()),
     avatar: v.optional(v.string()),
+    banner: v.optional(v.string()),
     role: userRole,
     creatorAccessStatus,
     premiumStatus: v.union(
