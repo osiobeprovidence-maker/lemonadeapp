@@ -258,6 +258,69 @@ export default function StoryDetail() {
               </div>
 
               {(() => {
+                const chaptersFromMedia = story.media?.chapters;
+                if (Array.isArray(chaptersFromMedia) && chaptersFromMedia.length > 0) {
+                  return chaptersFromMedia.map((ch: any, i: number) => {
+                    const chapterId = `c${i + 1}`;
+                    const title = ch.title || `Chapter ${i + 1}`;
+                    const isPaid = ch.monetization === 'paid' || (story.media?.monetization === 'paid' && (ch.price ?? story.media?.price));
+                    const price = ch.price || story.media?.price || (isPaid ? 5 : 0);
+                    const isUnlocked = !isPaid || user?.unlockedChapters.includes(`${story.id}-${chapterId}`) || user?.isPremium;
+
+                    return (
+                      <Link
+                        key={chapterId}
+                        to={isUnlocked ? `/read/${story.id}/${i + 1}` : '#'}
+                        className={cn(
+                          "flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-ink-deep hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-white/10 group gap-4 relative overflow-hidden",
+                          !isUnlocked && "cursor-default"
+                        )}
+                      >
+                        {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-r from-lemon-muted/5 to-transparent pointer-events-none" />}
+
+                        <div className="flex items-center gap-4 relative z-10 w-full">
+                          <div className="w-12 h-12 bg-black rounded-lg overflow-hidden shrink-0 relative">
+                            <img src={story.coverImage} className="w-full h-full object-cover opacity-50" referrerPolicy="no-referrer" />
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
+                              {isUnlocked ? <Play size={16} className="text-white fill-white" /> : <Lock size={16} className="text-white" />}
+                            </div>
+                            {!isUnlocked && (
+                              <div className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5">
+                                <Lock size={10} className="text-lemon-muted" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <h4 className={cn("font-semibold text-base", !isUnlocked ? 'text-white/80' : 'text-white')}>{title}</h4>
+                              {isPaid && <span className="px-1.5 py-0.5 rounded-sm bg-lemon-muted/10 text-lemon-muted text-[8px] font-black uppercase tracking-wider">Paid</span>}
+                            </div>
+                            <p className="text-xs text-white/50">{story.format === 'Novel' ? 'Novel • approx. read time' : 'Comic • panels'}</p>
+                          </div>
+
+                          <div className="shrink-0 mt-2 sm:mt-0 ml-auto">
+                            {!isUnlocked ? (
+                              <SensitiveActionWrapper intent="unlock chapter">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-lemon-muted/30 text-lemon-muted hover:bg-lemon-muted hover:text-black"
+                                  onClick={(e) => handleUnlock(e, chapterId, price)}
+                                >
+                                  Unlock ({price}C)
+                                </Button>
+                              </SensitiveActionWrapper>
+                            ) : (
+                              <Button size="sm" variant={i === 0 ? "primary" : "secondary"}>Read</Button>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  });
+                }
+
                 const count = story.episodes || (story.media?.chapterText || story.media?.attachments?.length ? 1 : 0);
                 const arr = Array.from({ length: Math.max(1, count) }, (_, i) => ({
                   index: i,

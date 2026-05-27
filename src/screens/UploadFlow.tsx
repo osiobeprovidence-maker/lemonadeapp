@@ -38,6 +38,8 @@ export default function UploadFlow() {
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [panelFiles, setPanelFiles] = useState<File[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<StoryAttachment[]>([]);
+  const [chapters, setChapters] = useState<Array<{ title: string; text: string; files: File[]; attachments?: StoryAttachment[] }>>([]);
+  const [chapterForm, setChapterForm] = useState<{ title: string; text: string; files: File[] }>({ title: '', text: '', files: [] });
   const [drafts, setDrafts] = useState<DraftStory[]>([]);
   const [storyExternalId, setStoryExternalId] = useState('');
   const [coverPreview, setCoverPreview] = useState('');
@@ -46,6 +48,7 @@ export default function UploadFlow() {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const panelInputRef = useRef<HTMLInputElement>(null);
+  const chapterInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -112,6 +115,18 @@ export default function UploadFlow() {
     if (panelInputRef.current) panelInputRef.current.value = '';
   };
 
+  const selectChapterFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = event.target.files ? Array.from(event.target.files) : [];
+    const oversized = files.find((file) => file.size > 25 * 1024 * 1024);
+    if (oversized) {
+      setUploadError(`${oversized.name} is too large. Story files must be less than 25MB.`);
+      return;
+    }
+    setUploadError(null);
+    setChapterForm((c) => ({ ...c, files: [...c.files, ...files] }));
+    if (chapterInputRef.current) chapterInputRef.current.value = '';
+  };
+
   const loadDraft = (draft: DraftStory) => {
     setStoryExternalId(draft.externalId || '');
     setFormData({
@@ -144,10 +159,21 @@ export default function UploadFlow() {
       : bannerPreview;
     const newAttachments = await Promise.all(panelFiles.map((file) => uploadStoryFile(file, user.id)));
 
+    // Upload chapter files per chapter
+    const uploadedChapters = await Promise.all(chapters.map(async (ch) => {
+      const uploaded = await Promise.all((ch.files || []).map((f) => uploadStoryFile(f, user.id)));
+      return {
+        title: ch.title,
+        text: ch.text,
+        attachments: uploaded,
+      };
+    }));
+
     return {
       coverImage,
       bannerImage,
       attachments: [...existingAttachments, ...newAttachments],
+      chapters: uploadedChapters,
     };
   };
 
@@ -174,8 +200,12 @@ export default function UploadFlow() {
       if (status === 'published' && (!assets.coverImage || !assets.bannerImage)) {
         throw new Error('Please upload both a cover image and a banner image before publishing.');
       }
-      if (status === 'published' && !formData.chapterText.trim() && assets.attachments.length === 0) {
-        throw new Error('Add story text or upload at least one PDF/image/file before publishing.');
+      if (status === 'published') {
+        const hasTopLevelContent = formData.chapterText.trim() || assets.attachments.length > 0;
+        const hasChapters = (assets.chapters && assets.chapters.length > 0) || chapters.length > 0;
+        if (!hasTopLevelContent && !hasChapters) {
+          throw new Error('Add story text, chapters, or upload at least one PDF/image/file before publishing.');
+        }
       }
 
       await convex.mutation(api.creators.upsert, {
@@ -188,7 +218,7 @@ export default function UploadFlow() {
         supportEnabled: true,
       });
 
-      const storyPayload = {
+      const storyPayload: any = {
         externalId,
         title: formData.title.trim() || 'Untitled Draft',
         genre: formData.genre,
@@ -207,6 +237,14 @@ export default function UploadFlow() {
           publishedInstantly: status === 'published',
         },
       };
+
+      // attach chapters if any
+      if (assets.chapters && assets.chapters.length > 0) {
+        storyPayload.media.chapters = assets.chapters;
+      } else if (chapters.length > 0) {
+        // If user added chapters but uploadAssets didn't return (shouldn't happen), attach local chapter metadata without uploaded urls
+        storyPayload.media.chapters = chapters.map(ch => ({ title: ch.title, text: ch.text, attachments: [] }));
+      }
 
       if (storyExternalId) {
         await convex.mutation(api.stories.update, storyPayload);
@@ -371,6 +409,41 @@ export default function UploadFlow() {
               <button type="button" onClick={() => panelInputRef.current?.click()} className="w-full min-h-24 rounded-2xl border-2 border-dashed border-white/20 flex items-center justify-center gap-3 text-white/45 hover:text-white hover:border-lemon-muted transition-colors">
                 <FileText size={24} /> Add files as story panels
               </button>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-2 block">Chapters (optional)</label>
+              <div className="flex flex-col gap-3">
+                <input type="text" placeholder="Chapter title" value={chapterForm.title} onChange={(e) => setChapterForm(f => ({ ...f, title: e.target.value }))} className="w-full bg-black border border-white/10 rounded-xl px-3 py-2 text-white" />
+                <textarea placeholder="Chapter text (optional)" value={chapterForm.text} onChange={(e) => setChapterForm(f => ({ ...f, text: e.target.value }))} className="w-full min-h-[120px] bg-black border border-white/10 rounded-xl p-3 text-white" />
+                <input ref={chapterInputRef} type="file" multiple accept="image/*,.pdf,.txt,.doc,.docx,.epub" className="hidden" onChange={selectChapterFiles} />
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => chapterInputRef.current?.click()} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10">Add attachments</button>
+                  <div className="flex-1 text-xs text-white/40">{chapterForm.files.length} files attached</div>
+                  <button type="button" onClick={() => {
+                    if (!chapterForm.title && !chapterForm.text && chapterForm.files.length === 0) return setUploadError('Add a title, text, or files before adding a chapter.');
+                    setChapters(prev => [...prev, { title: chapterForm.title || `Chapter ${prev.length+1}`, text: chapterForm.text, files: chapterForm.files }]);
+                    setChapterForm({ title: '', text: '', files: [] });
+                    setUploadError(null);
+                  }} className="px-4 py-2 bg-lemon-muted rounded-xl text-black font-bold">Add Chapter</button>
+                </div>
+
+                {chapters.length > 0 && (
+                  <div className="space-y-2 mt-3">
+                    {chapters.map((ch, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/10">
+                        <div>
+                          <p className="font-semibold">{ch.title}</p>
+                          <p className="text-xs text-white/40">{(ch.text || '').slice(0, 120)}{ch.text && ch.text.length > 120 ? '...' : ''}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-white/40">{ch.files.length} files</span>
+                          <button type="button" onClick={() => setChapters(prev => prev.filter((_, i) => i !== idx))} className="w-9 h-9 rounded-lg bg-red-500/10 text-red-300 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={14} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             {[...existingAttachments, ...panelFiles.map((file) => ({ name: file.name, type: file.type, size: file.size, url: '' }))].length > 0 && (
               <div className="space-y-2">
