@@ -137,4 +137,11 @@ export interface Story {
   bannerImage: string;
   tags: string[];
   isOriginal: boolean;
+  status?: 'draft' | 'published' | 'hidden' | 'archived';
+  media?: {
+    chapterText?: string;
+    attachments?: Array<{ name: string; url: string; type?: string; size?: number }>;
+    monetization?: string;
+    credits?: string;
+  };
 }

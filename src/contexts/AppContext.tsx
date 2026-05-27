@@ -360,6 +360,8 @@ const storyFromDoc = (doc: any, creator: Creator): Story => ({
   bannerImage: doc.bannerImage,
   tags: doc.tags,
   isOriginal: doc.isOriginal,
+  status: doc.status,
+  media: doc.media,
 });
 
 const applicationFromDoc = (doc: any): CreatorApplication => ({

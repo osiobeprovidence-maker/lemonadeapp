@@ -1,0 +1,482 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Check, FileText, Image as ImageIcon, Loader, Plus, Trash2, Upload } from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { api } from '../../convex/_generated/api';
+import { convex } from '../lib/convex';
+import { useCurrentUser } from '../hooks/useConvex';
+import { compressImage, uploadBannerImage, uploadStoryCover, uploadStoryFile } from '../lib/imageUpload';
+
+interface StoryDocument {
+  _id: string;
+  externalId?: string;
+  creatorId: string;
+  creatorUsername: string;
+  title: string;
+  genre: string;
+  format: string;
+  synopsis: string;
+  coverImage: string;
+  bannerImage: string;
+  tags: string[];
+  isOriginal: boolean;
+  status: string;
+  episodes: number;
+  media?: {
+    chapterText?: string;
+    attachments?: Array<{ name: string; url: string; type?: string; size?: number }>;
+    monetization?: string;
+    credits?: string;
+  };
+}
+
+export default function CreatorStoryEditor() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useCurrentUser();
+  const [story, setStory] = useState<StoryDocument | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    title: '',
+    genre: 'Action',
+    format: 'Manga',
+    synopsis: '',
+    tags: ['Original'],
+    chapterText: '',
+    monetization: 'free',
+    credits: '',
+  });
+  const [episodes, setEpisodes] = useState(1);
+  const [coverPreview, setCoverPreview] = useState('');
+  const [bannerPreview, setBannerPreview] = useState('');
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [panelFiles, setPanelFiles] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<Array<{ name: string; url: string; type?: string; size?: number }>>([]);
+  const [newChapterText, setNewChapterText] = useState('');
+
+  const isCreator = Boolean(user && story && user.username === story.creatorUsername);
+
+  useEffect(() => {
+    if (!convex || !id) return;
+
+    const loadStory = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const storyDoc = await convex.query(api.stories.getByExternalId, { externalId: id });
+        if (!storyDoc) {
+          setError('Story not found.');
+          setStory(null);
+          return;
+        }
+
+        setStory(storyDoc as StoryDocument);
+        setFormData({
+          title: storyDoc.title,
+          genre: storyDoc.genre,
+          format: storyDoc.format,
+          synopsis: storyDoc.synopsis,
+          tags: storyDoc.tags || ['Original'],
+          chapterText: storyDoc.media?.chapterText || '',
+          monetization: storyDoc.media?.monetization || 'free',
+          credits: storyDoc.media?.credits || '',
+        });
+        setEpisodes(storyDoc.episodes || 1);
+        setCoverPreview(storyDoc.coverImage || '');
+        setBannerPreview(storyDoc.bannerImage || '');
+        setExistingAttachments(storyDoc.media?.attachments || []);
+      } catch (err) {
+        console.error('Failed to load story', err);
+        setError('Unable to load story. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStory();
+  }, [id]);
+
+  const selectImage = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    setFile: React.Dispatch<React.SetStateAction<File | null>>,
+    setPreview: React.Dispatch<React.SetStateAction<string>>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file.');
+      return;
+    }
+
+    setError(null);
+    setFile(file);
+    setPreview(URL.createObjectURL(file));
+  };
+
+  const selectPanelFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = event.target.files ? Array.from(event.target.files) : [];
+    const oversized = files.find((file) => file.size > 25 * 1024 * 1024);
+    if (oversized) {
+      setError(`${oversized.name} is too large. Files must be under 25MB.`);
+      return;
+    }
+    setError(null);
+    setPanelFiles((current) => [...current, ...files]);
+    event.target.value = '';
+  };
+
+  const uploadAssets = async () => {
+    if (!story || !user) return { coverImage: coverPreview, bannerImage: bannerPreview, attachments: existingAttachments };
+    const coverImage = coverFile
+      ? await uploadStoryCover(await compressImage(coverFile, 0.82), user.id)
+      : coverPreview;
+    const bannerImage = bannerFile
+      ? await uploadBannerImage(await compressImage(bannerFile, 0.86), user.id)
+      : bannerPreview;
+    const newAttachments = await Promise.all(panelFiles.map((file) => uploadStoryFile(file, user.id)));
+    return {
+      coverImage,
+      bannerImage,
+      attachments: [...existingAttachments, ...newAttachments],
+    };
+  };
+
+  const saveChanges = async () => {
+    if (!story || !convex) return;
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const assets = await uploadAssets();
+      const payload = {
+        externalId: story.externalId || story._id,
+        title: formData.title.trim() || story.title,
+        genre: formData.genre,
+        format: formData.format,
+        synopsis: formData.synopsis.trim() || story.synopsis,
+        coverImage: assets.coverImage,
+        bannerImage: assets.bannerImage,
+        tags: formData.tags,
+        isOriginal: story.isOriginal,
+        episodes,
+        media: {
+          chapterText: formData.chapterText,
+          attachments: assets.attachments,
+          monetization: formData.monetization,
+          credits: formData.credits,
+        },
+      };
+
+      await convex.mutation(api.stories.update, payload);
+      setSuccess('Story changes saved successfully.');
+      setPanelFiles([]);
+      if (story.externalId) {
+        setStory({ ...story, ...payload, media: payload.media } as StoryDocument);
+      }
+    } catch (err) {
+      console.error('Failed to save story', err);
+      setError('Unable to save changes. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addChapter = () => {
+    if (!story) return;
+    setEpisodes((current) => current + 1);
+    if (newChapterText.trim()) {
+      setFormData((current) => ({
+        ...current,
+        chapterText: `${current.chapterText.trim()}
+
+---
+
+${newChapterText.trim()}`.trim(),
+      }));
+      setNewChapterText('');
+    }
+    setSuccess('Chapter added locally. Save changes to sync it.');
+  };
+
+  const archiveStory = async () => {
+    if (!story || !convex) return;
+    const confirmed = window.confirm('Archive this story? It will be removed from active listings.');
+    if (!confirmed) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await convex.mutation(api.stories.update, {
+        externalId: story.externalId || story._id,
+        status: 'archived',
+      });
+      navigate('/studio');
+    } catch (err) {
+      console.error('Failed to archive story', err);
+      setError('Unable to archive story. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const existingStoryLink = `/story/${story?.externalId || story?._id}`;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-6">
+        <Loader size={28} className="animate-spin text-lemon-muted" />
+      </div>
+    );
+  }
+
+  if (!story) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center text-white/70">
+        <p className="text-xl font-bold">Unable to load story.</p>
+        <p className="max-w-md mt-3">{error || 'This story may no longer exist or you do not have permission to edit it.'}</p>
+        <Link to="/studio">
+          <Button className="mt-6">Back to Studio</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (!isCreator) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center text-white/70">
+        <p className="text-xl font-bold">Access denied.</p>
+        <p className="max-w-md mt-3">Only the creator who owns this story can edit it.</p>
+        <Link to="/studio">
+          <Button className="mt-6">Back to Studio</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col w-full min-h-screen p-6 md:p-12 max-w-6xl mx-auto">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10">
+        <div>
+          <h1 className="font-display font-black text-4xl mb-2">Edit Story</h1>
+          <p className="text-white/50">Manage your story, add chapters, update credits, and archive content.</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <Link to="/studio">
+            <Button variant="outline">Back to Studio</Button>
+          </Link>
+          <a href={existingStoryLink} target="_blank" rel="noreferrer">
+            <Button variant="glass">View Live Story</Button>
+          </a>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-[2fr_1fr] gap-8">
+        <div className="space-y-8">
+          <section className="bg-ink-deep border border-white/10 rounded-3xl p-6">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="font-bold text-2xl">Story details</h2>
+                <p className="text-sm text-white/40">Update title, synopsis, cover, and credits.</p>
+              </div>
+              <span className="text-xs uppercase tracking-[0.28em] text-white/40">{story.status}</span>
+            </div>
+
+            <div className="grid gap-6">
+              <div>
+                <label className="text-sm font-semibold text-white/50 mb-2 block">Title</label>
+                <input
+                  value={formData.title}
+                  onChange={(e) => setFormData((current) => ({ ...current, title: e.target.value }))}
+                  className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none focus:border-lemon-muted"
+                />
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-semibold text-white/50 mb-2 block">Format</label>
+                  <select
+                    value={formData.format}
+                    onChange={(e) => setFormData((current) => ({ ...current, format: e.target.value }))}
+                    className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+                  >
+                    <option>Manga</option>
+                    <option>Manhwa</option>
+                    <option>Webcomic</option>
+                    <option>Novel</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-white/50 mb-2 block">Genre</label>
+                  <select
+                    value={formData.genre}
+                    onChange={(e) => setFormData((current) => ({ ...current, genre: e.target.value }))}
+                    className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+                  >
+                    <option>Action</option>
+                    <option>African Fantasy</option>
+                    <option>Sci-Fi & Cyberpunk</option>
+                    <option>Romance</option>
+                    <option>Drama</option>
+                    <option>Mystery</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-white/50 mb-2 block">Synopsis</label>
+                <textarea
+                  value={formData.synopsis}
+                  onChange={(e) => setFormData((current) => ({ ...current, synopsis: e.target.value }))}
+                  rows={5}
+                  className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none resize-none focus:border-lemon-muted"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-white/50 mb-2 block">Credits</label>
+                <textarea
+                  value={formData.credits}
+                  onChange={(e) => setFormData((current) => ({ ...current, credits: e.target.value }))}
+                  rows={3}
+                  className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none resize-none focus:border-lemon-muted"
+                  placeholder="Add author, editor, illustrator credits or thank-you notes."
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="bg-ink-deep border border-white/10 rounded-3xl p-6">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="font-bold text-2xl">Chapter manager</h2>
+                <p className="text-sm text-white/40">Add new chapters and update story text or attachments.</p>
+              </div>
+              <div className="rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-white/80">{episodes} chapters</div>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="text-sm font-semibold text-white/50 mb-2 block">Current chapter text</label>
+                <textarea
+                  value={formData.chapterText}
+                  onChange={(e) => setFormData((current) => ({ ...current, chapterText: e.target.value }))}
+                  rows={8}
+                  className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none resize-none focus:border-lemon-muted"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-semibold text-white/50 mb-2 block">New chapter notes</label>
+                <textarea
+                  value={newChapterText}
+                  onChange={(e) => setNewChapterText(e.target.value)}
+                  rows={4}
+                  className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none resize-none focus:border-lemon-muted"
+                  placeholder="Add a short extra chapter note or new chapter section before saving."
+                />
+                <Button variant="outline" onClick={addChapter} disabled={saving}>
+                  <Plus size={16} className="mr-2" /> Add chapter
+                </Button>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-white/50 mb-2 block">Upload chapter files</label>
+                <input type="file" multiple hidden id="chapter-files" onChange={selectPanelFiles} accept="image/*,.pdf,.txt,.doc,.docx,.epub" />
+                <label htmlFor="chapter-files" className="w-full cursor-pointer rounded-2xl border border-dashed border-white/20 bg-black/30 px-4 py-5 text-center text-white/50 hover:border-lemon-muted hover:text-white transition-colors">
+                  <div className="flex items-center justify-center gap-2 mx-auto max-w-max">
+                    <Upload size={18} />
+                    <span>Add or replace chapter attachments</span>
+                  </div>
+                </label>
+                {existingAttachments.length + panelFiles.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    {[...existingAttachments.map((attachment, index) => ({ ...attachment, persisted: true, index })), ...panelFiles.map((file, index) => ({ name: file.name, url: '', type: file.type, size: file.size, persisted: false, index }))].map((item) => (
+                      <div key={`${item.name}-${item.index}-${item.persisted}`} className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-black/30 p-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold">{item.name}</p>
+                          <p className="text-xs text-white/40">{item.persisted ? 'Saved attachment' : 'New file'}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (item.persisted) {
+                              setExistingAttachments((current) => current.filter((_, idx) => idx !== item.index));
+                            } else {
+                              setPanelFiles((current) => current.filter((_, idx) => idx !== item.index));
+                            }
+                          }}
+                          className="rounded-lg bg-red-500/10 p-2 text-red-300 hover:bg-red-500 hover:text-white transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside className="space-y-6">
+          <section className="bg-ink-deep border border-white/10 rounded-3xl p-6 space-y-4">
+            <div>
+              <h2 className="font-bold text-xl">Visuals</h2>
+              <p className="text-sm text-white/40">Update story cover and banner artwork.</p>
+            </div>
+            <div className="grid gap-4">
+              <div>
+                <label className="text-sm font-semibold text-white/50 mb-2 block">Cover image</label>
+                <input type="file" hidden id="story-cover" accept="image/*" onChange={(event) => selectImage(event, setCoverFile, setCoverPreview)} />
+                <label htmlFor="story-cover" className="group cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-black/10 p-4 transition-colors hover:border-lemon-muted">
+                  {coverPreview ? (
+                    <img src={coverPreview} alt="Cover preview" className="h-48 w-full object-cover rounded-2xl" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="flex min-h-[200px] items-center justify-center text-white/40">
+                      <ImageIcon size={24} />
+                    </div>
+                  )}
+                </label>
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-white/50 mb-2 block">Banner image</label>
+                <input type="file" hidden id="story-banner" accept="image/*" onChange={(event) => selectImage(event, setBannerFile, setBannerPreview)} />
+                <label htmlFor="story-banner" className="group cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-black/10 p-4 transition-colors hover:border-lemon-muted">
+                  {bannerPreview ? (
+                    <img src={bannerPreview} alt="Banner preview" className="h-40 w-full object-cover rounded-2xl" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="flex min-h-[120px] items-center justify-center text-white/40">
+                      <Upload size={24} />
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section className="bg-ink-deep border border-white/10 rounded-3xl p-6 space-y-4">
+            <div>
+              <h2 className="font-bold text-xl">Actions</h2>
+              <p className="text-sm text-white/40">Save your updates or archive the story when you're done.</p>
+            </div>
+            {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>}
+            {success && <div className="rounded-2xl border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-100">{success}</div>}
+            <div className="flex flex-col gap-3">
+              <Button onClick={saveChanges} disabled={saving}>
+                {saving ? <Loader size={16} className="mr-2 animate-spin" /> : <Check size={16} className="mr-2" />} Save changes
+              </Button>
+              <Button variant="outline" className="text-red-300 border-red-500/20 hover:border-red-400 hover:text-red-100" onClick={archiveStory} disabled={saving}>
+                <Trash2 size={16} className="mr-2" /> Archive story
+              </Button>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}

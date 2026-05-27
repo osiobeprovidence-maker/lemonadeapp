@@ -17,6 +17,7 @@ import UploadFlow from './screens/UploadFlow';
 import CreatorProfile from './screens/CreatorProfile';
 import ReaderProfile from './screens/ReaderProfile';
 import CreatorPortfolio from './screens/CreatorPortfolio';
+import CreatorStoryEditor from './screens/CreatorStoryEditor';
 import Premium from './screens/Premium';
 import Wallet from './screens/Wallet';
 import SearchResults from './screens/SearchResults';
@@ -132,6 +133,11 @@ function AnimatedRoutes() {
           <Route path="/studio/upload" element={
             <StudioAccessGuard>
               <UploadFlow />
+            </StudioAccessGuard>
+          } />
+          <Route path="/studio/story/:id/edit" element={
+            <StudioAccessGuard>
+              <CreatorStoryEditor />
             </StudioAccessGuard>
           } />
           <Route path="/studio/wallet" element={

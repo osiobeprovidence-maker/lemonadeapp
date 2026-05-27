@@ -105,13 +105,13 @@ export default function CreatorDashboard() {
              <div className="flex flex-col gap-4">
                {myStories.length > 0 ? (
                  myStories.map(story => (
-                   <Link key={story.id} to={`/story/${story.id}`} className="flex items-center gap-4 bg-ink-deep p-4 rounded-2xl border border-white/5 hover:border-lemon-muted/50 transition-colors group">
+                   <Link key={story.id} to={`/studio/story/${story.id}/edit`} className="flex items-center gap-4 bg-ink-deep p-4 rounded-2xl border border-white/5 hover:border-lemon-muted/50 transition-colors group">
                      <div className="w-16 h-20 rounded-xl overflow-hidden shrink-0 bg-black">
                        <img src={story.coverImage} alt={story.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
                      </div>
                      <div className="flex-1 min-w-0">
                        <h4 className="font-display font-semibold text-lg truncate">{story.title}</h4>
-                       <p className="text-sm text-white/50 mb-2">{story.chapters?.length || 1} Published Chapters</p>
+                       <p className="text-sm text-white/50 mb-2">{story.chapters?.length || story.episodes || 1} Published Chapters</p>
                        <div className="flex gap-4 text-xs font-medium text-white/40">
                          <span className="flex items-center gap-1"><Eye size={12}/> {(story.views ?? 0).toLocaleString()}</span>
                          <span className="flex items-center gap-1"><DollarSign size={12}/> 1.2K</span>
