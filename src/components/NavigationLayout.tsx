@@ -73,7 +73,7 @@ export default function NavigationLayout() {
   const shouldHideNav = hideNavPages.includes(location.pathname) || isReaderView;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-black-core">
+    <div className="flex min-h-screen w-full bg-black-core">
       {/* Desktop Sidebar */}
       {!shouldHideNav && (
         <aside id="desktop-sidebar" className="hidden md:flex flex-col w-64 border-r border-ink-deep bg-black-core p-6 z-20">
@@ -131,7 +131,7 @@ export default function NavigationLayout() {
         </aside>
       )}
 
-      <div className="flex-1 flex flex-col relative h-full overflow-hidden">
+      <div className="flex-1 flex flex-col relative h-full">
         {/* Mobile Top Bar */}
         {!shouldHideNav && (
           <div id="mobile-top-bar" className="md:hidden sticky top-0 left-0 right-0 h-16 bg-black-core/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 z-40">
