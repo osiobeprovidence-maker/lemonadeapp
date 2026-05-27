@@ -14,6 +14,20 @@ const successfulRevenueAmount = (transaction: any) => {
   return 0;
 };
 
+const monthKey = (timestamp: string) => new Date(timestamp).toISOString().slice(0, 7);
+const shortMonth = (key: string) => {
+  const [year, month] = key.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleString("en-US", { month: "short" });
+};
+
+const lastMonthKeys = (count: number) => {
+  const nowDate = new Date();
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(nowDate.getFullYear(), nowDate.getMonth() - (count - 1 - index), 1);
+    return date.toISOString().slice(0, 7);
+  });
+};
+
 export const overview = query({
   args: {},
   handler: async (ctx) => {
@@ -45,6 +59,119 @@ export const overview = query({
       revenueNaira,
       successfulPayments: transactions.filter((transaction) => transaction.status === "success").length,
       recentActivity: activity.slice(0, 8),
+    };
+  },
+});
+
+export const analytics = query({
+  args: {},
+  handler: async (ctx) => {
+    const [users, stories, readingHistory, transactions] = await Promise.all([
+      ctx.db.query("users").collect(),
+      ctx.db.query("stories").collect(),
+      ctx.db.query("readingHistory").collect(),
+      ctx.db.query("walletTransactions").collect(),
+    ]);
+
+    const premiumUsers = users.filter((user) => user.premiumStatus === "premium");
+    const revenueNaira = transactions.reduce(
+      (total, transaction) => total + successfulRevenueAmount(transaction),
+      0,
+    );
+    const premiumRevenue = transactions
+      .filter((transaction) => transaction.type === "premium" && transaction.status === "success")
+      .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+    const walletRevenue = transactions
+      .filter((transaction) => transaction.type === "wallet_topup" && transaction.status === "success")
+      .reduce((total, transaction) => total + Number(transaction.metadata?.nairaAmount || 0), 0);
+
+    const monthCounts = new Map<string, number>();
+    for (const item of readingHistory) {
+      const key = monthKey(item.timestamp);
+      monthCounts.set(key, (monthCounts.get(key) || 0) + 1);
+    }
+
+    const monthlyReads = lastMonthKeys(12).map((key) => ({
+      month: shortMonth(key),
+      reads: monthCounts.get(key) || 0,
+    }));
+
+    const topStories = stories
+      .slice()
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 5)
+      .map((story) => ({
+        id: story._id,
+        title: story.title,
+        reads: story.views,
+        saves: story.saves,
+      }));
+
+    return {
+      userGrowth: users.length,
+      storyReads: readingHistory.length,
+      premiumSubscribers: premiumUsers.length,
+      totalRevenueNaira: revenueNaira,
+      monthlyReads,
+      topStories,
+      revenueSummary: {
+        premium: premiumRevenue,
+        wallet: walletRevenue,
+        support: transactions
+          .filter((transaction) => transaction.type === "creator_support" && transaction.status === "success")
+          .reduce((total, transaction) => total + Number(transaction.amount || 0), 0),
+      },
+      supportClicks: transactions.filter((transaction) => transaction.type === "creator_support").length,
+      conversionRate: users.length > 0 ? (premiumUsers.length / users.length) * 100 : 0,
+    };
+  },
+});
+
+export const premium = query({
+  args: {},
+  handler: async (ctx) => {
+    const [users, transactions] = await Promise.all([
+      ctx.db.query("users").collect(),
+      ctx.db.query("walletTransactions").collect(),
+    ]);
+
+    const premiumUsers = users.filter((user) => user.premiumStatus === "premium");
+    const trialUsers = users.filter((user) => user.premiumStatus === "trial");
+    const cancelledUsers = premiumUsers.filter((user) => user.premiumCancelAtPeriodEnd);
+    const premiumTransactions = transactions.filter(
+      (transaction) => transaction.type === "premium" && transaction.status === "success",
+    );
+    const premiumRevenue = premiumTransactions.reduce(
+      (total, transaction) => total + Number(transaction.amount || 0),
+      0,
+    );
+    const monthlyRevenue = premiumTransactions
+      .filter((transaction) => transaction.metadata?.billingCycle !== "yearly")
+      .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+    const yearlyRevenue = premiumTransactions
+      .filter((transaction) => transaction.metadata?.billingCycle === "yearly")
+      .reduce((total, transaction) => total + Number(transaction.amount || 0), 0);
+
+    return {
+      activeSubscribers: premiumUsers.length,
+      trialMembers: trialUsers.length,
+      conversionRate: users.length > 0 ? (premiumUsers.length / users.length) * 100 : 0,
+      churnRate: premiumUsers.length > 0 ? (cancelledUsers.length / premiumUsers.length) * 100 : 0,
+      monthlyMrr: monthlyRevenue,
+      yearlyArr: yearlyRevenue,
+      totalPremiumRevenue: premiumRevenue,
+      subscribers: premiumUsers.map((user) => ({
+        id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+        premiumPlan: user.premiumPlan,
+        premiumBillingCycle: user.premiumBillingCycle,
+        premiumStartedAt: user.premiumStartedAt,
+        premiumRenewsAt: user.premiumRenewsAt,
+        premiumCancelAtPeriodEnd: user.premiumCancelAtPeriodEnd,
+      })),
     };
   },
 });
