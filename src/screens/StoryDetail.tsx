@@ -253,31 +253,36 @@ export default function StoryDetail() {
         <div className="min-h-[400px]">
           {activeTab === 'chapters' && (
             <div className="flex flex-col gap-3">
-              
               <div className="mb-4">
-                 <LockedContentCTA price={10} />
+                <LockedContentCTA price={story.media?.monetization === 'paid' ? (story.media?.price || 10) : 0} />
               </div>
 
-              {[...Array(5)].map((_, i) => {
-                const chapterId = `c${i+1}`;
-                const isPaid = i > 2; // Mock logic: first 3 free, rest paid
-                const isEarlyAccess = i === 4;
-                const isUnlocked = !isPaid || user?.unlockedChapters.includes(`${story.id}-${chapterId}`) || user?.isPremium;
-                const price = isEarlyAccess ? 15 : 5;
+              {(() => {
+                const count = story.episodes || (story.media?.chapterText || story.media?.attachments?.length ? 1 : 0);
+                const arr = Array.from({ length: Math.max(1, count) }, (_, i) => ({
+                  index: i,
+                  chapterId: `c${i + 1}`,
+                  title: story.media?.chapterTitles?.[i] || `Chapter ${i + 1}`,
+                }));
 
-                return (
-                  <Link 
-                    key={i} 
-                    to={isUnlocked ? `/read/${story.id}/${i+1}` : '#'} 
-                    className={cn(
-                      "flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-ink-deep hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-white/10 group gap-4 relative overflow-hidden",
-                      !isUnlocked && "cursor-default"
-                    )}
-                  >
-                    {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-r from-lemon-muted/5 to-transparent pointer-events-none" />}
-                    
-                    <div className="flex items-center gap-4 relative z-10 w-full">
-                       <div className="w-12 h-12 bg-black rounded-lg overflow-hidden shrink-0 relative">
+                return arr.map(({ index, chapterId, title }) => {
+                  const isPaid = story.media?.monetization === 'paid' && (story.media?.paidAfter ?? -1) <= index;
+                  const price = story.media?.price || (isPaid ? 5 : 0);
+                  const isUnlocked = !isPaid || user?.unlockedChapters.includes(`${story.id}-${chapterId}`) || user?.isPremium;
+
+                  return (
+                    <Link
+                      key={chapterId}
+                      to={isUnlocked ? `/read/${story.id}/${index + 1}` : '#'}
+                      className={cn(
+                        "flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-ink-deep hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-white/10 group gap-4 relative overflow-hidden",
+                        !isUnlocked && "cursor-default"
+                      )}
+                    >
+                      {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-r from-lemon-muted/5 to-transparent pointer-events-none" />}
+
+                      <div className="flex items-center gap-4 relative z-10 w-full">
+                        <div className="w-12 h-12 bg-black rounded-lg overflow-hidden shrink-0 relative">
                           <img src={story.coverImage} className="w-full h-full object-cover opacity-50" referrerPolicy="no-referrer" />
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
                             {isUnlocked ? <Play size={16} className="text-white fill-white" /> : <Lock size={16} className="text-white" />}
@@ -287,23 +292,22 @@ export default function StoryDetail() {
                               <Lock size={10} className="text-lemon-muted" />
                             </div>
                           )}
-                       </div>
-                       <div className="flex-1">
-                         <div className="flex items-center gap-2 mb-0.5">
-                           <h4 className={cn("font-semibold text-base", !isUnlocked ? 'text-white/80' : 'text-white')}>Chapter {i + 1}</h4>
-                           {!isUnlocked && <span className="px-1.5 py-0.5 rounded-sm bg-lemon-muted/10 text-lemon-muted text-[8px] font-black uppercase tracking-wider">Locked</span>}
-                           {isEarlyAccess && <span className="px-1.5 py-0.5 rounded-sm bg-orange-600/20 text-orange-400 text-[8px] font-black uppercase tracking-wider">Early Access</span>}
-                           {isUnlocked && isPaid && <span className="px-1.5 py-0.5 rounded-sm bg-green-500/20 text-green-400 text-[8px] font-black uppercase tracking-wider">Unlocked</span>}
-                         </div>
-                         <p className="text-xs text-white/50">{5 - i} days ago • {story.format === 'Novel' ? '15 min read' : '50 panels'}</p>
-                       </div>
+                        </div>
 
-                       <div className="shrink-0 mt-2 sm:mt-0 ml-auto">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <h4 className={cn("font-semibold text-base", !isUnlocked ? 'text-white/80' : 'text-white')}>{title}</h4>
+                            {isPaid && <span className="px-1.5 py-0.5 rounded-sm bg-lemon-muted/10 text-lemon-muted text-[8px] font-black uppercase tracking-wider">Paid</span>}
+                          </div>
+                          <p className="text-xs text-white/50">{story.format === 'Novel' ? 'Novel • approx. read time' : 'Comic • panels'} • {story.episodes || 1} chapters</p>
+                        </div>
+
+                        <div className="shrink-0 mt-2 sm:mt-0 ml-auto">
                           {!isUnlocked ? (
                             <SensitiveActionWrapper intent="unlock chapter">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 className="border-lemon-muted/30 text-lemon-muted hover:bg-lemon-muted hover:text-black"
                                 onClick={(e) => handleUnlock(e, chapterId, price)}
                               >
@@ -311,13 +315,14 @@ export default function StoryDetail() {
                               </Button>
                             </SensitiveActionWrapper>
                           ) : (
-                            <Button size="sm" variant={i === 0 ? "primary" : "secondary"}>Read</Button>
+                            <Button size="sm" variant={index === 0 ? "primary" : "secondary"}>Read</Button>
                           )}
-                       </div>
-                    </div>
-                  </Link>
-                );
-              })}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                });
+              })()}
             </div>
           )}
 
@@ -336,31 +341,31 @@ export default function StoryDetail() {
           )}
 
           {activeTab === 'comments' && (
-             <div className="flex flex-col gap-6">
-                <SensitiveActionWrapper intent="comment">
-                  <div className="flex gap-3">
-                    <img src="https://picsum.photos/seed/user1/100" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
-                    <div className="flex-1">
-                      <input type="text" placeholder="Add a comment..." className="w-full bg-ink-deep border border-white/10 border-b-2 border-b-lemon-muted rounded-tl-xl rounded-tr-xl px-4 py-3 text-sm focus:outline-none" />
-                    </div>
-                  </div>
-                </SensitiveActionWrapper>
-                
-                <div className="flex gap-4">
-                  <img src="https://picsum.photos/seed/user2/100" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
-                  <div className="flex-1 border-b border-white/5 pb-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-sm">chidi_99</span>
-                      <span className="text-xs text-white/40">2 hours ago</span>
-                    </div>
-                    <p className="text-white/80 text-sm mb-3">Wow this series is amazing, really captured the lagos vibe!</p>
-                    <div className="flex items-center gap-4 text-white/40 text-xs font-medium">
-                      <button className="flex items-center gap-1 hover:text-white"><Heart size={14} /> 45</button>
-                      <button className="hover:text-white">Reply</button>
-                    </div>
+            <div className="flex flex-col gap-6">
+              <SensitiveActionWrapper intent="comment">
+                <div className="flex gap-3">
+                  <img src="https://picsum.photos/seed/user1/100" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
+                  <div className="flex-1">
+                    <input type="text" placeholder="Add a comment..." className="w-full bg-ink-deep border border-white/10 border-b-2 border-b-lemon-muted rounded-tl-xl rounded-tr-xl px-4 py-3 text-sm focus:outline-none" />
                   </div>
                 </div>
-             </div>
+              </SensitiveActionWrapper>
+
+              <div className="flex gap-4">
+                <img src="https://picsum.photos/seed/user2/100" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
+                <div className="flex-1 border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-sm">chidi_99</span>
+                    <span className="text-xs text-white/40">2 hours ago</span>
+                  </div>
+                  <p className="text-white/80 text-sm mb-3">Wow this series is amazing, really captured the lagos vibe!</p>
+                  <div className="flex items-center gap-4 text-white/40 text-xs font-medium">
+                    <button className="flex items-center gap-1 hover:text-white"><Heart size={14} /> 45</button>
+                    <button className="hover:text-white">Reply</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
