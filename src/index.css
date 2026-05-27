@@ -23,6 +23,45 @@
 }
 
 @layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  html[data-theme='light'] {
+    --color-black-core: #f7f3e8;
+    --color-ink-deep: #fffaf0;
+    --color-cream-soft: #15120d;
+    color-scheme: light;
+  }
+
+  html[data-accent='lemon'] {
+    --color-lemon-muted: #E8C547;
+  }
+
+  html[data-accent='purple'] {
+    --color-lemon-muted: #A78BFA;
+  }
+
+  html[data-accent='blue'] {
+    --color-lemon-muted: #60A5FA;
+  }
+
+  html[data-accent='orange'] {
+    --color-lemon-muted: #FB923C;
+  }
+
+  html[data-accent='white'] {
+    --color-lemon-muted: #F5F5F5;
+  }
+
+  html[data-density='compact'] {
+    font-size: 14.5px;
+  }
+
+  html[data-density='relaxed'] {
+    font-size: 16.75px;
+  }
+
   body {
     @apply bg-black-core text-cream-soft font-sans antialiased selection:bg-lemon-muted selection:text-black-core;
     background-color: var(--color-black-core);
@@ -30,6 +69,49 @@
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight;
+  }
+}
+
+@layer utilities {
+  html[data-theme='light'] [class*="text-white"] {
+    color: rgb(24 20 14 / 0.78) !important;
+  }
+
+  html[data-theme='light'] [class*="text-white/70"],
+  html[data-theme='light'] [class*="text-white/80"],
+  html[data-theme='light'] [class*="text-white/90"] {
+    color: rgb(24 20 14 / 0.86) !important;
+  }
+
+  html[data-theme='light'] [class*="text-white/40"],
+  html[data-theme='light'] [class*="text-white/50"],
+  html[data-theme='light'] [class*="text-white/60"] {
+    color: rgb(24 20 14 / 0.58) !important;
+  }
+
+  html[data-theme='light'] [class*="text-white/10"],
+  html[data-theme='light'] [class*="text-white/20"],
+  html[data-theme='light'] [class*="text-white/30"],
+  html[data-theme='light'] [class*="text-white/35"] {
+    color: rgb(24 20 14 / 0.38) !important;
+  }
+
+  html[data-theme='light'] [class*="bg-white/5"],
+  html[data-theme='light'] [class*="bg-white/10"] {
+    background-color: rgb(24 20 14 / 0.06) !important;
+  }
+
+  html[data-theme='light'] [class*="bg-black/20"],
+  html[data-theme='light'] [class*="bg-black/30"],
+  html[data-theme='light'] [class*="bg-black/40"] {
+    background-color: rgb(255 255 255 / 0.45) !important;
+  }
+
+  html[data-theme='light'] [class*="border-white/5"],
+  html[data-theme='light'] [class*="border-white/10"],
+  html[data-theme='light'] [class*="border-white/15"],
+  html[data-theme='light'] [class*="border-white/20"] {
+    border-color: rgb(24 20 14 / 0.12) !important;
   }
 }
 

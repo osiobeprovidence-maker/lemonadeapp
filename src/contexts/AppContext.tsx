@@ -72,7 +72,9 @@ export interface ReadingHistoryItem {
 }
 
 export interface UserSettings {
-  themeMode: 'dark' | 'light' | 'amoled';
+  themeMode: 'dark' | 'light' | 'system';
+  accentColor: 'lemon' | 'purple' | 'blue' | 'orange' | 'white';
+  displayDensity: 'compact' | 'default' | 'relaxed';
   readerFontSize: number;
   comicScrollMode: 'vertical' | 'paged';
   novelTheme: 'dark' | 'sepia' | 'light';
@@ -194,6 +196,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const DEFAULT_SETTINGS: UserSettings = {
   themeMode: 'dark',
+  accentColor: 'lemon',
+  displayDensity: 'default',
   readerFontSize: 16,
   comicScrollMode: 'vertical',
   novelTheme: 'dark',
@@ -320,7 +324,7 @@ const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppU
     readingHistory: convexUser?.readingHistory || [],
     badges: convexUser?.badges || [],
     notifications: convexUser?.notifications || [],
-    settings: convexUser?.settings || DEFAULT_SETTINGS,
+    settings: { ...DEFAULT_SETTINGS, ...(convexUser?.settings || {}) },
   };
 };
 
@@ -416,7 +420,7 @@ const appUserFromDoc = (doc: any): AppUser => ({
   readingHistory: [],
   badges: doc.badges || [],
   notifications: [],
-  settings: doc.settings || DEFAULT_SETTINGS,
+  settings: { ...DEFAULT_SETTINGS, ...(doc.settings || {}) },
   status: doc.status,
 } as AppUser);
 
@@ -1062,15 +1066,60 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Theme application
+  // Appearance application
   useEffect(() => {
-    const theme = user?.settings.themeMode || 'dark';
-    if (theme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      document.documentElement.classList.add('dark');
+    const root = document.documentElement;
+    const settings = user?.settings || DEFAULT_SETTINGS;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      const selectedTheme = settings.themeMode || 'dark';
+      const resolvedTheme = selectedTheme === 'system'
+        ? (prefersDark.matches ? 'dark' : 'light')
+        : selectedTheme;
+
+      root.classList.toggle('dark', resolvedTheme === 'dark');
+      root.dataset.theme = resolvedTheme;
+      root.dataset.themeMode = selectedTheme;
+      root.dataset.accent = settings.accentColor || 'lemon';
+      root.dataset.density = settings.displayDensity || 'default';
+    };
+
+    applyTheme();
+
+    if (settings.themeMode === 'system') {
+      prefersDark.addEventListener('change', applyTheme);
+      return () => prefersDark.removeEventListener('change', applyTheme);
     }
-  }, [user?.settings.themeMode]);
+  }, [user?.settings.themeMode, user?.settings.accentColor, user?.settings.displayDensity]);
+
+  useEffect(() => {
+    if (user?.settings) {
+      localStorage.setItem('lemonade_appearance', JSON.stringify({
+        themeMode: user.settings.themeMode,
+        accentColor: user.settings.accentColor,
+        displayDensity: user.settings.displayDensity,
+      }));
+    } else {
+      const savedAppearance = localStorage.getItem('lemonade_appearance');
+      if (!savedAppearance) return;
+
+      try {
+        const settings = JSON.parse(savedAppearance);
+        const root = document.documentElement;
+        const resolvedTheme = settings.themeMode === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : (settings.themeMode || 'dark');
+
+        root.classList.toggle('dark', resolvedTheme === 'dark');
+        root.dataset.theme = resolvedTheme;
+        root.dataset.themeMode = settings.themeMode || 'dark';
+        root.dataset.accent = settings.accentColor || 'lemon';
+        root.dataset.density = settings.displayDensity || 'default';
+      } catch (error) {
+        console.error('Failed to apply saved appearance settings', error);
+      }
+    }
+  }, [user?.settings]);
 
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
     setUser(prev => prev ? {
