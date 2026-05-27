@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ChevronLeft, MoreHorizontal, MessageCircle, Heart, Share, Settings2, Lock, ChevronRight, Flag, ArrowLeft, MoreVertical, X, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, MoreHorizontal, MessageCircle, Bookmark, Share, Settings2, Lock, ChevronRight, Flag, ArrowLeft, MoreVertical, X, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { Button } from '../components/ui/Button';
@@ -11,6 +11,7 @@ export default function Reader() {
   const navigate = useNavigate();
   const { stories, user, trackReading, unlockChapter } = useApp();
   const story = stories.find(s => s.id === id) || stories[0];
+  const commentCount = Array.isArray(story.comments) ? story.comments.length : typeof story.commentCount === 'number' ? story.commentCount : 0;
 
   const chapterId = `c${chapterNum}`;
   // Prefer chapter-level monetization if available
@@ -300,18 +301,17 @@ export default function Reader() {
                   alert('Added to your library!');
                 }}
               >
-                <Heart size={20} className={user?.savedStories.includes(story.id) ? "fill-current" : ""} />
+                <Bookmark size={20} className={user?.savedStories.includes(story.id) ? "fill-current" : ""} />
               </Button>
               <Button 
                 variant="ghost" 
                 className="text-white/60 px-4 h-11 w-auto flex gap-2 font-bold text-sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // Simple alert for now since we don't have a comment drawer in Reader yet
-                  alert('Comments coming soon to the reader!');
+                  navigate(`/story/${story.id}`);
                 }}
               >
-                <MessageCircle size={18} /> 124
+                <MessageCircle size={18} /> {commentCount}
               </Button>
               <div className="w-[1px] h-6 bg-white/10" />
               <Button variant="primary" className="flex-1 mr-1 h-11 font-black text-xs uppercase tracking-widest" onClick={() => navigate(`/read/${story.id}/${parseInt(chapterNum || '1') + 1}`)}>

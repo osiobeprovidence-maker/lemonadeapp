@@ -407,27 +407,36 @@ export default function StoryDetail() {
             <div className="flex flex-col gap-6">
               <SensitiveActionWrapper intent="comment">
                 <div className="flex gap-3">
-                  <img src="https://picsum.photos/seed/user1/100" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
+                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-sm text-white/80">You</div>
                   <div className="flex-1">
                     <input type="text" placeholder="Add a comment..." className="w-full bg-ink-deep border border-white/10 border-b-2 border-b-lemon-muted rounded-tl-xl rounded-tr-xl px-4 py-3 text-sm focus:outline-none" />
                   </div>
                 </div>
               </SensitiveActionWrapper>
 
-              <div className="flex gap-4">
-                <img src="https://picsum.photos/seed/user2/100" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
-                <div className="flex-1 border-b border-white/5 pb-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-sm">chidi_99</span>
-                    <span className="text-xs text-white/40">2 hours ago</span>
+              {Array.isArray(story.comments) && story.comments.length > 0 ? (
+                story.comments.map((comment: any, index: number) => (
+                  <div key={index} className="flex gap-4">
+                    <img src={comment.avatar || `https://picsum.photos/seed/comment-${index}/100`} className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
+                    <div className="flex-1 border-b border-white/5 pb-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-sm">{comment.author || 'Anonymous'}</span>
+                        <span className="text-xs text-white/40">{comment.time || 'Just now'}</span>
+                      </div>
+                      <p className="text-white/80 text-sm mb-3">{comment.message}</p>
+                      <div className="flex items-center gap-4 text-white/40 text-xs font-medium">
+                        <button className="flex items-center gap-1 hover:text-white"><Heart size={14} /> {comment.likes ?? 0}</button>
+                        <button className="hover:text-white">Reply</button>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-white/80 text-sm mb-3">Wow this series is amazing, really captured the lagos vibe!</p>
-                  <div className="flex items-center gap-4 text-white/40 text-xs font-medium">
-                    <button className="flex items-center gap-1 hover:text-white"><Heart size={14} /> 45</button>
-                    <button className="hover:text-white">Reply</button>
-                  </div>
+                ))
+              ) : (
+                <div className="rounded-3xl border border-white/10 bg-ink-deep p-8 text-center text-white/70">
+                  <p className="font-semibold text-sm uppercase tracking-widest text-white/40 mb-3">No comments yet</p>
+                  <p className="text-sm">Be the first to leave feedback on this story.</p>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
