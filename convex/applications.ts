@@ -20,7 +20,7 @@ const getApplicationUser = async (ctx: QueryCtx | MutationCtx, userId: string) =
 };
 
 const enrichApplication = async (ctx: QueryCtx, application: any) => {
-  const user = await getApplicationUser(ctx, application.userId);
+  let user = await getApplicationUser(ctx, application.userId);
   return {
     ...application,
     email: user?.email,
@@ -135,7 +135,7 @@ export const review = mutation({
       reviewedBy: args.adminEmail,
     });
 
-    const user = await getApplicationUser(ctx, application.userId);
+    let user = await getApplicationUser(ctx, application.userId);
 
     if (!user) {
       try {
