@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -24,20 +24,80 @@ import {
 import { useApp } from '../../contexts/AppContext';
 import type { CreatorApplication } from '../../data/types';
 import { cn } from '../../lib/utils';
+import { convex } from '../../lib/convex';
+import { api } from '../../../convex/_generated/api';
 
 export default function AdminApplications() {
-  const { applications, approveCreatorApplication, rejectCreatorApplication } = useApp();
+  const { applications, adminSession, user, approveCreatorApplication, rejectCreatorApplication } = useApp();
   const navigate = useNavigate();
   const [selectedApp, setSelectedApp] = useState<CreatorApplication | null>(null);
   const [rejectionFeedback, setRejectionFeedback] = useState('');
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [liveApplications, setLiveApplications] = useState<CreatorApplication[]>([]);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(false);
 
-  const pendingApps = applications.filter(a => a.status === 'pending');
-  const pastApps = applications.filter(a => a.status !== 'pending');
+  useEffect(() => {
+    if (!convex) return;
+
+    const loadApplications = async () => {
+      setIsLoadingApplications(true);
+      try {
+        const applicationDocs = await convex.query(api.applications.list, {});
+        setLiveApplications(applicationDocs.map((doc: any) => ({
+          id: doc._id,
+          userId: doc.userId,
+          creatorName: doc.creatorName || doc.applicantName || 'Unknown creator',
+          fullName: doc.creatorName || doc.applicantName || 'Unknown creator',
+          email: doc.email,
+          socialUsername: doc.username,
+          category: Array.isArray(doc.category) ? (doc.category[0] || 'Writer') : doc.category,
+          location: doc.location || '',
+          bio: doc.bio || '',
+          portfolioLink: doc.portfolioLink || '',
+          portfolioUrl: doc.portfolioLink || '',
+          sampleWorkUrl: doc.socialLinks?.sampleWork,
+          socialLinks: doc.socialLinks || {},
+          dropsomethingUrl: doc.dropsomethingUrl,
+          studioMode: doc.studioMode || 'solo',
+          studioName: doc.studioName || '',
+          storyIntent: doc.storyIntent || '',
+          mainGenre: doc.mainGenre || '',
+          hasStoryReady: !!doc.hasStoryReady,
+          whyLemonade: doc.whyLemonade || '',
+          submittedAt: doc.submittedAt,
+          status: doc.status,
+          adminFeedback: doc.adminFeedback,
+        })));
+      } catch (error) {
+        console.error('Failed to load live creator applications', error);
+      } finally {
+        setIsLoadingApplications(false);
+      }
+    };
+
+    loadApplications();
+  }, []);
+
+  const visibleApplications = useMemo(() => {
+    const source = liveApplications.length > 0 ? liveApplications : applications;
+    return source;
+  }, [applications, liveApplications]);
+
+  const pendingApps = visibleApplications.filter(a => a.status === 'pending');
+  const pastApps = visibleApplications.filter(a => a.status !== 'pending');
 
   const handleApprove = async (id: string) => {
     try {
-      await approveCreatorApplication(id);
+      if (convex) {
+        await convex.mutation(api.applications.review, {
+          applicationId: id as any,
+          status: 'approved',
+          adminEmail: adminSession?.email || user?.email || 'admin@lemonade.app',
+        });
+      } else {
+        await approveCreatorApplication(id);
+      }
+      setLiveApplications(prev => prev.map(app => app.id === id ? { ...app, status: 'approved' } : app));
       setSelectedApp(null);
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Unable to approve application.');
@@ -47,7 +107,17 @@ export default function AdminApplications() {
   const handleReject = async () => {
     if (selectedApp) {
       try {
-        await rejectCreatorApplication(selectedApp.id, rejectionFeedback);
+        if (convex) {
+          await convex.mutation(api.applications.review, {
+            applicationId: selectedApp.id as any,
+            status: 'rejected',
+            adminEmail: adminSession?.email || user?.email || 'admin@lemonade.app',
+            adminFeedback: rejectionFeedback,
+          });
+        } else {
+          await rejectCreatorApplication(selectedApp.id, rejectionFeedback);
+        }
+        setLiveApplications(prev => prev.map(app => app.id === selectedApp.id ? { ...app, status: 'rejected', adminFeedback: rejectionFeedback } : app));
         setShowFeedbackModal(false);
         setSelectedApp(null);
         setRejectionFeedback('');
@@ -121,6 +191,14 @@ export default function AdminApplications() {
                      </div>
                   </motion.div>
                 ))
+              ) : isLoadingApplications ? (
+                <div className="p-16 bg-ink-deep border border-dashed border-white/10 rounded-[2.5rem] text-center">
+                   <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-6 text-white/20">
+                      <Clock size={32} />
+                   </div>
+                   <h4 className="text-xl font-display font-black uppercase italic mb-2">Loading Queue</h4>
+                   <p className="text-sm text-white/40 font-bold max-w-xs mx-auto">Checking live creator applications.</p>
+                </div>
               ) : (
                 <div className="p-16 bg-ink-deep border border-dashed border-white/10 rounded-[2.5rem] text-center">
                    <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-6 text-white/20">

@@ -84,7 +84,7 @@ export default function AdminUsers() {
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden lg:block bg-ink-deep border border-white/5 rounded-[2.5rem] overflow-hidden">
+      <div className="hidden lg:block bg-ink-deep border border-white/5 rounded-[2.5rem] overflow-visible">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-white/[0.02] border-b border-white/5">

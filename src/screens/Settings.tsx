@@ -122,8 +122,12 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
 ];
 
 export default function Settings() {
-  const { logout, user } = useApp();
+  const { logout, user, adminSession } = useApp();
   const navigate = useNavigate();
+  const visibleSections = SETTINGS_SECTIONS.filter((section) => {
+    if (section.id !== 'admin') return true;
+    return adminSession?.role === 'super_admin';
+  });
 
   const handleLogout = () => {
     logout();
@@ -178,7 +182,7 @@ export default function Settings() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {SETTINGS_SECTIONS.map((section) => {
+        {visibleSections.map((section) => {
           const Icon = section.icon;
 
           return (
