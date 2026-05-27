@@ -12,6 +12,7 @@ import {
   ChevronRight, 
   Crown, 
   UserCircle,
+  Gift,
   Menu,
   X
 } from 'lucide-react';
@@ -68,6 +69,7 @@ export default function NavigationLayout() {
 
   const desktopExtra = [
     { name: 'Wallet', path: '/wallet', icon: Wallet, sensitive: true },
+    { name: 'Rewards', path: '/rewards', icon: Gift, sensitive: false },
     { name: 'Notifications', path: '/notifications', icon: Bell, sensitive: true },
     { name: 'Settings', path: '/settings', icon: SettingsIcon, sensitive: false },
   ];
