@@ -46,7 +46,7 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { adminSession, adminLogout } = useApp();
+  const { adminSession, adminLogout, allUsers } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -232,7 +232,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
            <div className="flex items-center gap-6">
               <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-white/40 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
                 <TrendingUp size={12} className="text-lemon-muted" />
-                Live: {Math.floor(Math.random() * 100) + 50} Online
+                Users: {allUsers.length} Registered
               </div>
               <div className="w-[1px] h-6 bg-white/10" />
               <div className="flex items-center gap-3">

@@ -381,6 +381,63 @@ const applicationFromDoc = (doc: any): CreatorApplication => ({
   adminFeedback: doc.adminFeedback,
 });
 
+const appUserFromDoc = (doc: any): AppUser => ({
+  id: doc._id,
+  email: doc.email,
+  name: doc.name,
+  username: doc.username,
+  usernameUpdatedAt: doc.usernameUpdatedAt,
+  usernameChangeLockedAt: doc.usernameChangeLockedAt,
+  bio: doc.bio,
+  avatar: doc.avatar || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(doc.name || doc.username || 'User')}`,
+  banner: doc.banner,
+  role: doc.role,
+  creatorAccessStatus: doc.creatorAccessStatus,
+  isAuthenticated: true,
+  isGuest: false,
+  isPremium: doc.premiumStatus === 'premium',
+  premiumStatus: doc.premiumStatus || 'free',
+  premiumPlan: doc.premiumPlan,
+  premiumBillingCycle: doc.premiumBillingCycle,
+  premiumStartedAt: doc.premiumStartedAt,
+  premiumRenewsAt: doc.premiumRenewsAt,
+  premiumCancelledAt: doc.premiumCancelledAt,
+  premiumCancelAtPeriodEnd: doc.premiumCancelAtPeriodEnd,
+  premiumProvider: doc.premiumProvider,
+  premiumReference: doc.premiumReference,
+  walletBalance: doc.walletBalance || 0,
+  followedCreators: doc.followedCreators || [],
+  savedStories: doc.savedStories || [],
+  unlockedChapters: doc.unlockedChapters || [],
+  unlockHistory: [],
+  supportHistory: [],
+  topupHistory: [],
+  readingHistory: [],
+  badges: doc.badges || [],
+  notifications: [],
+  settings: doc.settings || DEFAULT_SETTINGS,
+  status: doc.status,
+} as AppUser);
+
+const reportFromDoc = (doc: any): ContentReport => ({
+  id: doc._id,
+  type: doc.type,
+  targetId: doc.targetId,
+  targetName: doc.targetName,
+  reportedBy: doc.reportedBy,
+  reason: doc.reason,
+  message: doc.message,
+  date: doc.createdAt,
+  status: doc.status,
+});
+
+const activityFromDoc = (doc: any): AdminActivity => ({
+  id: doc._id,
+  action: doc.action,
+  adminEmail: doc.adminEmail,
+  timestamp: doc.timestamp,
+});
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [liveCreators, setLiveCreators] = useState<Record<string, Creator>>({});
@@ -400,10 +457,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const loadLiveContent = async () => {
       try {
-        let [creatorDocs, storyDocs, applicationDocs, platformSettings] = await Promise.all([
+        let [creatorDocs, storyDocs, applicationDocs, userDocs, reportDocs, activityDocs, moderatorDocs, platformSettings] = await Promise.all([
           convex.query(api.creators.list, {}),
           convex.query(api.stories.listPublished, {}),
           convex.query(api.applications.list, {}),
+          convex.query(api.users.list, {}),
+          convex.query(api.admin.listReports, {}),
+          convex.query(api.admin.listActivity, {}),
+          convex.query(api.admin.listModerators, {}),
           convex.query(api.settings.get, {}),
         ]);
 
@@ -439,6 +500,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setLiveStories(liveStories);
         }
         setApplications(applicationDocs.map(applicationFromDoc));
+        setAllUsers(userDocs.map(appUserFromDoc));
+        setReports(reportDocs.map(reportFromDoc));
+        setActivityLog(activityDocs.map(activityFromDoc));
+        setModerators(moderatorDocs.map((doc: any) => ({
+          id: doc._id,
+          name: doc.name,
+          email: doc.email,
+          role: doc.role,
+          permissions: doc.permissions || [],
+          status: doc.status,
+          lastActive: doc.lastActive,
+        })));
       } catch (error) {
         console.error('Failed to load live Convex content; using bundled fallback.', error);
       }

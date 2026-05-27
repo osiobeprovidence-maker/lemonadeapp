@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
@@ -11,28 +11,90 @@ import {
   ExternalLink, 
   Star,
   Activity,
-  ArrowUpRight,
-  ArrowDownRight,
   Plus,
   Download
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { api } from '../../../convex/_generated/api';
+import { convex } from '../../lib/convex';
+
+type OverviewStats = {
+  totalUsers: number;
+  activeUsers: number;
+  totalStories: number;
+  publishedStories: number;
+  pendingApplications: number;
+  totalApplications: number;
+  openReports: number;
+  totalReports: number;
+  totalCreators: number;
+  revenueNaira: number;
+  successfulPayments: number;
+  recentActivity: Array<{ _id?: string; id?: string; action: string; adminEmail: string; timestamp: string }>;
+};
 
 export default function AdminOverview() {
-  const { allUsers, applications, reports, activityLog, stories } = useApp();
+  const { allUsers, applications, reports, activityLog, stories, creators } = useApp();
   const navigate = useNavigate();
+  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null);
+
+  useEffect(() => {
+    if (!convex) return;
+
+    const loadOverview = async () => {
+      try {
+        const stats = await convex.query(api.admin.overview, {});
+        setOverviewStats(stats);
+      } catch (error) {
+        console.error('Failed to load admin overview stats', error);
+      }
+    };
+
+    loadOverview();
+  }, []);
+
+  const revenueNaira = overviewStats?.revenueNaira ?? 0;
+  const formattedRevenue = new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(revenueNaira);
+
+  const recentActivity = overviewStats?.recentActivity?.length
+    ? overviewStats.recentActivity.map((log) => ({
+      id: log._id || log.id || `${log.action}-${log.timestamp}`,
+      action: log.action,
+      adminEmail: log.adminEmail,
+      timestamp: log.timestamp,
+    }))
+    : activityLog;
 
   const handleExport = () => {
-    alert('Mock Report Exported as CSV');
+    const rows = [
+      ['Metric', 'Value'],
+      ['Total Users', overviewStats?.totalUsers ?? allUsers.length],
+      ['Total Stories', overviewStats?.totalStories ?? stories.length],
+      ['Pending Applications', overviewStats?.pendingApplications ?? applications.filter((app) => app.status === 'pending').length],
+      ['Open Reports', overviewStats?.openReports ?? reports.filter((report) => report.status === 'open' || report.status === 'reviewing').length],
+      ['Creators', overviewStats?.totalCreators ?? Object.keys(creators).length],
+      ['Revenue NGN', revenueNaira],
+    ];
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `lemonade-admin-overview-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const stats = [
-    { label: 'Total Users', value: allUsers.length + 1250, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10', trend: '+12%', path: '/admin/users' },
-    { label: 'Total Stories', value: stories.length + 42, icon: Star, color: 'text-lemon-muted', bg: 'bg-lemon-muted/10', trend: '+5%', path: '/admin/stories' },
-    { label: 'Applications', value: applications.length, icon: FileText, color: 'text-orange-500', bg: 'bg-orange-500/10', trend: 'Pending', path: '/admin/applications' },
-    { label: 'Reports', value: reports.length, icon: Flag, color: 'text-red-500', bg: 'bg-red-500/10', trend: '-2%', path: '/admin/reports' },
-    { label: 'Creators', value: 84, icon: PenTool, color: 'text-purple-500', bg: 'bg-purple-500/10', trend: '+18%', path: '/admin/creators' },
-    { label: 'Revenue', value: '₦4.2M', icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10', trend: '+24%', path: '/admin/payments' },
+    { label: 'Total Users', value: overviewStats?.totalUsers ?? allUsers.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10', trend: `${overviewStats?.activeUsers ?? allUsers.filter((user) => (user as any).status !== 'suspended').length} active`, path: '/admin/users' },
+    { label: 'Total Stories', value: overviewStats?.totalStories ?? stories.length, icon: Star, color: 'text-lemon-muted', bg: 'bg-lemon-muted/10', trend: `${overviewStats?.publishedStories ?? stories.length} published`, path: '/admin/stories' },
+    { label: 'Applications', value: overviewStats?.totalApplications ?? applications.length, icon: FileText, color: 'text-orange-500', bg: 'bg-orange-500/10', trend: `${overviewStats?.pendingApplications ?? applications.filter((app) => app.status === 'pending').length} pending`, path: '/admin/applications' },
+    { label: 'Reports', value: overviewStats?.totalReports ?? reports.length, icon: Flag, color: 'text-red-500', bg: 'bg-red-500/10', trend: `${overviewStats?.openReports ?? reports.filter((report) => report.status === 'open' || report.status === 'reviewing').length} open`, path: '/admin/reports' },
+    { label: 'Creators', value: overviewStats?.totalCreators ?? Object.keys(creators).length, icon: PenTool, color: 'text-purple-500', bg: 'bg-purple-500/10', trend: 'live', path: '/admin/creators' },
+    { label: 'Revenue', value: formattedRevenue, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10', trend: `${overviewStats?.successfulPayments ?? 0} paid`, path: '/admin/payments' },
   ];
 
   return (
@@ -90,10 +152,8 @@ export default function AdminOverview() {
                 <h3 className="text-2xl font-display font-black">{stat.value}</h3>
                 <div className={cn(
                   "flex items-center gap-0.5 text-xs font-black",
-                  stat.trend.startsWith('+') ? "text-green-500" : stat.trend === 'Pending' ? "text-orange-500" : "text-red-500"
+                  stat.trend.includes('pending') || stat.trend.includes('open') ? "text-orange-500" : "text-green-500"
                 )}>
-                  {stat.trend.startsWith('+') && <ArrowUpRight size={14} />}
-                  {stat.trend.startsWith('-') && <ArrowDownRight size={14} />}
                   {stat.trend}
                 </div>
               </div>
@@ -119,8 +179,8 @@ export default function AdminOverview() {
                  <span className="text-xs font-black uppercase tracking-widest text-white/40">Timestamp</span>
               </div>
               <div className="divide-y divide-white/5">
-                 {activityLog.length > 0 ? (
-                   activityLog.slice(0, 8).map((log) => (
+                 {recentActivity.length > 0 ? (
+                   recentActivity.slice(0, 8).map((log) => (
                      <Link 
                        to={log.action.includes('User') ? `/admin/users/${log.adminEmail.split('@')[0]}` : '/admin/activity'}
                        key={log.id} 
