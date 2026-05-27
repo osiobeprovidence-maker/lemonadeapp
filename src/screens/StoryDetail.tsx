@@ -172,19 +172,33 @@ export default function StoryDetail() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#0A0A0A] text-white">
+    <div className="relative isolate min-h-screen overflow-x-hidden bg-[#0A0A0A] text-white">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] overflow-hidden">
+        <div className="absolute left-1/2 top-10 h-72 w-72 -translate-x-1/2 rounded-full bg-lemon-muted/10 blur-3xl story-ambient-glow" />
+        <div className="absolute left-1/2 top-2 h-[340px] w-[min(92vw,720px)] -translate-x-1/2 bg-[radial-gradient(circle_at_center,rgba(232,197,71,0.12),rgba(10,10,10,0)_68%)]" />
+        <div className="absolute inset-x-0 top-0 h-44 bg-[linear-gradient(180deg,rgba(232,197,71,0.07),rgba(10,10,10,0))]" />
+      </div>
+
       <main className="mx-auto flex w-full max-w-[430px] flex-col px-4 pb-[calc(28px+env(safe-area-inset-bottom))] pt-5 sm:max-w-2xl sm:px-6 lg:max-w-4xl">
         <section className="flex flex-col items-center">
-          <div className="relative w-[168px] overflow-hidden rounded-[20px] bg-[#141414] shadow-[0_18px_55px_rgba(232,197,71,0.16)] ring-1 ring-white/10 sm:w-[210px]">
-            <img src={story.coverImage} alt={story.title} className="aspect-[3/4] w-full object-cover" referrerPolicy="no-referrer" />
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.55, ease: 'easeOut' }}
+            className="story-cover-float relative w-[168px] rounded-[20px] sm:w-[210px]"
+          >
+            <div className="absolute -inset-3 rounded-[28px] bg-lemon-muted/12 blur-2xl" aria-hidden="true" />
+            <div className="story-cover-shine relative overflow-hidden rounded-[20px] bg-[#141414] shadow-[0_22px_75px_rgba(232,197,71,0.20)] ring-1 ring-white/12">
+              <img src={story.coverImage} alt={story.title} className="aspect-[3/4] w-full object-cover" referrerPolicy="no-referrer" />
+            </div>
+          </motion.div>
 
           <div className="mt-5 flex max-w-full flex-wrap justify-center gap-2">
             <FormatBadge format={story.format} className="bg-[#1A1A1A] text-white ring-1 ring-white/10" />
             <GenreBadge genre={story.genre} className="ring-1 ring-white/10" />
           </div>
 
-          <h1 className="mt-3 max-w-[340px] text-center font-display text-[30px] font-black leading-[1.02] tracking-tight sm:max-w-xl sm:text-5xl">
+          <h1 className="mt-3 max-w-[340px] text-center font-display text-[30px] font-black leading-[1.02] tracking-tight text-white drop-shadow-[0_8px_28px_rgba(0,0,0,0.45)] sm:max-w-xl sm:text-5xl">
             {story.title}
           </h1>
 
@@ -194,7 +208,7 @@ export default function StoryDetail() {
           </Link>
         </section>
 
-        <section className="mt-6 rounded-3xl border border-white/8 bg-[#141414] p-2 shadow-xl shadow-black/20">
+        <section className="mt-6 rounded-3xl border border-white/8 bg-[#141414]/95 p-2 shadow-[0_18px_70px_rgba(0,0,0,0.35)] backdrop-blur">
           <div className="grid grid-cols-2 gap-1 sm:grid-cols-4 sm:divide-x sm:divide-white/8">
             <Stat icon={<Star size={13} className="text-lemon-muted" />} label="Rating" value={String(story.rating)} />
             <Stat icon={<Eye size={13} />} label="Views" value={`${(story.views / 1000).toFixed(0)}k`} />
@@ -204,12 +218,14 @@ export default function StoryDetail() {
         </section>
 
         <section className="mt-5 flex flex-col items-center gap-3">
-          <Link to={`/read/${story.id}/1`} className="w-full max-w-[320px]">
-            <Button size="md" className="h-11 w-full gap-2 rounded-2xl px-5 text-[13px] font-black shadow-lg shadow-lemon-muted/10">
+          <motion.div whileTap={{ scale: 0.98 }} className="story-cta-glow w-full max-w-[320px] rounded-2xl">
+          <Link to={`/read/${story.id}/1`} className="block w-full">
+            <Button size="md" className="h-11 w-full gap-2 rounded-2xl px-5 text-[13px] font-black shadow-lg shadow-lemon-muted/20">
               <Play size={15} fill="currentColor" />
               Read Chapter 1
             </Button>
           </Link>
+          </motion.div>
 
           <div className="flex items-center justify-center gap-2">
             <SensitiveActionWrapper intent="save story" payload={{ storyId: story.id }} onClick={toggleSave}>
