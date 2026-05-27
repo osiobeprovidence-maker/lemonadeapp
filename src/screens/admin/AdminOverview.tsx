@@ -18,6 +18,8 @@ import { useApp } from '../../contexts/AppContext';
 import { api } from '../../../convex/_generated/api';
 import { convex } from '../../lib/convex';
 
+const ADMIN_OVERVIEW_REFRESH_MS = 10000;
+
 type OverviewStats = {
   totalUsers: number;
   activeUsers: number;
@@ -40,17 +42,24 @@ export default function AdminOverview() {
 
   useEffect(() => {
     if (!convex) return;
+    let isMounted = true;
 
     const loadOverview = async () => {
       try {
         const stats = await convex.query(api.admin.overview, {});
-        setOverviewStats(stats);
+        if (isMounted) setOverviewStats(stats);
       } catch (error) {
         console.error('Failed to load admin overview stats', error);
       }
     };
 
     loadOverview();
+    const interval = window.setInterval(loadOverview, ADMIN_OVERVIEW_REFRESH_MS);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
   const revenueNaira = overviewStats?.revenueNaira ?? 0;

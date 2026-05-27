@@ -73,6 +73,7 @@ import CreatorApplicationStatus from './screens/CreatorApplicationStatus';
 import StudioAccessGuard from './components/StudioAccessGuard';
 
 import NavigationLayout from './components/NavigationLayout';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 import { AppProvider } from './contexts/AppContext';
 
@@ -332,6 +333,7 @@ export default function App() {
     <Router>
       <AppProvider>
         <AnimatedRoutes />
+        <PWAInstallPrompt />
       </AppProvider>
     </Router>
   );

@@ -55,7 +55,8 @@ export const useSearchStories = (query: string, genre?: string) => {
 
 export const useStoryById = (storyId: string) => {
   const { stories } = useApp();
-  return stories.find((story) => story.id === storyId) || stories[0] || null;
+  if (!storyId) return null;
+  return stories.find((story) => story.id === storyId) || null;
 };
 
 export const usePaymentHistory = (_userId: string) => [];
@@ -186,6 +187,12 @@ export const useUpdateStory = () => {
       ? { externalId: args.storyId, ...args.updates }
       : args;
     return await requireConvex().mutation(api.stories.update, normalizedArgs);
+  }, []);
+};
+
+export const useIncrementStoryView = () => {
+  return useCallback(async (storyId: string) => {
+    return await requireConvex().mutation(api.stories.incrementViews, { externalId: storyId });
   }, []);
 };
 

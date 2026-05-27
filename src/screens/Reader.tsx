@@ -69,7 +69,7 @@ export default function Reader() {
   }
 
   return (
-    <div className={cn("min-h-screen transition-colors duration-300", theme === 'dark' ? "bg-black-core text-cream-soft" : "bg-[#f5f5f0] text-black")}>
+    <div className={cn("min-h-screen transition-colors duration-300 overflow-x-hidden", theme === 'dark' ? "bg-[#0A0A0A] text-cream-soft" : "bg-[#f5f5f0] text-black")}>
       
       {/* Top Header */}
       <AnimatePresence>

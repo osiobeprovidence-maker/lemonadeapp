@@ -100,7 +100,7 @@ export function SupportButton({ creator, className, size = 'md', fullWidth = fal
         )}
       >
         <Coffee size={size === 'sm' ? 14 : 18} className={cn(showLabel && "mr-2")} />
-        {showLabel && "Support Creator"}
+        {showLabel && "Support"}
         {showLabel && <ExternalLink size={12} className="ml-2 opacity-50" />}
       </Button>
     </SensitiveActionWrapper>

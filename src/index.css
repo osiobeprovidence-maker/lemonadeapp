@@ -4,8 +4,8 @@
 @import "tailwindcss";
 
 @theme {
-  --color-black-core: #0D0D0D;
-  --color-ink-deep: #1A1A1A;
+  --color-black-core: #0A0A0A;
+  --color-ink-deep: #111111;
   --color-cream-soft: #F6F2E9;
   --color-lemon-muted: #E8C547;
   
@@ -66,6 +66,8 @@
     @apply bg-black-core text-cream-soft font-sans antialiased selection:bg-lemon-muted selection:text-black-core;
     background-color: var(--color-black-core);
     color: var(--color-cream-soft);
+    overflow-x: hidden;
+    min-height: 100vh;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight;

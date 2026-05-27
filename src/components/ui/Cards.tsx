@@ -7,7 +7,7 @@ import { Button } from './Button';
 
 export function FormatBadge({ format, className }: { format: string, className?: string }) {
   return (
-    <div className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white text-black", className)}>
+    <div className={cn("px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-white text-black", className)}>
       {format}
     </div>
   );
@@ -130,7 +130,7 @@ export function GenreBadge({ genre, className }: { genre: Genre, className?: str
   };
 
   return (
-    <div className={cn("px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white", colorMap[genre], className)}>
+    <div className={cn("px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white", colorMap[genre], className)}>
       {genre}
     </div>
   );
@@ -138,19 +138,19 @@ export function GenreBadge({ genre, className }: { genre: Genre, className?: str
 
 export function LockedContentCTA({ price }: { price?: number }) {
   return (
-    <div className="w-full flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-gradient-to-r from-ink-deep to-black border border-lemon-muted/20 rounded-xl mt-4">
-      <div className="flex items-center gap-3 w-full md:w-auto text-center md:text-left">
-        <div className="w-10 h-10 rounded-full bg-lemon-muted/10 text-lemon-muted flex items-center justify-center shrink-0 mx-auto md:mx-0">
-          <Lock size={18} />
+    <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 bg-gradient-to-r from-[#171717] to-[#101010] border border-lemon-muted/20 rounded-2xl">
+      <div className="flex items-center gap-3 w-full sm:w-auto text-left">
+        <div className="w-9 h-9 rounded-full bg-lemon-muted/10 text-lemon-muted flex items-center justify-center shrink-0">
+          <Lock size={16} />
         </div>
         <div>
           <h4 className="font-bold text-sm text-white">This chapter is locked</h4>
           <p className="text-xs text-white/50">Unlock directly or upgrade to Premium to read.</p>
         </div>
       </div>
-      <div className="flex w-full md:w-auto items-center justify-center md:justify-end gap-3">
+      <div className="flex w-full sm:w-auto items-center justify-center sm:justify-end gap-3">
         {price && <span className="text-xs font-bold text-white/60">{price} Coins</span>}
-        <Link to="/premium" className="w-full md:w-auto">
+        <Link to="/premium" className="w-full sm:w-auto">
           <Button size="sm" className="w-full">Upgrade to Premium</Button>
         </Link>
       </div>
@@ -217,8 +217,8 @@ export function PremiumPlanCard({
 
 export function StoryCard({ story, className }: { story: Story, className?: string, key?: React.Key }) {
   return (
-    <Link to={`/story/${story.id}`} className={cn("group flex flex-col gap-3", className)}>
-      <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-ink-deep">
+    <Link to={`/story/${story.id}`} className={cn("group flex flex-col gap-2.5", className)}>
+      <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#171717] shadow-lg shadow-black/20">
         <img 
           src={story.coverImage} 
           alt={story.title}
@@ -236,8 +236,8 @@ export function StoryCard({ story, className }: { story: Story, className?: stri
           <FormatBadge format={story.format} />
         </div>
 
-        <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end opacity-0 transform translate-y-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
-          <div className="flex bg-black/60 backdrop-blur-md rounded-full px-2 py-1 gap-3 text-xs w-full justify-center">
+        <div className="absolute bottom-2.5 left-2.5 right-2.5 flex justify-between items-end opacity-100 sm:opacity-0 transform sm:translate-y-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+          <div className="flex bg-black/65 backdrop-blur-md rounded-full px-2 py-1 gap-2 text-[10px] sm:text-xs w-full justify-center">
             <span className="flex items-center gap-1 font-medium"><Heart size={12} className="text-white/70" /> {(story.saves / 1000).toFixed(1)}k</span>
             <span className="flex items-center gap-1 font-medium"><Eye size={12} className="text-white/70" /> {(story.views / 1000).toFixed(1)}k</span>
           </div>
@@ -245,8 +245,8 @@ export function StoryCard({ story, className }: { story: Story, className?: stri
       </div>
       
       <div className="flex flex-col gap-0.5">
-        <h3 className="font-display font-semibold text-lg leading-tight group-hover:text-lemon-muted transition-colors">{story.title}</h3>
-        <p className="text-white/60 font-medium text-sm">{story.creator.name}</p>
+        <h3 className="font-display font-semibold text-[15px] sm:text-lg leading-tight group-hover:text-lemon-muted transition-colors line-clamp-2">{story.title}</h3>
+        <p className="text-white/55 font-medium text-xs sm:text-sm truncate">{story.creator.name}</p>
       </div>
     </Link>
   );

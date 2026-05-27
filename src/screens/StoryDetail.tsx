@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, Heart, Share, Play, Eye, MoreHorizontal, Coffee, Lock, ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check, Coffee, Eye, Heart, Lock, MessageCircle, Play, Send, Star } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { FormatBadge, GenreBadge, LockedContentCTA, SupportStatusBadge } from '../components/ui/Cards';
 import { FollowButton, SupportButton } from '../components/InteractionButtons';
 import { SensitiveActionWrapper } from '../components/SensitiveActionWrapper';
 import { cn } from '../lib/utils';
-import { useCurrentUser, useStoryById, useSaveStory, useUpdateStory, useUnlockChapter } from '../hooks/useConvex';
-import { useEffect } from 'react';
+import { useCurrentUser, useIncrementStoryView, useSaveStory, useStoryById, useUnlockChapter } from '../hooks/useConvex';
+
+type ChapterItem = {
+  chapterId: string;
+  index: number;
+  title: string;
+  isPaid: boolean;
+  price: number;
+};
+
+type StoryComment = {
+  author?: string;
+  avatar?: string;
+  message: string;
+  time?: string;
+  likes?: number;
+};
+
+const tabLabels = ['chapters', 'about', 'comments'] as const;
 
 export default function StoryDetail() {
   const { id } = useParams();
@@ -16,17 +33,89 @@ export default function StoryDetail() {
   const story = useStoryById(id ?? '');
   const unlockChapter = useUnlockChapter();
   const saveMutations = useSaveStory();
-  const updateStory = useUpdateStory();
+  const incrementStoryView = useIncrementStoryView();
   const navigate = useNavigate();
-  const [hasIncremented, setHasIncremented] = React.useState(false);
-  const [activeTab, setActiveTab] = useState<'chapters' | 'about' | 'comments'>('chapters');
+  const [hasIncremented, setHasIncremented] = useState(false);
+  const [activeTab, setActiveTab] = useState<(typeof tabLabels)[number]>('chapters');
+  const [commentDraft, setCommentDraft] = useState('');
+  const [localComments, setLocalComments] = useState<StoryComment[]>([]);
 
-  const isSaved = !!(user?.savedStories || []).includes(story?.id);
+  const chapters = useMemo<ChapterItem[]>(() => {
+    if (!story) return [];
+    const chaptersFromMedia = story.media?.chapters;
 
-  const toggleSave = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!user || !story) return;
+    if (Array.isArray(chaptersFromMedia) && chaptersFromMedia.length > 0) {
+      return chaptersFromMedia.map((chapter: any, index: number) => {
+        const isPaid = chapter.monetization === 'paid' || (story.media?.monetization === 'paid' && (chapter.price ?? story.media?.price));
+        return {
+          chapterId: `c${index + 1}`,
+          index,
+          title: chapter.title || `Chapter ${index + 1}`,
+          isPaid,
+          price: chapter.price || story.media?.price || (isPaid ? 5 : 0),
+        };
+      });
+    }
+
+    const count = story.episodes || (story.media?.chapterText || story.media?.attachments?.length ? 1 : 0);
+    return Array.from({ length: Math.max(1, count) }, (_, index) => {
+      const isPaid = story.media?.monetization === 'paid' && (story.media?.paidAfter ?? -1) <= index;
+      return {
+        chapterId: `c${index + 1}`,
+        index,
+        title: story.media?.chapterTitles?.[index] || `Chapter ${index + 1}`,
+        isPaid,
+        price: story.media?.price || (isPaid ? 5 : 0),
+      };
+    });
+  }, [story]);
+
+  useEffect(() => {
+    setLocalComments(Array.isArray((story as any)?.comments) ? (story as any).comments : []);
+    setCommentDraft('');
+    setActiveTab('chapters');
+    setHasIncremented(false);
+  }, [story?.id]);
+
+  useEffect(() => {
+    if (!story || hasIncremented) return;
+    try {
+      void incrementStoryView(story.id);
+      setHasIncremented(true);
+    } catch (err) {
+      // ignore errors silently
+    }
+  }, [story, hasIncremented, incrementStoryView]);
+
+  if (!story) {
+    return (
+      <div className="min-h-screen overflow-x-hidden bg-[#0A0A0A] text-white">
+        <main className="mx-auto flex w-full max-w-[430px] flex-col items-center px-4 pb-[calc(28px+env(safe-area-inset-bottom))] pt-8">
+          <div className="h-[224px] w-[168px] animate-pulse rounded-[20px] bg-[#141414] shadow-[0_18px_55px_rgba(232,197,71,0.10)]" />
+          <div className="mt-5 flex gap-2">
+            <div className="h-5 w-16 animate-pulse rounded-full bg-[#1A1A1A]" />
+            <div className="h-5 w-24 animate-pulse rounded-full bg-[#1A1A1A]" />
+          </div>
+          <div className="mt-4 h-8 w-56 animate-pulse rounded-xl bg-[#141414]" />
+          <div className="mt-6 grid w-full grid-cols-2 gap-1 rounded-3xl border border-white/8 bg-[#141414] p-2">
+            {[0, 1, 2, 3].map((item) => (
+              <div key={item} className="h-14 animate-pulse rounded-2xl bg-[#1A1A1A]" />
+            ))}
+          </div>
+          <div className="mt-5 h-11 w-full max-w-[320px] animate-pulse rounded-2xl bg-lemon-muted/30" />
+          <p className="mt-5 max-w-xs text-center text-sm font-semibold text-white/45">Loading story details...</p>
+        </main>
+      </div>
+    );
+  }
+
+  const isSaved = !!(user?.savedStories || []).includes(story.id);
+
+  const toggleSave = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!user) return;
+
     if (isSaved) {
       saveMutations.unsave(user.id, story.id);
     } else {
@@ -34,11 +123,11 @@ export default function StoryDetail() {
     }
   };
 
-  const handleUnlock = async (e: React.MouseEvent, chapterId: string, price: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!user || !story) {
+  const handleUnlock = async (event: React.MouseEvent, chapterId: string, price: number) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!user) {
       navigate('/auth');
       return;
     }
@@ -54,8 +143,8 @@ export default function StoryDetail() {
       await unlockChapter({
         firebaseUid: firebaseUid || user.id,
         storyId: story.id,
-        chapterId: chapterId,
-        price: price
+        chapterId,
+        price,
       });
       alert('Chapter unlocked successfully!');
     } catch (err) {
@@ -64,383 +153,247 @@ export default function StoryDetail() {
     }
   };
 
-  useEffect(() => {
-    if (!story || hasIncremented) return;
-    try {
-      updateStory({ storyId: story.id, updates: { views: (story.views || 0) + 1 } });
-      setHasIncremented(true);
-    } catch (err) {
-      // ignore errors silently
-    }
-  }, [story, hasIncremented, updateStory]);
+  const submitComment = (event: React.FormEvent) => {
+    event.preventDefault();
+    const message = commentDraft.trim();
+    if (!message) return;
+
+    setLocalComments((comments) => [
+      {
+        author: user?.name || 'Guest Reader',
+        avatar: user?.avatar,
+        message,
+        time: 'Just now',
+        likes: 0,
+      },
+      ...comments,
+    ]);
+    setCommentDraft('');
+  };
 
   return (
-    <div className="relative w-full min-h-screen bg-black-core">
-      {/* Cinematic Banner */}
-      <div className="relative w-full h-[50vh] min-h-[400px]">
-         <div className="absolute inset-0 image-mask z-10">
-           <img src={story.bannerImage} alt={story.title} className="w-full h-full object-cover blur-sm opacity-50" referrerPolicy="no-referrer" />
-           <div className="absolute inset-0 bg-black/40" />
-         </div>
+    <div className="min-h-screen overflow-x-hidden bg-[#0A0A0A] text-white">
+      <main className="mx-auto flex w-full max-w-[430px] flex-col px-4 pb-[calc(28px+env(safe-area-inset-bottom))] pt-5 sm:max-w-2xl sm:px-6 lg:max-w-4xl">
+        <section className="flex flex-col items-center">
+          <div className="relative w-[168px] overflow-hidden rounded-[20px] bg-[#141414] shadow-[0_18px_55px_rgba(232,197,71,0.16)] ring-1 ring-white/10 sm:w-[210px]">
+            <img src={story.coverImage} alt={story.title} className="aspect-[3/4] w-full object-cover" referrerPolicy="no-referrer" />
+          </div>
 
-         {/* Content overlay */}
-         <div className="absolute inset-0 z-20 p-6 md:p-12 flex flex-col md:flex-row gap-6 md:gap-10 mt-16 md:mt-24">
-            <div className="w-32 md:w-56 shrink-0 aspect-[3/4] rounded-xl overflow-hidden self-center md:self-start shadow-2xl ring-1 ring-white/10">
-              <img src={story.coverImage} alt={story.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            </div>
+          <div className="mt-5 flex max-w-full flex-wrap justify-center gap-2">
+            <FormatBadge format={story.format} className="bg-[#1A1A1A] text-white ring-1 ring-white/10" />
+            <GenreBadge genre={story.genre} className="ring-1 ring-white/10" />
+          </div>
 
-            <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left mt-4 md:mt-0 max-w-2xl">
-              <div className="flex gap-2 mb-3">
-                <FormatBadge format={story.format} />
-                <GenreBadge genre={story.genre} />
-              </div>
+          <h1 className="mt-3 max-w-[340px] text-center font-display text-[30px] font-black leading-[1.02] tracking-tight sm:max-w-xl sm:text-5xl">
+            {story.title}
+          </h1>
 
-              <h1 className="font-display font-black text-4xl md:text-5xl leading-tight mb-2">
-                {story.title}
-              </h1>
-              
-              <Link to={`/creator/${story.creator.username}`} className="flex items-center gap-2 mb-6 hover:text-lemon-muted transition-colors">
-                <img src={story.creator.avatar} alt={story.creator.name} className="w-6 h-6 rounded-full" referrerPolicy="no-referrer" />
-                <span className="font-medium text-white/80">{story.creator.name}</span>
-              </Link>
+          <Link to={`/creator/${story.creator.username}`} className="mt-2 flex items-center gap-2 text-xs font-semibold text-white/55 hover:text-lemon-muted">
+            <img src={story.creator.avatar} alt={story.creator.name} className="h-5 w-5 rounded-full object-cover" referrerPolicy="no-referrer" />
+            {story.creator.name}
+          </Link>
+        </section>
 
-              <div className="flex items-center gap-6 text-sm font-medium text-white/70 mb-8 w-full justify-center md:justify-start">
-                 <div className="flex items-center gap-1.5"><Star size={16} className="text-lemon-muted fill-lemon-muted" /> {story.rating}</div>
-                 <div className="flex items-center gap-1.5"><Eye size={16} /> {(story.views/1000).toFixed(0)}k</div>
-                 <div className="flex items-center gap-1.5"><Heart size={16} /> {(story.saves/1000).toFixed(0)}k</div>
-                 <div className="flex items-center gap-1.5">{story.episodes} Chapters</div>
-              </div>
+        <section className="mt-6 rounded-3xl border border-white/8 bg-[#141414] p-2 shadow-xl shadow-black/20">
+          <div className="grid grid-cols-2 gap-1 sm:grid-cols-4 sm:divide-x sm:divide-white/8">
+            <Stat icon={<Star size={13} className="text-lemon-muted" />} label="Rating" value={String(story.rating)} />
+            <Stat icon={<Eye size={13} />} label="Views" value={`${(story.views / 1000).toFixed(0)}k`} />
+            <Stat icon={<Heart size={13} />} label="Likes" value={`${(story.saves / 1000).toFixed(0)}k`} />
+            <Stat label="Chapters" value={String(story.episodes || chapters.length)} />
+          </div>
+        </section>
 
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full">
-                 <Link to={`/read/${story.id}/1`}>
-                   <Button size="lg" className="pl-6 pr-8"><Play size={18} className="mr-2" /> Read Chapter 1</Button>
-                 </Link>
-                 <SensitiveActionWrapper intent="save story" payload={{ storyId: story.id }} onClick={toggleSave}>
-                   <Button size="icon" variant={isSaved ? "primary" : "glass"}>
-                     {isSaved ? <Check size={20} /> : <Heart size={20} className={isSaved ? 'fill-black' : ''} />}
-                   </Button>
-                 </SensitiveActionWrapper>
-                 <Button 
-                    size="icon" 
-                    variant="glass"
-                    onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({
-                          title: story.title,
-                          text: story.synopsis,
-                          url: window.location.href,
-                        });
-                      } else {
-                        navigator.clipboard.writeText(window.location.href);
-                        alert('Link copied to clipboard!');
-                      }
-                    }}
-                 >
-                   <Share size={20} />
-                 </Button>
-                 <Button 
-                    size="icon" 
-                    variant="glass"
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.href);
-                      alert('Link copied to clipboard!');
-                    }}
-                 >
-                   <MoreHorizontal size={20} />
-                 </Button>
-              </div>
-            </div>
-         </div>
-      </div>
-
-      {/* Mobile Sticky CTA */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[60] bg-black-core/90 backdrop-blur-2xl border-t border-white/10 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] animate-slide-up">
-        <div className="flex items-center gap-3">
-          <Link to={`/read/${story.id}/1`} className="flex-1">
-            <Button fullWidth size="lg" className="shadow-lg shadow-lemon-muted/10">
-              <Play size={18} className="mr-2" /> Start Reading
+        <section className="mt-5 flex flex-col items-center gap-3">
+          <Link to={`/read/${story.id}/1`} className="w-full max-w-[320px]">
+            <Button size="md" className="h-11 w-full gap-2 rounded-2xl px-5 text-[13px] font-black shadow-lg shadow-lemon-muted/10">
+              <Play size={15} fill="currentColor" />
+              Read Chapter 1
             </Button>
           </Link>
-          <SensitiveActionWrapper intent="save story" payload={{ storyId: story.id }} onClick={toggleSave}>
-            <Button size="icon" variant={isSaved ? "primary" : "glass"} className="w-14 h-14 shrink-0 bg-white/5 border-white/10">
-              {isSaved ? <Check size={22} /> : <Heart size={22} />}
-            </Button>
-          </SensitiveActionWrapper>
-          <SupportButton creator={story.creator} size="lg" className="w-14 h-14 shrink-0" showLabel={false} />
-        </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto px-6 md:px-12 mt-6 md:mt-12 pb-24">
-        {/* Creator Section */}
-        <div className="bg-gradient-to-br from-ink-deep to-black border border-white/10 rounded-3xl p-6 md:p-8 mb-12 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-lemon-muted/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
-          
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 relative z-10">
-            <div className="shrink-0">
-               <div className="relative">
-                <img src={story.creator.avatar} alt={story.creator.name} className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-black group-hover:border-lemon-muted transition-colors duration-500" referrerPolicy="no-referrer" />
-                {story.creator.supportEnabled && (
-                  <div className="absolute -bottom-1 -right-1 bg-lemon-muted rounded-full p-2 text-black shadow-xl">
-                    <Coffee size={16} />
-                  </div>
-                )}
-               </div>
-            </div>
-            
-            <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
-              <div className="flex flex-col md:flex-row items-center gap-2 mb-2">
-                <h3 className="font-display font-black text-2xl md:text-3xl">{story.creator.name}</h3>
-                {user?.supportHistory.some(s => s.creatorId === story.creator.username) && <SupportStatusBadge status="supported" />}
-              </div>
-              <p className="text-white/60 mb-4 max-w-lg">{story.creator.bio}</p>
-              
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 w-full">
-                <FollowButton creator={story.creator} />
-                <SupportButton creator={story.creator} />
-                <Link to={`/creator/${story.creator.username}/portfolio`}>
-                  <Button variant="glass" size="md">View Portfolio <ArrowRight size={16} className="ml-2" /></Button>
-                </Link>
-              </div>
-            </div>
-
-                <div className="hidden lg:flex flex-col gap-3 justify-center text-right">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-1">Followers</p>
-                <p className="font-display font-black text-2xl">{(story.creator.followers ?? 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-1">Total Reads</p>
-                <p className="font-display font-black text-2xl">{((story.creator.totalReads || story.views || 0)/1000000).toFixed(1)}M</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Support Alert */}
-        {!story.creator.supportEnabled && (
-          <div className="flex items-center justify-between bg-ink-deep border border-warning/20 rounded-2xl p-4 mb-10 w-full opacity-60 grayscale scale-95 origin-center">
-             <div className="flex items-center gap-3">
-               <div className="w-10 h-10 bg-white/5 text-white/30 rounded-full flex items-center justify-center">
-                 <Coffee size={18} />
-               </div>
-               <div>
-                 <p className="font-semibold text-sm text-white/40">Support not connected</p>
-                 <p className="text-white/20 text-xs">Tell the creator to join DropSomething!</p>
-               </div>
-             </div>
-          </div>
-        )}
-
-        {/* Tabs */}
-        <div className="flex gap-8 border-b border-white/10 mb-8">
-          {(['chapters', 'about', 'comments'] as const).map(tab => (
+          <div className="flex items-center justify-center gap-2">
+            <SensitiveActionWrapper intent="save story" payload={{ storyId: story.id }} onClick={toggleSave}>
+              <Button size="sm" variant={isSaved ? 'primary' : 'glass'} className="gap-1.5 rounded-xl border-white/10 bg-[#1A1A1A] px-4">
+                {isSaved ? <Check size={14} /> : <Heart size={14} />}
+                {isSaved ? 'Saved' : 'Save'}
+              </Button>
+            </SensitiveActionWrapper>
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={cn(
-                "pb-4 text-sm font-bold uppercase tracking-wider relative transition-colors",
-                activeTab === tab ? "text-white" : "text-white/40 hover:text-white/70"
-              )}
+              type="button"
+              onClick={() => setActiveTab('comments')}
+              className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-[#1A1A1A] px-4 text-[11px] font-bold text-white/75"
             >
-              {tab}
-              {activeTab === tab && (
-                <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-lemon-muted" />
-              )}
+              <MessageCircle size={14} />
+              Comments
             </button>
-          ))}
-        </div>
+          </div>
+        </section>
 
-        <div className="min-h-[400px]">
-          {activeTab === 'chapters' && (
-            <div className="flex flex-col gap-3">
-              <div className="mb-4">
-                <LockedContentCTA price={story.media?.monetization === 'paid' ? (story.media?.price || 10) : 0} />
+        <section className="mt-6 rounded-3xl border border-white/8 bg-[#141414] p-4 shadow-xl shadow-black/20">
+          <div className="flex items-center gap-3">
+            <div className="relative shrink-0">
+              <img src={story.creator.avatar} alt={story.creator.name} className="h-12 w-12 rounded-2xl object-cover ring-1 ring-white/10" referrerPolicy="no-referrer" />
+              {story.creator.supportEnabled && (
+                <div className="absolute -bottom-1 -right-1 rounded-full bg-lemon-muted p-1 text-black">
+                  <Coffee size={11} />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 className="truncate font-display text-base font-black">{story.creator.name}</h2>
+                {user?.supportHistory.some((item) => item.creatorId === story.creator.username) && <SupportStatusBadge status="supported" />}
               </div>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/48">{story.creator.bio}</p>
+            </div>
+          </div>
 
-              {(() => {
-                const chaptersFromMedia = story.media?.chapters;
-                if (Array.isArray(chaptersFromMedia) && chaptersFromMedia.length > 0) {
-                  return chaptersFromMedia.map((ch: any, i: number) => {
-                    const chapterId = `c${i + 1}`;
-                    const title = ch.title || `Chapter ${i + 1}`;
-                    const isPaid = ch.monetization === 'paid' || (story.media?.monetization === 'paid' && (ch.price ?? story.media?.price));
-                    const price = ch.price || story.media?.price || (isPaid ? 5 : 0);
-                    const isUnlocked = !isPaid || user?.unlockedChapters.includes(`${story.id}-${chapterId}`) || user?.isPremium;
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <FollowButton creator={story.creator} size="sm" className="w-full rounded-xl" />
+            <SupportButton creator={story.creator} size="sm" className="w-full rounded-xl" />
+            <Link to={`/creator/${story.creator.username}/portfolio`} className="col-span-2">
+              <Button variant="glass" size="sm" className="w-full gap-1.5 rounded-xl bg-[#1A1A1A]">
+                View portfolio <ArrowRight size={14} />
+              </Button>
+            </Link>
+          </div>
+        </section>
 
-                    return (
-                      <Link
-                        key={chapterId}
-                        to={isUnlocked ? `/read/${story.id}/${i + 1}` : '#'}
-                        className={cn(
-                          "flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-ink-deep hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-white/10 group gap-4 relative overflow-hidden",
-                          !isUnlocked && "cursor-default"
-                        )}
-                      >
-                        {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-r from-lemon-muted/5 to-transparent pointer-events-none" />}
+        <section className="mt-6">
+          <div className="grid grid-cols-3 rounded-2xl bg-[#141414] p-1 ring-1 ring-white/8">
+            {tabLabels.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  'relative rounded-xl px-2 py-2.5 text-[11px] font-black uppercase tracking-wider transition-colors',
+                  activeTab === tab ? 'text-black' : 'text-white/45 hover:text-white/80',
+                )}
+              >
+                {activeTab === tab && <motion.span layoutId="detail-tab-pill" className="absolute inset-0 rounded-xl bg-lemon-muted" />}
+                <span className="relative z-10">{tab}</span>
+              </button>
+            ))}
+          </div>
 
-                        <div className="flex items-center gap-4 relative z-10 w-full">
-                          <div className="w-12 h-12 bg-black rounded-lg overflow-hidden shrink-0 relative">
-                            <img src={story.coverImage} className="w-full h-full object-cover opacity-50" referrerPolicy="no-referrer" />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
-                              {isUnlocked ? <Play size={16} className="text-white fill-white" /> : <Lock size={16} className="text-white" />}
-                            </div>
-                            {!isUnlocked && (
-                              <div className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5">
-                                <Lock size={10} className="text-lemon-muted" />
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <h4 className={cn("font-semibold text-base", !isUnlocked ? 'text-white/80' : 'text-white')}>{title}</h4>
-                              {isPaid && <span className="px-1.5 py-0.5 rounded-sm bg-lemon-muted/10 text-lemon-muted text-[8px] font-black uppercase tracking-wider">Paid</span>}
-                            </div>
-                            <p className="text-xs text-white/50">{story.format === 'Novel' ? 'Novel • approx. read time' : 'Comic • panels'}</p>
-                          </div>
-
-                          <div className="shrink-0 mt-2 sm:mt-0 ml-auto">
-                            {!isUnlocked ? (
-                              <SensitiveActionWrapper intent="unlock chapter">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-lemon-muted/30 text-lemon-muted hover:bg-lemon-muted hover:text-black"
-                                  onClick={(e) => handleUnlock(e, chapterId, price)}
-                                >
-                                  Unlock ({price}C)
-                                </Button>
-                              </SensitiveActionWrapper>
-                            ) : (
-                              <Button size="sm" variant={i === 0 ? "primary" : "secondary"}>Read</Button>
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  });
-                }
-
-                const count = story.episodes || (story.media?.chapterText || story.media?.attachments?.length ? 1 : 0);
-                const arr = Array.from({ length: Math.max(1, count) }, (_, i) => ({
-                  index: i,
-                  chapterId: `c${i + 1}`,
-                  title: story.media?.chapterTitles?.[i] || `Chapter ${i + 1}`,
-                }));
-
-                return arr.map(({ index, chapterId, title }) => {
-                  const isPaid = story.media?.monetization === 'paid' && (story.media?.paidAfter ?? -1) <= index;
-                  const price = story.media?.price || (isPaid ? 5 : 0);
-                  const isUnlocked = !isPaid || user?.unlockedChapters.includes(`${story.id}-${chapterId}`) || user?.isPremium;
+          <div className="mt-4">
+            {activeTab === 'chapters' && (
+              <div className="flex flex-col gap-3">
+                {story.media?.monetization === 'paid' && <LockedContentCTA price={story.media?.price || 10} />}
+                {chapters.map((chapter) => {
+                  const isUnlocked = !chapter.isPaid || user?.unlockedChapters.includes(`${story.id}-${chapter.chapterId}`) || user?.isPremium;
 
                   return (
                     <Link
-                      key={chapterId}
-                      to={isUnlocked ? `/read/${story.id}/${index + 1}` : '#'}
-                      className={cn(
-                        "flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-ink-deep hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-white/10 group gap-4 relative overflow-hidden",
-                        !isUnlocked && "cursor-default"
-                      )}
+                      key={chapter.chapterId}
+                      to={isUnlocked ? `/read/${story.id}/${chapter.index + 1}` : '#'}
+                      className="rounded-2xl border border-white/8 bg-[#141414] p-3 transition-colors hover:border-lemon-muted/25"
                     >
-                      {!isUnlocked && <div className="absolute inset-0 bg-gradient-to-r from-lemon-muted/5 to-transparent pointer-events-none" />}
-
-                      <div className="flex items-center gap-4 relative z-10 w-full">
-                        <div className="w-12 h-12 bg-black rounded-lg overflow-hidden shrink-0 relative">
-                          <img src={story.coverImage} className="w-full h-full object-cover opacity-50" referrerPolicy="no-referrer" />
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
-                            {isUnlocked ? <Play size={16} className="text-white fill-white" /> : <Lock size={16} className="text-white" />}
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#1A1A1A] text-white/70">
+                          {isUnlocked ? <Play size={14} className="fill-white text-white" /> : <Lock size={14} className="text-lemon-muted" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="truncate text-sm font-bold">{chapter.title}</h3>
+                            {chapter.isPaid && <span className="shrink-0 rounded bg-lemon-muted/12 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-lemon-muted">Paid</span>}
                           </div>
-                          {!isUnlocked && (
-                            <div className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5">
-                              <Lock size={10} className="text-lemon-muted" />
-                            </div>
-                          )}
+                          <p className="mt-1 text-[11px] font-semibold text-white/42">
+                            {story.format === 'Novel' ? 'Novel / approx. read time' : 'Comic / panels'} / {story.episodes || chapters.length} chapters
+                          </p>
                         </div>
-
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <h4 className={cn("font-semibold text-base", !isUnlocked ? 'text-white/80' : 'text-white')}>{title}</h4>
-                            {isPaid && <span className="px-1.5 py-0.5 rounded-sm bg-lemon-muted/10 text-lemon-muted text-[8px] font-black uppercase tracking-wider">Paid</span>}
-                          </div>
-                          <p className="text-xs text-white/50">{story.format === 'Novel' ? 'Novel • approx. read time' : 'Comic • panels'} • {story.episodes || 1} chapters</p>
-                        </div>
-
-                        <div className="shrink-0 mt-2 sm:mt-0 ml-auto">
-                          {!isUnlocked ? (
-                            <SensitiveActionWrapper intent="unlock chapter">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-lemon-muted/30 text-lemon-muted hover:bg-lemon-muted hover:text-black"
-                                onClick={(e) => handleUnlock(e, chapterId, price)}
-                              >
-                                Unlock ({price}C)
-                              </Button>
-                            </SensitiveActionWrapper>
-                          ) : (
-                            <Button size="sm" variant={index === 0 ? "primary" : "secondary"}>Read</Button>
-                          )}
-                        </div>
+                        {!isUnlocked ? (
+                          <SensitiveActionWrapper intent="unlock chapter">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-xl border-lemon-muted/30 px-3 text-lemon-muted hover:bg-lemon-muted hover:text-black"
+                              onClick={(event) => handleUnlock(event, chapter.chapterId, chapter.price)}
+                            >
+                              {chapter.price}C
+                            </Button>
+                          </SensitiveActionWrapper>
+                        ) : (
+                          <Button size="sm" variant={chapter.index === 0 ? 'primary' : 'glass'} className="rounded-xl px-3">
+                            Read
+                          </Button>
+                        )}
                       </div>
                     </Link>
                   );
-                });
-              })()}
-            </div>
-          )}
+                })}
+              </div>
+            )}
 
-          {activeTab === 'about' && (
-            <div className="flex flex-col gap-6 text-white/80 leading-relaxed font-medium">
-              <p>{story.synopsis}</p>
-              <div>
-                <h3 className="text-xs uppercase tracking-widest text-white/40 mb-3">Tags</h3>
-                <div className="flex flex-wrap gap-2">
-                  {story.tags.map(tag => (
-                    <span key={tag} className="px-3 py-1 bg-ink-deep rounded-full text-xs font-semibold">#{tag}</span>
-                  ))}
+            {activeTab === 'about' && (
+              <div className="rounded-3xl border border-white/8 bg-[#141414] p-5">
+                <p className="text-sm font-medium leading-7 text-white/76">{story.synopsis}</p>
+                <div className="mt-5">
+                  <h3 className="mb-3 text-[10px] font-black uppercase tracking-widest text-white/35">Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {story.tags.map((tag) => (
+                      <span key={tag} className="rounded-full bg-[#1A1A1A] px-3 py-1 text-xs font-semibold text-white/62">#{tag}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {activeTab === 'comments' && (
-            <div className="flex flex-col gap-6">
-              <SensitiveActionWrapper intent="comment">
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-sm text-white/80">You</div>
-                  <div className="flex-1">
-                    <input type="text" placeholder="Add a comment..." className="w-full bg-ink-deep border border-white/10 border-b-2 border-b-lemon-muted rounded-tl-xl rounded-tr-xl px-4 py-3 text-sm focus:outline-none" />
-                  </div>
-                </div>
-              </SensitiveActionWrapper>
+            {activeTab === 'comments' && (
+              <div className="flex flex-col gap-4">
+                <form onSubmit={submitComment} className="flex items-center gap-2 rounded-2xl border border-white/8 bg-[#141414] p-2">
+                  <input
+                    value={commentDraft}
+                    onChange={(event) => setCommentDraft(event.target.value)}
+                    type="text"
+                    placeholder="Add a comment..."
+                    className="min-w-0 flex-1 bg-transparent px-2 text-sm font-semibold text-white outline-none placeholder:text-white/28"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!commentDraft.trim()}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-lemon-muted text-black disabled:opacity-40"
+                    aria-label="Post comment"
+                  >
+                    <Send size={15} />
+                  </button>
+                </form>
 
-              {Array.isArray(story.comments) && story.comments.length > 0 ? (
-                story.comments.map((comment: any, index: number) => (
-                  <div key={index} className="flex gap-4">
-                    <img src={comment.avatar || `https://picsum.photos/seed/comment-${index}/100`} className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
-                    <div className="flex-1 border-b border-white/5 pb-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm">{comment.author || 'Anonymous'}</span>
-                        <span className="text-xs text-white/40">{comment.time || 'Just now'}</span>
-                      </div>
-                      <p className="text-white/80 text-sm mb-3">{comment.message}</p>
-                      <div className="flex items-center gap-4 text-white/40 text-xs font-medium">
-                        <button className="flex items-center gap-1 hover:text-white"><Heart size={14} /> {comment.likes ?? 0}</button>
-                        <button className="hover:text-white">Reply</button>
+                {localComments.length > 0 ? (
+                  localComments.map((comment, index) => (
+                    <div key={`${comment.time}-${index}`} className="flex gap-3 rounded-2xl bg-[#141414] p-3">
+                      <img src={comment.avatar || `https://picsum.photos/seed/comment-${index}/100`} className="h-9 w-9 rounded-full object-cover" referrerPolicy="no-referrer" />
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex items-center gap-2">
+                          <span className="truncate text-sm font-semibold">{comment.author || 'Anonymous'}</span>
+                          <span className="shrink-0 text-[11px] text-white/35">{comment.time || 'Just now'}</span>
+                        </div>
+                        <p className="text-sm leading-5 text-white/72">{comment.message}</p>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="rounded-3xl border border-white/8 bg-[#141414] p-6 text-center">
+                    <p className="mb-2 text-[11px] font-black uppercase tracking-widest text-white/35">No comments yet</p>
+                    <p className="text-sm text-white/58">Be the first to leave feedback on this story.</p>
                   </div>
-                ))
-              ) : (
-                <div className="rounded-3xl border border-white/10 bg-ink-deep p-8 text-center text-white/70">
-                  <p className="font-semibold text-sm uppercase tracking-widest text-white/40 mb-3">No comments yet</p>
-                  <p className="text-sm">Be the first to leave feedback on this story.</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function Stat({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="min-w-0 px-1.5 py-2 text-center">
+      <div className="mb-1 flex items-center justify-center gap-1 text-white/55">{icon}</div>
+      <div className="text-xs font-black text-white">{value}</div>
+      <div className="mt-0.5 text-[8px] font-black uppercase tracking-wide text-white/32">{label}</div>
     </div>
   );
 }

@@ -1,0 +1,19 @@
+{
+  "name": "Lemonade",
+  "short_name": "Lemonade",
+  "description": "Read, publish, and manage Lemonade stories.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#E8C547",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/lemonade-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

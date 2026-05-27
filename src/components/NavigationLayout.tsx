@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation, Link } from 'react-router-dom';
 import { 
   Home, 
@@ -11,9 +11,9 @@ import {
   Wallet, 
   ChevronRight, 
   Crown, 
-  Plus, 
   UserCircle,
-  LayoutDashboard
+  Menu,
+  X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,6 +21,7 @@ import { useAuth } from '../contexts/AppContext';
 import { SensitiveActionWrapper } from './SensitiveActionWrapper';
 
 export default function NavigationLayout() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
   const { user, isAuthenticated, isGuest } = useAuth();
   const isStudio = location.pathname.startsWith('/studio');
@@ -45,6 +46,17 @@ export default function NavigationLayout() {
   ];
 
   const currentNav = isCreatorMode ? creatorNav : readerNav;
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [drawerOpen]);
 
   // Desktop sidebar items
   const mainNav = [
@@ -76,7 +88,7 @@ export default function NavigationLayout() {
     <div className="flex min-h-screen w-full bg-black-core">
       {/* Desktop Sidebar */}
       {!shouldHideNav && (
-        <aside id="desktop-sidebar" className="hidden md:flex flex-col w-64 border-r border-ink-deep bg-black-core p-6 z-20">
+        <aside id="desktop-sidebar" className="hidden lg:flex flex-col w-64 border-r border-ink-deep bg-black-core p-6 z-20">
           <Link to="/home" id="sidebar-logo" className="mb-10 font-display font-black text-2xl tracking-tighter text-lemon-muted">
             LEMONADE<span className="text-white">.</span>
           </Link>
@@ -131,42 +143,138 @@ export default function NavigationLayout() {
         </aside>
       )}
 
-      <div className="flex-1 flex flex-col relative h-full">
+      <div className="flex-1 min-w-0 w-full flex flex-col relative h-full">
         {/* Mobile Top Bar */}
         {!shouldHideNav && (
-          <div id="mobile-top-bar" className="md:hidden sticky top-0 left-0 right-0 h-16 bg-black-core/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-6 z-40">
-            <Link to="/home" id="mobile-logo" className="font-display font-black text-xl tracking-tighter text-lemon-muted">
-              LEMONADE<span className="text-white">.</span>
-            </Link>
-            <div className="flex items-center gap-5">
-              {user?.isPremium && (
-                <Link to="/premium" className="w-8 h-8 rounded-lg bg-lemon-muted/10 flex items-center justify-center text-lemon-muted">
-                  <Crown size={18} fill="currentColor" />
-                </Link>
-              )}
-              <SensitiveActionWrapper intent="studio">
-                <Link to="/studio" id="mobile-studio-trigger" className="text-white/70 hover:text-white transition-colors">
-                  <PenTool size={22} />
-                </Link>
-              </SensitiveActionWrapper>
-              <Link to="/notifications" id="mobile-notifications-trigger" className="text-white/70 hover:text-white transition-colors relative">
-                <Bell size={22} />
-                {user?.notifications.some(n => !n.read) && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-lemon-muted rounded-full animate-pulse" />
-                )}
+          <>
+            <div id="mobile-top-bar" className="lg:hidden sticky top-0 left-0 right-0 h-14 bg-[#0A0A0A]/92 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-4 z-40">
+              <button
+                type="button"
+                aria-label="Open menu"
+                aria-expanded={drawerOpen}
+                aria-controls="mobile-menu-drawer"
+                onClick={() => setDrawerOpen(true)}
+                className="h-9 w-9 rounded-2xl bg-[#171717] text-white/80 hover:bg-white/10 transition-colors flex items-center justify-center"
+              >
+                <Menu size={20} />
+              </button>
+              <Link to="/home" id="mobile-logo" className="font-display font-black text-[15px] tracking-tight text-lemon-muted uppercase">
+                LEMONADE
               </Link>
-              <Link to="/settings" id="mobile-settings-link" className="text-white/70 hover:text-white transition-colors">
-                <SettingsIcon size={22} />
+              <Link
+                to="/explore"
+                aria-label="Search stories"
+                className="h-9 w-9 rounded-2xl bg-[#171717] text-white/80 hover:bg-white/10 transition-colors flex items-center justify-center"
+              >
+                <Search size={18} />
               </Link>
             </div>
-          </div>
+            <AnimatePresence>
+              {drawerOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+                  onClick={() => setDrawerOpen(false)}
+                >
+                  <motion.aside
+                    id="mobile-menu-drawer"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Mobile menu"
+                    initial={{ x: '-100%' }}
+                    animate={{ x: 0 }}
+                    exit={{ x: '-100%' }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+                    className="absolute left-0 top-0 bottom-0 flex w-[80%] max-w-xs flex-col overflow-y-auto border-r border-white/10 bg-[#111] p-5 pb-[calc(20px+env(safe-area-inset-bottom))] shadow-2xl shadow-black/70"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="mb-6 flex items-center justify-between">
+                      <Link to="/home" onClick={() => setDrawerOpen(false)} className="font-display text-xl font-black text-lemon-muted">
+                        LEMONADE
+                      </Link>
+                      <button
+                        type="button"
+                        aria-label="Close menu"
+                        onClick={() => setDrawerOpen(false)}
+                        className="p-2 rounded-2xl bg-white/5 text-white/80 hover:bg-white/10 transition-colors"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    <nav className="flex flex-col gap-2">
+                      {currentNav.map((item) => (
+                        <SensitiveActionWrapper key={item.path} intent={item.sensitive ? item.name.toLowerCase() : undefined}>
+                          <NavLink
+                            to={item.path}
+                            className={({ isActive }) => cn(
+                              "flex items-center gap-3 rounded-3xl px-4 py-3 text-sm font-semibold transition-colors",
+                              isActive ? "bg-lemon-muted/10 text-lemon-muted" : "text-white/80 hover:bg-white/5 hover:text-white"
+                            )}
+                            onClick={() => setDrawerOpen(false)}
+                          >
+                            <item.icon size={18} />
+                            {item.name}
+                          </NavLink>
+                        </SensitiveActionWrapper>
+                      ))}
+                    </nav>
+
+                    <div className="mt-6 border-t border-white/10 pt-5">
+                      <div className="mb-3 text-xs uppercase tracking-widest text-white/40">More</div>
+                      <div className="flex flex-col gap-2">
+                        {desktopExtra.map((item) => (
+                          <SensitiveActionWrapper key={item.path} intent={item.sensitive ? item.name.toLowerCase() : undefined}>
+                            <NavLink
+                              to={item.path}
+                              className={({ isActive }) => cn(
+                                "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors",
+                                isActive ? "bg-lemon-muted/10 text-lemon-muted" : "text-white/70 hover:bg-white/5 hover:text-white"
+                              )}
+                              onClick={() => setDrawerOpen(false)}
+                            >
+                              <item.icon size={18} />
+                              {item.name}
+                            </NavLink>
+                          </SensitiveActionWrapper>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-auto border-t border-white/10 pt-5">
+                      <div className="text-xs uppercase tracking-widest text-white/40 mb-3">Account</div>
+                      {isAuthenticated ? (
+                        <Link to="/profile" onClick={() => setDrawerOpen(false)} className="flex items-center gap-3 rounded-3xl p-4 bg-white/5 hover:bg-white/10 transition-colors">
+                          <img src={user?.avatar} alt="User avatar" className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
+                          <div>
+                            <p className="font-semibold">{user?.name}</p>
+                            <p className="text-xs text-white/50">View profile</p>
+                          </div>
+                        </Link>
+                      ) : (
+                        <Link to="/auth" onClick={() => setDrawerOpen(false)} className="flex items-center gap-3 rounded-3xl p-4 bg-white/5 hover:bg-white/10 transition-colors">
+                          <UserCircle size={24} />
+                          <div>
+                            <p className="font-semibold">Sign In</p>
+                            <p className="text-xs text-white/50">Access your library</p>
+                          </div>
+                        </Link>
+                      )}
+                    </div>
+                  </motion.aside>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
         )}
 
         {/* Main Content Area */}
         <main 
           className={cn(
-            "flex-1 relative overflow-y-auto overflow-x-hidden hide-scrollbar",
-            !shouldHideNav ? "pb-[calc(80px+env(safe-area-inset-bottom))] md:pb-0" : ""
+            "flex-1 min-w-0 w-full relative overflow-y-auto overflow-x-hidden hide-scrollbar",
+            !shouldHideNav ? "pb-[calc(22px+env(safe-area-inset-bottom))] lg:pb-0" : ""
           )}
         >
           <motion.div
@@ -181,68 +289,6 @@ export default function NavigationLayout() {
           </motion.div>
         </main>
 
-        {/* Mobile FAB */}
-        {!shouldHideNav && (
-           <div id="mobile-fab-container" className="md:hidden fixed right-6 bottom-[calc(96px+env(safe-area-inset-bottom))] z-[51]">
-              {isCreatorMode ? (
-                <Link to="/studio/upload" id="fab-studio-upload">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="w-14 h-14 bg-lemon-muted rounded-full flex items-center justify-center text-black shadow-2xl shadow-lemon-muted/20 border-2 border-black/10"
-                  >
-                    <Plus size={28} />
-                  </motion.button>
-                </Link>
-              ) : (
-                <Link to="/explore" id="fab-reader-explore">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="w-14 h-14 bg-lemon-muted rounded-full flex items-center justify-center text-black shadow-2xl shadow-lemon-muted/20 border-2 border-black/10"
-                  >
-                    <Search size={28} />
-                  </motion.button>
-                </Link>
-              )}
-           </div>
-        )}
-
-        {/* Mobile Bottom Nav */}
-        {!shouldHideNav && (
-          <div id="mobile-bottom-nav" className="md:hidden fixed bottom-0 left-0 right-0 bg-black-core/90 backdrop-blur-2xl border-t border-white/5 z-50 px-4 py-2 pt-3 flex items-center justify-around pb-[calc(8px+env(safe-area-inset-bottom))]">
-            {currentNav.map((item) => {
-              const isActive = location.pathname.startsWith(item.path) && (item.path !== '/' || location.pathname === '/');
-              const Icon = item.icon;
-              return (
-                <SensitiveActionWrapper key={item.path} intent={item.sensitive ? item.name.toLowerCase() : undefined}>
-                  <NavLink
-                    id={`nav-item-${item.name.toLowerCase()}`}
-                    to={item.path}
-                    className={cn(
-                      "flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all relative",
-                      isActive ? "text-lemon-muted" : "text-white/40 hover:text-white"
-                    )}
-                  >
-                    <div className="relative">
-                      <Icon size={24} className={cn("transition-transform duration-300", isActive && "scale-110")} />
-                      {isActive && (
-                        <motion.div 
-                          layoutId="mobile-nav-dot" 
-                          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-lemon-muted rounded-full" 
-                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        />
-                      )}
-                    </div>
-                    <span className={cn("text-[9px] font-black uppercase tracking-widest", isActive ? "opacity-100" : "opacity-0 invisible h-0")}>
-                      {item.name}
-                    </span>
-                  </NavLink>
-                </SensitiveActionWrapper>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );

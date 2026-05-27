@@ -121,6 +121,23 @@ export const update = mutation({
   },
 });
 
+export const incrementViews = mutation({
+  args: { externalId: v.string() },
+  handler: async (ctx, args) => {
+    const story = await ctx.db
+      .query("stories")
+      .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
+      .unique();
+    if (!story) return null;
+
+    await ctx.db.patch(story._id, {
+      views: story.views + 1,
+      updatedAt: now(),
+    });
+    return story.views + 1;
+  },
+});
+
 export const publish = mutation({
   args: { externalId: v.string() },
   handler: async (ctx, args) => {

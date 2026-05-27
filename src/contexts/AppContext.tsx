@@ -10,6 +10,7 @@ import {
   type User as FirebaseUser,
 } from 'firebase/auth';
 import type { Creator, Story, SupportTransaction, CreatorApplication, CreatorAccessStatus } from '../data/types';
+import { MOCK_CREATORS, MOCK_STORIES } from '../data/mock';
 import { api } from '../../convex/_generated/api';
 import { auth, googleProvider } from '../lib/firebase';
 import { convex } from '../lib/convex';
@@ -207,6 +208,8 @@ const DEFAULT_SETTINGS: UserSettings = {
     promotions: true,
   }
 };
+
+const LIVE_CONTENT_REFRESH_MS = 10000;
 
 const GUEST_USER: AppUser = {
   id: 'guest',
@@ -449,8 +452,8 @@ const activityFromDoc = (doc: any): AdminActivity => ({
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
-  const [liveCreators, setLiveCreators] = useState<Record<string, Creator>>({});
-  const [liveStories, setLiveStories] = useState<Story[]>([]);
+  const [liveCreators, setLiveCreators] = useState<Record<string, Creator>>(MOCK_CREATORS as unknown as Record<string, Creator>);
+  const [liveStories, setLiveStories] = useState<Story[]>(MOCK_STORIES as unknown as Story[]);
   const [applications, setApplications] = useState<CreatorApplication[]>([]);
   
   // Admin State
@@ -463,8 +466,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!convex) return;
+    let isMounted = true;
 
-    const loadLiveContent = async () => {
+    const loadLiveContent = async (isBackgroundRefresh = false) => {
       try {
         let [creatorDocs, storyDocs, applicationDocs, userDocs, reportDocs, activityDocs, moderatorDocs, platformSettings] = await Promise.all([
           convex.query(api.creators.list, {}),
@@ -477,6 +481,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           convex.query(api.settings.get, {}),
         ]);
 
+        if (!isMounted) return;
+
         if (platformSettings) {
           setShowMockData(platformSettings.showMockData);
         }
@@ -488,6 +494,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             convex.query(api.stories.listPublished, {}),
           ]);
         }
+
+        if (!isMounted) return;
 
         const liveCreators = creatorDocs.reduce<Record<string, Creator>>((acc, doc: any) => {
           const creator = creatorFromDoc(doc);
@@ -522,11 +530,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           lastActive: doc.lastActive,
         })));
       } catch (error) {
-        console.error('Failed to load live Convex content; using bundled fallback.', error);
+        if (!isBackgroundRefresh) {
+          console.error('Failed to load live Convex content; using bundled fallback.', error);
+        }
       }
     };
 
     loadLiveContent();
+    const interval = window.setInterval(() => loadLiveContent(true), LIVE_CONTENT_REFRESH_MS);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
   const stories = useMemo(() => {

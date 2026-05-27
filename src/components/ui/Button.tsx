@@ -23,10 +23,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             "hover:bg-white/10": variant === 'ghost',
             "bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20": variant === 'glass',
             
-            "h-9 px-4 text-xs": size === 'sm',
-            "h-11 px-6 text-sm": size === 'md',
-            "h-14 px-8 text-base font-semibold": size === 'lg',
-            "h-11 w-11": size === 'icon',
+            "h-8 px-3 text-[11px] sm:h-9 sm:px-4 sm:text-xs": size === 'sm',
+            "h-10 px-5 text-xs sm:h-11 sm:px-6 sm:text-sm": size === 'md',
+            "h-12 px-6 text-sm font-semibold sm:h-14 sm:px-8 sm:text-base": size === 'lg',
+            "h-10 w-10 sm:h-11 sm:w-11": size === 'icon',
 
             "w-full": fullWidth,
           },

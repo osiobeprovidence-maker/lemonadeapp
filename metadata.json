@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "Lemonade",
+  "description": "A premium mobile-first platform for reading and publishing Lemonade stories.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
