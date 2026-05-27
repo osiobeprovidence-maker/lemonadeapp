@@ -387,11 +387,12 @@ ${newChapterText.trim()}`.trim(),
               <div>
                 <label className="text-sm font-semibold text-white/50 mb-2 block">Upload chapter files</label>
                 <input type="file" multiple hidden id="chapter-files" onChange={selectPanelFiles} accept="image/*,.pdf,.txt,.doc,.docx,.epub" />
-                <label htmlFor="chapter-files" className="w-full cursor-pointer rounded-2xl border border-dashed border-white/20 bg-black/30 px-4 py-5 text-center text-white/50 hover:border-lemon-muted hover:text-white transition-colors">
-                  <div className="flex items-center justify-center gap-2 mx-auto max-w-max">
+                <label htmlFor="chapter-files" className="group flex min-h-[112px] w-full cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-black/30 px-4 py-6 text-center text-white/55 transition-colors hover:border-lemon-muted hover:bg-lemon-muted/5 hover:text-white">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-white/5 text-white/55 transition-colors group-hover:bg-lemon-muted group-hover:text-black">
                     <Upload size={18} />
-                    <span>Add or replace chapter attachments</span>
                   </div>
+                  <span className="text-sm font-bold">Add or replace chapter attachments</span>
+                  <span className="mt-1 text-xs text-white/35">Images, PDFs, docs, EPUB, or text files up to 25MB.</span>
                 </label>
                 {existingAttachments.length + panelFiles.length > 0 && (
                   <div className="mt-4 space-y-3">
@@ -433,7 +434,7 @@ ${newChapterText.trim()}`.trim(),
               <div>
                 <label className="text-sm font-semibold text-white/50 mb-2 block">Cover image</label>
                 <input type="file" hidden id="story-cover" accept="image/*" onChange={(event) => selectImage(event, setCoverFile, setCoverPreview)} />
-                <label htmlFor="story-cover" className="group cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-black/10 p-4 transition-colors hover:border-lemon-muted">
+                <label htmlFor="story-cover" className="group block cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-black/10 p-4 transition-colors hover:border-lemon-muted">
                   {coverPreview ? (
                     <img src={coverPreview} alt="Cover preview" className="h-48 w-full object-cover rounded-2xl" referrerPolicy="no-referrer" />
                   ) : (
@@ -446,7 +447,7 @@ ${newChapterText.trim()}`.trim(),
               <div>
                 <label className="text-sm font-semibold text-white/50 mb-2 block">Banner image</label>
                 <input type="file" hidden id="story-banner" accept="image/*" onChange={(event) => selectImage(event, setBannerFile, setBannerPreview)} />
-                <label htmlFor="story-banner" className="group cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-black/10 p-4 transition-colors hover:border-lemon-muted">
+                <label htmlFor="story-banner" className="group block cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-black/10 p-4 transition-colors hover:border-lemon-muted">
                   {bannerPreview ? (
                     <img src={bannerPreview} alt="Banner preview" className="h-40 w-full object-cover rounded-2xl" referrerPolicy="no-referrer" />
                   ) : (

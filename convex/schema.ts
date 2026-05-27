@@ -50,6 +50,8 @@ export default defineSchema({
     premiumProvider: v.optional(v.string()),
     premiumReference: v.optional(v.string()),
     walletBalance: v.number(),
+    xp: v.number(),
+    level: v.number(),
     followedCreators: v.array(v.string()),
     savedStories: v.array(v.string()),
     unlockedChapters: v.array(v.string()),
@@ -253,4 +255,221 @@ export default defineSchema({
     announcement: v.optional(v.string()),
     updatedAt: v.string(),
   }),
+
+  advertisers: defineTable({
+    name: v.string(),
+    contactEmail: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("paused"), v.literal("disabled")),
+    budgetNaira: v.number(),
+    spentNaira: v.number(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  }).index("by_status", ["status"]),
+
+  adCampaigns: defineTable({
+    advertiserId: v.optional(v.id("advertisers")),
+    title: v.string(),
+    type: v.union(v.literal("video"), v.literal("image"), v.literal("banner")),
+    placement: v.union(
+      v.literal("chapter_preroll"),
+      v.literal("movie_preroll"),
+      v.literal("novel_midroll"),
+      v.literal("sponsored_banner"),
+    ),
+    status: v.union(v.literal("draft"), v.literal("pending"), v.literal("approved"), v.literal("paused"), v.literal("rejected")),
+    mediaUrl: v.string(),
+    clickUrl: v.optional(v.string()),
+    brandName: v.string(),
+    headline: v.string(),
+    description: v.optional(v.string()),
+    cpmNaira: v.number(),
+    targetGenres: v.array(v.string()),
+    frequencyCapHours: v.number(),
+    priority: v.number(),
+    startsAt: v.optional(v.string()),
+    endsAt: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_status", ["status"])
+    .index("by_placement", ["placement"])
+    .index("by_status_and_placement", ["status", "placement"]),
+
+  adEvents: defineTable({
+    adId: v.id("adCampaigns"),
+    advertiserId: v.optional(v.id("advertisers")),
+    userId: v.optional(v.string()),
+    storyId: v.optional(v.string()),
+    creatorUsername: v.optional(v.string()),
+    contentType: v.union(v.literal("manga"), v.literal("manhwa"), v.literal("novel"), v.literal("movie"), v.literal("unknown")),
+    chapterId: v.optional(v.string()),
+    eventType: v.union(v.literal("impression"), v.literal("completed"), v.literal("skip"), v.literal("click")),
+    watchTimeMs: v.number(),
+    revenueNaira: v.number(),
+    creatorShareNaira: v.number(),
+    platformShareNaira: v.number(),
+    createdAt: v.string(),
+  })
+    .index("by_adId", ["adId"])
+    .index("by_creatorUsername", ["creatorUsername"])
+    .index("by_storyId", ["storyId"])
+    .index("by_eventType", ["eventType"]),
+
+  creatorAdRevenue: defineTable({
+    creatorUsername: v.string(),
+    storyId: v.optional(v.string()),
+    period: v.string(),
+    impressions: v.number(),
+    completedViews: v.number(),
+    skips: v.number(),
+    clicks: v.number(),
+    watchTimeMs: v.number(),
+    grossRevenueNaira: v.number(),
+    creatorRevenueNaira: v.number(),
+    platformRevenueNaira: v.number(),
+    updatedAt: v.string(),
+  })
+    .index("by_creatorUsername", ["creatorUsername"])
+    .index("by_creator_and_period", ["creatorUsername", "period"]),
+
+  /* === Gamification / Rewards === */
+
+  userCurrencies: defineTable({
+    userId: v.string(),
+    lemonCoins: v.number(),
+    goldenInk: v.number(),
+    updatedAt: v.string(),
+  }).index("by_userId", ["userId"]),
+
+  userStreaks: defineTable({
+    userId: v.string(),
+    currentStreak: v.number(),
+    lastActiveAt: v.optional(v.string()),
+    longestStreak: v.number(),
+    protectedUntil: v.optional(v.string()),
+    insuranceUses: v.number(),
+    updatedAt: v.string(),
+  }).index("by_userId", ["userId"]),
+
+  weeklySpinInventory: defineTable({
+    rewardId: v.string(),
+    type: v.union(
+      v.literal("airtime"),
+      v.literal("data"),
+      v.literal("cash"),
+      v.literal("gift_card"),
+      v.literal("premium"),
+      v.literal("bonus_spin"),
+      v.literal("lemon_coins"),
+      v.literal("cosmetic"),
+      v.literal("badge")
+    ),
+    amount: v.optional(v.number()),
+    metadata: v.optional(v.any()),
+    weight: v.number(),
+    active: v.boolean(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  }).index("by_active", ["active"]),
+
+  spinResults: defineTable({
+    userId: v.string(),
+    weekStart: v.string(),
+    rewardId: v.optional(v.string()),
+    rewardType: v.string(),
+    rewardValue: v.optional(v.any()),
+    awardedAt: v.string(),
+    claimedAt: v.optional(v.string()),
+    status: v.union(v.literal("awarded"), v.literal("claimed"), v.literal("expired")),
+    metadata: v.optional(v.any()),
+  }).index("by_user_week", ["userId", "weekStart"]),
+
+  engagementEvents: defineTable({
+    userId: v.string(),
+    sessionId: v.string(),
+    storyId: v.optional(v.string()),
+    chapterId: v.optional(v.string()),
+    contentType: v.optional(v.union(v.literal("manga"), v.literal("novel"), v.literal("movie"))),
+    durationMs: v.number(),
+    completionPct: v.number(),
+    scrollCompletionPct: v.optional(v.number()),
+    sessionQuality: v.number(),
+    returningVisit: v.boolean(),
+    counted: v.boolean(),
+    timestamp: v.string(),
+    metadata: v.optional(v.any()),
+  }).index("by_user", ["userId"]).index("by_session", ["sessionId"]),
+
+  xpEvents: defineTable({
+    userId: v.string(),
+    amount: v.number(),
+    reason: v.string(),
+    source: v.optional(v.string()),
+    timestamp: v.string(),
+    metadata: v.optional(v.any()),
+  }).index("by_user", ["userId"]),
+
+  achievementsCatalog: defineTable({
+    achievementId: v.string(),
+    name: v.string(),
+    description: v.string(),
+    criteria: v.any(),
+    xpReward: v.number(),
+    coinReward: v.number(),
+    badgeId: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    active: v.boolean(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  }).index("by_active", ["active"]),
+
+  userAchievements: defineTable({
+    userId: v.string(),
+    achievementId: v.string(),
+    awardedAt: v.string(),
+    metadata: v.optional(v.any()),
+  }).index("by_user", ["userId"]),
+
+  leaderboardsSnapshots: defineTable({
+    period: v.string(),
+    type: v.union(v.literal("xp"), v.literal("streak"), v.literal("coins")),
+    entries: v.array(v.any()),
+    createdAt: v.string(),
+  }).index("by_period_and_type", ["period", "type"]),
+
+  creatorQuests: defineTable({
+    questId: v.string(),
+    creatorId: v.string(),
+    title: v.string(),
+    description: v.string(),
+    requirements: v.any(),
+    rewards: v.any(),
+    startsAt: v.string(),
+    endsAt: v.string(),
+    active: v.boolean(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  }).index("by_creator", ["creatorId"]).index("by_active", ["active"]),
+
+  rewardInventory: defineTable({
+    rewardId: v.string(),
+    provider: v.optional(v.string()),
+    type: v.string(),
+    quantity: v.number(),
+    reserved: v.number(),
+    metadata: v.optional(v.any()),
+    updatedAt: v.string(),
+  }).index("by_rewardId", ["rewardId"]),
+
+  fraudEvents: defineTable({
+    userId: v.optional(v.string()),
+    type: v.string(),
+    description: v.string(),
+    evidence: v.optional(v.any()),
+    score: v.optional(v.number()),
+    resolved: v.boolean(),
+    createdAt: v.string(),
+    resolvedAt: v.optional(v.string()),
+    reviewedBy: v.optional(v.string()),
+  }).index("by_user", ["userId"]),
 });

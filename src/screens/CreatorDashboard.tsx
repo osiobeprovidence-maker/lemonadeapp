@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Plus, Eye, UserPlus, DollarSign, BookOpen, MessageCircle, Coffee, ExternalLink, Settings as SettingsIcon, Loader } from 'lucide-react';
+import { Activity, ChevronRight, Plus, Eye, UserPlus, DollarSign, BookOpen, MessageCircle, Coffee, TrendingUp } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useCurrentUser, useStories } from '../hooks/useConvex';
 import { api } from '../../convex/_generated/api';
@@ -16,6 +16,17 @@ export default function CreatorDashboard() {
   const myStories = (creatorStories || []).slice(0, 6);
   const [creatorEarnings, setCreatorEarnings] = useState(0);
   const [hasPayoutAccount, setHasPayoutAccount] = useState(false);
+  const [adSummary, setAdSummary] = useState({
+    impressions: 0,
+    completedViews: 0,
+    skips: 0,
+    clicks: 0,
+    creatorRevenueNaira: 0,
+    rpm: 0,
+    completionRate: 0,
+    ctr: 0,
+    topContent: [] as Array<{ storyId?: string; creatorRevenueNaira: number; impressions: number }>,
+  });
 
   useEffect(() => {
     const loadCreatorWallet = async () => {
@@ -31,6 +42,20 @@ export default function CreatorDashboard() {
       console.error('Failed to load creator wallet summary', error);
     });
   }, [user?.id]);
+
+  useEffect(() => {
+    const loadAdSummary = async () => {
+      if (!user?.username || !convex) return;
+      const summary = await convex.query(api.ads.creatorSummary, {
+        creatorUsername: user.username,
+      });
+      setAdSummary(summary);
+    };
+
+    loadAdSummary().catch((error) => {
+      console.error('Failed to load creator ad analytics', error);
+    });
+  }, [user?.username]);
   
   // Calculate stats from real data
   const stats = useMemo(() => {
@@ -43,8 +68,10 @@ export default function CreatorDashboard() {
       { label: "Followers", value: followers.toLocaleString(), icon: UserPlus, color: "text-green-400" },
       { label: "Creator Wallet", value: formatNaira(creatorEarnings), icon: DollarSign, color: "text-lemon-muted" },
       { label: "Active Stories", value: activeStories.toString(), icon: BookOpen, color: "text-purple-400" },
+      { label: "Ad Earnings", value: formatNaira(adSummary.creatorRevenueNaira), icon: TrendingUp, color: "text-emerald-400" },
+      { label: "Ad RPM", value: `NGN ${Math.round(adSummary.rpm).toLocaleString()}`, icon: Activity, color: "text-orange-400" },
     ];
-  }, [creatorEarnings, myStories, user]);
+  }, [adSummary.creatorRevenueNaira, adSummary.rpm, creatorEarnings, myStories, user]);
 
   return (
     <div className="flex flex-col w-full min-h-screen p-6 md:p-12">
@@ -61,7 +88,7 @@ export default function CreatorDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-12">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (
@@ -127,6 +154,34 @@ export default function CreatorDashboard() {
                )}
              </div>
            )}
+
+           <div className="mt-10 rounded-3xl border border-lemon-muted/15 bg-gradient-to-br from-[#171717] to-[#0A0A0A] p-6">
+             <div className="mb-6 flex items-start justify-between gap-4">
+               <div>
+                 <h2 className="font-display text-2xl font-black">Ad Monetization</h2>
+                 <p className="mt-1 text-sm text-white/45">70% creator revenue share from free-reader ads.</p>
+               </div>
+               <div className="rounded-2xl bg-lemon-muted px-3 py-2 text-xs font-black text-black">70/30 split</div>
+             </div>
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+               {[
+                 ['Impressions', adSummary.impressions.toLocaleString()],
+                 ['Completed', adSummary.completedViews.toLocaleString()],
+                 ['Completion', `${adSummary.completionRate.toFixed(1)}%`],
+                 ['CTR', `${adSummary.ctr.toFixed(1)}%`],
+               ].map(([label, value]) => (
+                 <div key={label} className="rounded-2xl border border-white/5 bg-black/30 p-4">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-white/35">{label}</p>
+                   <p className="mt-2 font-display text-2xl font-black">{value}</p>
+                 </div>
+               ))}
+             </div>
+             <div className="mt-5 rounded-2xl border border-white/5 bg-black/30 p-4">
+               <p className="text-xs font-black uppercase tracking-widest text-white/35">Estimated payout</p>
+               <p className="mt-2 font-display text-3xl font-black text-lemon-muted">{formatNaira(adSummary.creatorRevenueNaira)}</p>
+               <p className="mt-1 text-xs text-white/40">Calculated from impressions, completions, watch quality, and engagement-ready revenue events.</p>
+             </div>
+           </div>
         </div>
 
         {/* Sidebar */}

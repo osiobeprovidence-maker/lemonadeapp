@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { Button } from '../components/ui/Button';
 import { useApp } from '../contexts/AppContext';
+import AdPrerollModal from '../components/ads/AdPrerollModal';
+import { useAdGate } from '../hooks/useAdGate';
+import { useEngagement } from '../hooks/useEngagement';
 
 export default function Reader() {
   const { id, chapterNum } = useParams();
@@ -37,13 +40,28 @@ export default function Reader() {
   const [reportSuccess, setReportSuccess] = useState(false);
 
   const isNovel = story.format === 'Novel';
+  const isPremiumReader = !!user?.isPremium || user?.premiumStatus === 'premium';
+  const adGate = useAdGate({
+    enabled: isUnlocked && !isPremiumReader,
+    userId: user?.id,
+    storyId: story.id,
+    creatorUsername: story.creator?.username,
+    format: story.format,
+    genre: story.genre,
+    chapterNumber: parseInt(chapterNum || '1'),
+    isPremium: isPremiumReader,
+  });
+  const canReadContent = isUnlocked && adGate.isContentUnlocked;
 
   // Track reading when content is available and unlocked
   useEffect(() => {
-    if (isUnlocked && id && chapterNum) {
+    if (canReadContent && id && chapterNum) {
       trackReading(id, chapterId);
     }
-  }, [id, chapterNum, isUnlocked]);
+  }, [id, chapterNum, canReadContent]);
+
+  // Engagement instrumentation: track scroll and time spent
+  useEngagement({ storyId: id, chapterId: chapterId });
 
   // Auto-hide UI when scrolling
   useEffect(() => {
@@ -70,6 +88,14 @@ export default function Reader() {
 
   return (
     <div className={cn("min-h-screen transition-colors duration-300 overflow-x-hidden", theme === 'dark' ? "bg-[#0A0A0A] text-cream-soft" : "bg-[#f5f5f0] text-black")}>
+      <AdPrerollModal
+        ad={adGate.ad}
+        countdownSeconds={adGate.countdownSeconds}
+        open={adGate.isAdOpen}
+        onComplete={adGate.completeAd}
+        onSkip={adGate.skipAd}
+        onClickThrough={adGate.clickAd}
+      />
       
       {/* Top Header */}
       <AnimatePresence>
@@ -231,8 +257,16 @@ export default function Reader() {
           const attachments = chapterData?.attachments || story.media?.attachments || [];
           const chapterText = chapterData?.text || (chapterNum === '1' ? story.media?.chapterText : undefined) || '';
 
-          if (!isUnlocked) {
-            return null; // Locked reader screen handled above
+          if (!canReadContent) {
+            return (
+              <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
+                <div className="mb-6 h-14 w-14 animate-pulse rounded-2xl bg-lemon-muted/15" />
+                <h2 className="font-display text-3xl font-black">Preparing chapter</h2>
+                <p className="mt-3 max-w-xs text-sm leading-6 text-white/50">
+                  Free reading is supported by a short sponsored message.
+                </p>
+              </div>
+            );
           }
 
           // If novel and has text

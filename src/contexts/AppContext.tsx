@@ -12,7 +12,7 @@ import {
 import type { Creator, Story, SupportTransaction, CreatorApplication, CreatorAccessStatus } from '../data/types';
 import { MOCK_CREATORS, MOCK_STORIES } from '../data/mock';
 import { api } from '../../convex/_generated/api';
-import { auth, googleProvider } from '../lib/firebase';
+import { auth, authPersistenceReady, googleProvider } from '../lib/firebase';
 import { convex } from '../lib/convex';
 
 export type UserRole = 'guest' | 'reader' | 'creator' | 'admin';
@@ -210,6 +210,8 @@ const DEFAULT_SETTINGS: UserSettings = {
 };
 
 const LIVE_CONTENT_REFRESH_MS = 10000;
+const AUTH_SESSION_KEY = 'lemonade_auth_session';
+const AUTH_EXPLICIT_LOGOUT_KEY = 'lemonade_auth_explicit_logout';
 
 const GUEST_USER: AppUser = {
   id: 'guest',
@@ -257,6 +259,45 @@ const INITIAL_READER: AppUser = {
   badges: [],
   notifications: [],
   settings: DEFAULT_SETTINGS,
+};
+
+const readPersistedUser = (): AppUser | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const savedSession = window.localStorage.getItem(AUTH_SESSION_KEY);
+    if (!savedSession) return null;
+
+    const parsed = JSON.parse(savedSession) as { user?: AppUser };
+    const savedUser = parsed.user;
+    if (!savedUser?.isAuthenticated || savedUser.isGuest) return null;
+
+    return {
+      ...savedUser,
+      settings: { ...DEFAULT_SETTINGS, ...(savedUser.settings || {}) },
+    };
+  } catch (error) {
+    console.error('Failed to restore saved auth session', error);
+    window.localStorage.removeItem(AUTH_SESSION_KEY);
+    return null;
+  }
+};
+
+const persistUserSession = (nextUser: AppUser) => {
+  if (typeof window === 'undefined' || nextUser.isGuest || !nextUser.isAuthenticated) return;
+
+  window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
+    user: nextUser,
+    savedAt: new Date().toISOString(),
+  }));
+  window.localStorage.removeItem(AUTH_EXPLICIT_LOGOUT_KEY);
+};
+
+const clearPersistedUserSession = () => {
+  if (typeof window === 'undefined') return;
+
+  window.localStorage.removeItem(AUTH_SESSION_KEY);
+  window.localStorage.setItem(AUTH_EXPLICIT_LOGOUT_KEY, 'true');
 };
 
 const usernameFromUser = (firebaseUser: FirebaseUser, preferred?: string) => {
@@ -451,7 +492,7 @@ const activityFromDoc = (doc: any): AdminActivity => ({
 });
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AppUser | null>(null);
+  const [user, setUser] = useState<AppUser | null>(() => readPersistedUser());
   const [liveCreators, setLiveCreators] = useState<Record<string, Creator>>(MOCK_CREATORS as unknown as Record<string, Creator>);
   const [liveStories, setLiveStories] = useState<Story[]>(MOCK_STORIES as unknown as Story[]);
   const [applications, setApplications] = useState<CreatorApplication[]>([]);
@@ -556,7 +597,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const syncFirebaseUser = async (firebaseUser: FirebaseUser) => {
     if (!convex) {
-      setUser(appUserFromFirebase(firebaseUser));
+      const nextUser = appUserFromFirebase(firebaseUser);
+      persistUserSession(nextUser);
+      setUser(nextUser);
       return;
     }
 
@@ -571,7 +614,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const convexUser = await convex.query(api.users.getFullProfile, {
       firebaseUid: firebaseUser.uid,
     });
-    setUser(appUserFromFirebase(firebaseUser, convexUser));
+    const nextUser = appUserFromFirebase(firebaseUser, convexUser);
+    persistUserSession(nextUser);
+    setUser(nextUser);
   };
 
   // Persistence
@@ -588,6 +633,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
+        const savedUser = readPersistedUser();
+        const explicitlyLoggedOut = localStorage.getItem(AUTH_EXPLICIT_LOGOUT_KEY) === 'true';
+
+        if (savedUser && !explicitlyLoggedOut) {
+          setUser(savedUser);
+          return;
+        }
+
         setUser(GUEST_USER);
         return;
       }
@@ -596,7 +649,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await syncFirebaseUser(firebaseUser);
       } catch (error) {
         console.error('Failed to sync Firebase user', error);
-        setUser(appUserFromFirebase(firebaseUser));
+        const fallbackUser = appUserFromFirebase(firebaseUser);
+        persistUserSession(fallbackUser);
+        setUser(fallbackUser);
       }
     });
 
@@ -610,6 +665,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('lemonade_admin_session');
     }
   }, [adminSession]);
+
+  useEffect(() => {
+    if (user?.isAuthenticated && !user.isGuest) {
+      persistUserSession(user);
+    }
+  }, [user]);
 
   // Local admin sample data only exists in development.
   useEffect(() => {
@@ -776,15 +837,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: true,
       isGuest: false,
     };
+    persistUserSession(newUser);
     setUser(newUser);
   };
 
   const signIn = async (email: string, password: string) => {
+    await authPersistenceReady;
     const credential = await signInWithEmailAndPassword(auth, email, password);
     await syncFirebaseUser(credential.user);
   };
 
   const signUp = async (input: { name: string; username: string; email: string; password: string }) => {
+    await authPersistenceReady;
     const credential = await createUserWithEmailAndPassword(auth, input.email, input.password);
     await updateProfile(credential.user, {
       displayName: input.name,
@@ -802,13 +866,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const convexUser = await convex.query(api.users.getByFirebaseUid, {
         firebaseUid: credential.user.uid,
       });
-      setUser(appUserFromFirebase(credential.user, convexUser));
+      const nextUser = appUserFromFirebase(credential.user, convexUser);
+      persistUserSession(nextUser);
+      setUser(nextUser);
     } else {
-      setUser(appUserFromFirebase(credential.user));
+      const nextUser = appUserFromFirebase(credential.user);
+      persistUserSession(nextUser);
+      setUser(nextUser);
     }
   };
 
   const signInWithGoogle = async () => {
+    await authPersistenceReady;
     const credential = await signInWithPopup(auth, googleProvider);
     await syncFirebaseUser(credential.user);
   };
@@ -851,6 +920,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await signOut(auth);
+    clearPersistedUserSession();
     setUser(GUEST_USER);
   };
 

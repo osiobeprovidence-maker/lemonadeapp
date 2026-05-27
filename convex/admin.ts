@@ -249,3 +249,105 @@ export const listModerators = query({
     return await ctx.db.query("moderators").collect();
   },
 });
+
+export const listSpinRewards = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("weeklySpinInventory").collect();
+  },
+});
+
+export const createSpinReward = mutation({
+  args: {
+    rewardId: v.string(),
+    type: v.string(),
+    amount: v.optional(v.number()),
+    metadata: v.optional(v.any()),
+    weight: v.number(),
+    active: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("weeklySpinInventory", {
+      rewardId: args.rewardId,
+      type: args.type,
+      amount: args.amount ?? null,
+      metadata: args.metadata ?? {},
+      weight: args.weight,
+      active: args.active,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  },
+});
+
+export const updateSpinReward = mutation({
+  args: {
+    id: v.id("weeklySpinInventory"),
+    updates: v.any(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { ...args.updates, updatedAt: new Date().toISOString() });
+    return args.id;
+  },
+});
+
+export const deleteSpinReward = mutation({
+  args: { id: v.id("weeklySpinInventory") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+    return args.id;
+  },
+});
+
+export const scanEngagementForFraud = mutation({
+  args: { minutes: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const lookbackMs = (args.minutes || 60) * 60 * 1000;
+    const cutoff = Date.now() - lookbackMs;
+    const events = await ctx.db.query("engagementEvents").collect();
+    const suspects: any[] = [];
+
+    for (const e of events) {
+      const t = Date.parse(e.timestamp || '1970-01-01');
+      if (t < cutoff) continue;
+      // simple heuristics
+      if (e.durationMs < 10000 && e.completionPct >= 80) {
+        suspects.push({ userId: e.userId, reason: 'very short duration with high completion', evidence: e });
+      }
+      if (e.sessionQuality <= 5 && e.returningVisit && e.durationMs < 5000) {
+        suspects.push({ userId: e.userId, reason: 'low quality repeated short sessions', evidence: e });
+      }
+    }
+
+    const created: any[] = [];
+    for (const s of suspects) {
+      const id = await ctx.db.insert('fraudEvents', {
+        userId: s.userId || null,
+        type: 'engagement_suspicious',
+        description: s.reason,
+        evidence: s.evidence,
+        score: 50,
+        resolved: false,
+        createdAt: new Date().toISOString(),
+      });
+      created.push(id);
+    }
+
+    return { created: created.length };
+  },
+});
+
+export const listFraudEvents = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query('fraudEvents').collect();
+  },
+});
+
+export const resolveFraudEvent = mutation({
+  args: { id: v.id('fraudEvents'), resolved: v.boolean(), reviewedBy: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { resolved: args.resolved, resolvedAt: new Date().toISOString(), reviewedBy: args.reviewedBy || null });
+    return args.id;
+  },
+});

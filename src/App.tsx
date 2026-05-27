@@ -40,6 +40,11 @@ import AdminFeatured from './screens/admin/AdminFeatured';
 import AdminSettingsPage from './screens/admin/AdminSettings';
 import AdminActivity from './screens/admin/AdminActivity';
 import AdminAnalytics from './screens/admin/AdminAnalytics';
+import AdminAds from './screens/admin/AdminAds';
+import AdminNewCampaign from './screens/admin/AdminNewCampaign';
+import AdminRewards from './screens/admin/AdminRewards';
+import AdminFraud from './screens/admin/AdminFraud';
+import Rewards from './screens/Rewards';
 import AdminUserDetail from './screens/admin/details/AdminUserDetail';
 import AdminCreatorDetail from './screens/admin/details/AdminCreatorDetail';
 import AdminStoryDetail from './screens/admin/details/AdminStoryDetail';
@@ -119,6 +124,7 @@ function AnimatedRoutes() {
           <Route path="/premium" element={<Premium />} />
           
           <Route path="/story/:id" element={<StoryDetail />} />
+          <Route path="/rewards" element={<Rewards />} />
           <Route path="/creator/:username" element={<CreatorProfile />} />
           <Route path="/creator/:username/portfolio" element={<CreatorPortfolio />} />
           
@@ -164,6 +170,34 @@ function AnimatedRoutes() {
           <AdminRouteGuard>
             <AdminLayout>
               <AdminAnalytics />
+            </AdminLayout>
+          </AdminRouteGuard>
+        } />
+        <Route path="/admin/ads" element={
+          <AdminRouteGuard>
+            <AdminLayout>
+              <AdminAds />
+            </AdminLayout>
+          </AdminRouteGuard>
+        } />
+        <Route path="/admin/rewards" element={
+          <AdminRouteGuard>
+            <AdminLayout>
+              <AdminRewards />
+            </AdminLayout>
+          </AdminRouteGuard>
+        } />
+        <Route path="/admin/fraud" element={
+          <AdminRouteGuard>
+            <AdminLayout>
+              <AdminFraud />
+            </AdminLayout>
+          </AdminRouteGuard>
+        } />
+        <Route path="/admin/ads/new" element={
+          <AdminRouteGuard>
+            <AdminLayout>
+              <AdminNewCampaign />
             </AdminLayout>
           </AdminRouteGuard>
         } />

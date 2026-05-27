@@ -5,6 +5,8 @@ import { StoryCard, FormatBadge, GenreBadge } from '../components/ui/Cards';
 import { Button } from '../components/ui/Button';
 import { useStories, useTrendingStories } from '../hooks/useConvex';
 import { useApp } from '../contexts/AppContext';
+import SpinWheel from '../components/ui/SpinWheel';
+import StreakBadge from '../components/ui/StreakBadge';
 
 export default function Home() {
   const { user } = useApp();
@@ -89,6 +91,7 @@ export default function Home() {
                 <Search size={18} />
               </Link>
             </div>
+            {/* Rewards (streak & spin) moved to /rewards page */}
           </div>
         </div>
       </section>

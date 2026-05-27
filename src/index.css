@@ -117,6 +117,12 @@
   }
 }
 
+@layer components {
+  .field-input {
+    @apply w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm font-semibold text-white outline-none transition-colors placeholder:text-white/25 focus:border-lemon-muted focus:bg-black/55;
+  }
+}
+
 /* Custom scrollbar for horizontal lists */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;

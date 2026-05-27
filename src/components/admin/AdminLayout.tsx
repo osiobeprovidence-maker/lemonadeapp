@@ -18,7 +18,9 @@ import {
   BadgeCheck,
   ChevronRight,
   TrendingUp,
-  Box
+  Box,
+  Megaphone,
+  Gift
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { cn } from '../../lib/utils';
@@ -32,9 +34,12 @@ interface AdminLayoutProps {
 const NAV_ITEMS = [
   { label: 'Overview', icon: LayoutDashboard, path: '/admin' },
   { label: 'Analytics', icon: TrendingUp, path: '/admin/analytics' },
+  { label: 'Ad Monetization', icon: Megaphone, path: '/admin/ads' },
+  { label: 'Rewards', icon: Gift, path: '/admin/rewards' },
   { label: 'Activity', icon: FileText, path: '/admin/activity' },
   { label: 'Users', icon: Users, path: '/admin/users' },
   { label: 'Creators', icon: PenTool, path: '/admin/creators' },
+  { label: 'Fraud', icon: Flag, path: '/admin/fraud' },
   { label: 'Applications', icon: FileText, path: '/admin/applications' },
   { label: 'Stories', icon: Box, path: '/admin/stories' },
   { label: 'Reports', icon: Flag, path: '/admin/reports' },
