@@ -11,9 +11,12 @@
 import type * as admin from "../admin.js";
 import type * as ads from "../ads.js";
 import type * as applications from "../applications.js";
+import type * as creatorQuests from "../creatorQuests.js";
 import type * as creators from "../creators.js";
 import type * as files from "../files.js";
+import type * as gamification from "../gamification.js";
 import type * as interactions from "../interactions.js";
+import type * as migrate from "../migrate.js";
 import type * as payments from "../payments.js";
 import type * as paystack from "../paystack.js";
 import type * as seed from "../seed.js";
@@ -31,9 +34,12 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   ads: typeof ads;
   applications: typeof applications;
+  creatorQuests: typeof creatorQuests;
   creators: typeof creators;
   files: typeof files;
+  gamification: typeof gamification;
   interactions: typeof interactions;
+  migrate: typeof migrate;
   payments: typeof payments;
   paystack: typeof paystack;
   seed: typeof seed;
