@@ -184,7 +184,7 @@ interface AppContextType {
   updateSettings: (settings: Partial<UserSettings>) => void;
   updateLocalUser: (updates: Partial<AppUser>) => void;
   markNotificationsAsRead: () => void;
-  submitCreatorApplication: (application: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
+  submitCreatorApplication: (application: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => Promise<void>;
   approveCreatorApplication: (appId: string) => Promise<void>;
   rejectCreatorApplication: (appId: string, feedback: string) => Promise<void>;
   
@@ -1229,6 +1229,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+<<<<<<< HEAD
   const updateLocalUser = (updates: Partial<AppUser>) => {
     setUser(prev => prev ? { ...prev, ...updates } : null);
   };
@@ -1259,6 +1260,60 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
     
+=======
+  const submitCreatorApplication = async (appData: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => {
+    if (!user || user.isGuest) return;
+
+    if (convex) {
+      try {
+        const res: any = await convex.mutation(api.applications.submit, {
+          userId: user.id,
+          creatorName: appData.creatorName,
+          category: appData.category,
+          location: appData.location,
+          bio: appData.bio,
+          portfolioLink: appData.portfolioLink,
+          socialLinks: appData.socialLinks,
+          dropsomethingUrl: appData.dropsomethingUrl,
+          storyIntent: appData.storyIntent,
+          mainGenre: appData.mainGenre,
+          hasStoryReady: appData.hasStoryReady,
+          whyLemonade: appData.whyLemonade,
+        });
+
+        const newApp: any = {
+          ...(res || {}),
+          id: (res && (res._id || res.id)) || Math.random().toString(36).substr(2, 9),
+        };
+
+        setApplications(prev => [newApp, ...prev]);
+        setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
+      } catch (error) {
+        console.error('Failed to submit application to Convex', error);
+        // fallback to local-only behavior
+        const newApp: CreatorApplication = {
+          ...appData,
+          id: Math.random().toString(36).substr(2, 9),
+          userId: user.id,
+          submittedAt: new Date().toISOString(),
+          status: 'pending'
+        };
+        setApplications(prev => [newApp, ...prev]);
+        setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
+      }
+    } else {
+      const newApp: CreatorApplication = {
+        ...appData,
+        id: Math.random().toString(36).substr(2, 9),
+        userId: user.id,
+        submittedAt: new Date().toISOString(),
+        status: 'pending'
+      };
+      setApplications(prev => [newApp, ...prev]);
+      setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
+    }
+
+>>>>>>> copilot/worktree-2026-04-29T00-02-32
     addNotification({
       type: 'update',
       title: 'Application Submitted',

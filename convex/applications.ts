@@ -137,6 +137,14 @@ export const review = mutation({
 
     const user = await getApplicationUser(ctx, application.userId);
 
+    if (!user) {
+      try {
+        user = await ctx.db.get(application.userId as any);
+      } catch (e) {
+        user = null as any;
+      }
+    }
+
     if (user) {
       await ctx.db.patch(user._id, {
         creatorAccessStatus: args.status,
