@@ -11,8 +11,12 @@ const GENRES = ["Action", "Romance", "Horror", "Sci-Fi & Cyberpunk", "African Fa
 
 export default function CreatorApplication() {
   const navigate = useNavigate();
-  const { user, isGuest, submitCreatorApplication } = useApp();
+  const { user, isGuest, creators, submitCreatorApplication } = useApp();
   const [step, setStep] = useState(1);
+  const registeredStudios = Object.values(creators)
+    .filter((creator: any) => Array.isArray(creator.category) ? creator.category.includes('Studio') : creator.category === 'Studio')
+    .map((creator: any) => creator.name)
+    .filter(Boolean);
   const [formData, setFormData] = useState({
     creatorName: '',
     category: [] as string[],
@@ -26,6 +30,8 @@ export default function CreatorApplication() {
       sampleWork: '',
     },
     dropsomethingUrl: '',
+    studioMode: 'solo' as 'solo' | 'existing' | 'new',
+    studioName: '',
     storyIntent: '',
     mainGenre: 'Action',
     hasStoryReady: false,
@@ -84,6 +90,8 @@ export default function CreatorApplication() {
       portfolioLink: formData.portfolioLink,
       socialLinks: formData.socialLinks,
       dropsomethingUrl: formData.dropsomethingUrl,
+      studioMode: formData.studioMode,
+      studioName: formData.studioMode === 'solo' ? '' : formData.studioName.trim(),
       storyIntent: formData.storyIntent,
       mainGenre: formData.mainGenre,
       hasStoryReady: formData.hasStoryReady,
@@ -159,6 +167,57 @@ export default function CreatorApplication() {
                       </button>
                     ))}
                   </div>
+                </div>
+                <div className="grid gap-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-white/40">Studio Affiliation</label>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    {[
+                      { id: 'solo', label: 'Independent' },
+                      { id: 'existing', label: 'Join Studio' },
+                      { id: 'new', label: 'New Studio' },
+                    ].map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                          ...prev,
+                          studioMode: option.id as typeof formData.studioMode,
+                          studioName: option.id === 'solo' ? '' : prev.studioName,
+                        }))}
+                        className={cn(
+                          "h-12 rounded-xl border text-sm font-bold transition-all",
+                          formData.studioMode === option.id ? "bg-lemon-muted text-black border-lemon-muted" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  {formData.studioMode === 'existing' && (
+                    <select
+                      required
+                      value={formData.studioName}
+                      onChange={(e) => handleInputChange('studioName', e.target.value)}
+                      className="w-full h-14 bg-black-core border border-white/10 rounded-xl px-4 text-white focus:border-lemon-muted outline-none transition-colors"
+                    >
+                      <option value="">Choose a registered studio</option>
+                      {registeredStudios.map((studio) => (
+                        <option key={studio} value={studio}>{studio}</option>
+                      ))}
+                    </select>
+                  )}
+                  {formData.studioMode === 'new' && (
+                    <input
+                      required
+                      value={formData.studioName}
+                      onChange={(e) => handleInputChange('studioName', e.target.value)}
+                      className="w-full h-14 bg-black-core border border-white/10 rounded-xl px-4 text-white focus:border-lemon-muted outline-none transition-colors"
+                      placeholder="Enter your new studio name"
+                    />
+                  )}
+                  {formData.studioMode === 'existing' && registeredStudios.length === 0 && (
+                    <p className="text-xs font-bold text-orange-300">No registered studios yet. Choose New Studio to create one during review.</p>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   <label className="text-xs font-black uppercase tracking-widest text-white/40">Location</label>

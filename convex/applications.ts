@@ -78,6 +78,8 @@ export const submit = mutation({
     portfolioLink: v.string(),
     socialLinks: v.any(),
     dropsomethingUrl: v.optional(v.string()),
+    studioMode: v.optional(v.union(v.literal("solo"), v.literal("existing"), v.literal("new"))),
+    studioName: v.optional(v.string()),
     storyIntent: v.string(),
     mainGenre: v.string(),
     hasStoryReady: v.boolean(),
@@ -161,6 +163,8 @@ export const review = mutation({
           profile: {
             portfolioLink: application.portfolioLink,
             socialLinks: application.socialLinks,
+            studioMode: application.studioMode || "solo",
+            studioName: application.studioName,
             storyIntent: application.storyIntent,
             mainGenre: application.mainGenre,
             hasStoryReady: application.hasStoryReady,

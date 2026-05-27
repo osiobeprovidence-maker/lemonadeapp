@@ -131,6 +131,8 @@ export default defineSchema({
     portfolioLink: v.string(),
     socialLinks: v.any(),
     dropsomethingUrl: v.optional(v.string()),
+    studioMode: v.optional(v.union(v.literal("solo"), v.literal("existing"), v.literal("new"))),
+    studioName: v.optional(v.string()),
     storyIntent: v.string(),
     mainGenre: v.string(),
     hasStoryReady: v.boolean(),

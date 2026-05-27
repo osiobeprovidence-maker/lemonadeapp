@@ -1,10 +1,14 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SettingsDetailLayout from '../../components/SettingsDetailLayout';
-import { MousePointer2, Briefcase, ExternalLink, ShieldCheck, AlertCircle, PenTool, CheckCircle, Image as ImageIcon, Loader } from 'lucide-react';
+import { MousePointer2, Briefcase, ExternalLink, ShieldCheck, AlertCircle, PenTool, CheckCircle, Image as ImageIcon, Loader, Globe } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useUpdateCreatorProfile } from '../../hooks/useConvex';
 import { compressImage, uploadBannerImage } from '../../lib/imageUpload';
+import { cn } from '../../lib/utils';
+
+const CATEGORIES = ["Manga Artist", "Writer", "Illustrator", "Studio", "Animator"];
+const GENRES = ["Action", "Romance", "Horror", "Sci-Fi & Cyberpunk", "African Fantasy", "Drama", "Mystery"];
 
 export default function SettingsCreator() {
   const navigate = useNavigate();
@@ -17,10 +21,31 @@ export default function SettingsCreator() {
   const [error, setError] = useState<string | null>(null);
   const isCreator = user?.role === 'creator';
   const creatorData = user ? Object.values(creators as Record<string, any>).find(c => c.username === user.username) : null;
+  const registeredStudios = Object.values(creators as Record<string, any>)
+    .filter((creator) => creator.username !== user?.username)
+    .filter((creator) => Array.isArray(creator.category) ? creator.category.includes('Studio') : creator.category === 'Studio')
+    .map((creator) => creator.name)
+    .filter(Boolean);
 
   const [formData, setFormData] = useState({
+    creatorName: '',
+    category: [] as string[],
+    location: '',
+    bio: '',
     dropSomething: '',
     portfolio: '',
+    socialLinks: {
+      instagram: '',
+      tiktok: '',
+      x: '',
+      sampleWork: '',
+    },
+    studioMode: 'solo' as 'solo' | 'existing' | 'new',
+    studioName: '',
+    storyIntent: '',
+    mainGenre: 'Action',
+    hasStoryReady: false,
+    whyLemonade: '',
     banner: '',
     collaboration: true,
     bankName: '',
@@ -31,8 +56,24 @@ export default function SettingsCreator() {
   useEffect(() => {
     if (creatorData) {
       setFormData({
+        creatorName: creatorData.name || '',
+        category: Array.isArray(creatorData.category) ? creatorData.category : [creatorData.category || 'Writer'],
+        location: creatorData.location || '',
+        bio: creatorData.bio || '',
         dropSomething: creatorData.dropsomethingUrl || '',
         portfolio: creatorData.portfolioLink || '',
+        socialLinks: {
+          instagram: creatorData.profile?.socialLinks?.instagram || '',
+          tiktok: creatorData.profile?.socialLinks?.tiktok || '',
+          x: creatorData.profile?.socialLinks?.x || '',
+          sampleWork: creatorData.profile?.socialLinks?.sampleWork || '',
+        },
+        studioMode: creatorData.profile?.studioMode || 'solo',
+        studioName: creatorData.profile?.studioName || '',
+        storyIntent: creatorData.profile?.storyIntent || '',
+        mainGenre: creatorData.profile?.mainGenre || 'Action',
+        hasStoryReady: !!creatorData.profile?.hasStoryReady,
+        whyLemonade: creatorData.profile?.whyLemonade || '',
         banner: creatorData.banner || '',
         collaboration: creatorData.supportEnabled ?? true,
         bankName: creatorData.profile?.payoutAccount?.bankName || '',
@@ -41,6 +82,16 @@ export default function SettingsCreator() {
       });
     }
   }, [creatorData]);
+
+  const toggleCategory = (category: string) => {
+    setFormData(prev => {
+      const exists = prev.category.includes(category);
+      return {
+        ...prev,
+        category: exists ? prev.category.filter(item => item !== category) : [...prev.category, category],
+      };
+    });
+  };
 
   const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -66,18 +117,27 @@ export default function SettingsCreator() {
     setIsLoading(true);
     try {
       await updateCreatorProfile({
-        name: user.name,
+        name: formData.creatorName.trim() || user.name,
         username: user.username,
         avatar: user.avatar,
-        bio: user.bio || '',
-        category: creatorData.category as any,
+        bio: formData.bio.trim(),
+        category: formData.category.length ? formData.category : (creatorData.category as any),
+        location: formData.location.trim(),
         dropsomethingUrl: formData.dropSomething,
         supportEnabled: formData.collaboration,
         userId: user.id,
         profile: {
           ...(creatorData.profile || {}),
+          creatorName: formData.creatorName.trim(),
           banner: formData.banner,
           portfolioLink: formData.portfolio,
+          socialLinks: formData.socialLinks,
+          studioMode: formData.studioMode,
+          studioName: formData.studioMode === 'solo' ? '' : formData.studioName.trim(),
+          storyIntent: formData.storyIntent.trim(),
+          mainGenre: formData.mainGenre,
+          hasStoryReady: formData.hasStoryReady,
+          whyLemonade: formData.whyLemonade.trim(),
           payoutAccount: {
             bankName: formData.bankName.trim(),
             accountNumber: formData.accountNumber.trim(),
@@ -143,6 +203,195 @@ export default function SettingsCreator() {
                   </div>
                </div>
                <ExternalLink size={20} className="text-white/10 group-hover:text-white transition-colors" />
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-3 mb-6 px-4">
+               <PenTool size={20} className="text-lemon-muted" />
+               <h3 className="text-xl font-display font-black uppercase italic tracking-tight">Creator Application Profile</h3>
+            </div>
+            <div className="p-8 bg-ink-deep border border-white/5 rounded-[40px] space-y-6">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Creator or Studio Name</label>
+                  <input
+                    value={formData.creatorName}
+                    onChange={(e) => setFormData({ ...formData, creatorName: e.target.value })}
+                    className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                    placeholder="Creator name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Location</label>
+                  <input
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                    placeholder="City, Country"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Category</label>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map(category => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => toggleCategory(category)}
+                      className={cn(
+                        "px-4 py-2 rounded-full border text-sm font-bold transition-all",
+                        formData.category.includes(category) ? "bg-lemon-muted text-black border-lemon-muted" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30"
+                      )}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Creator Bio</label>
+                <textarea
+                  value={formData.bio}
+                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                  className="w-full h-28 bg-white/5 border border-white/5 rounded-2xl p-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors resize-none"
+                  placeholder="Tell readers and admins about your creative work."
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Studio Affiliation</label>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {[
+                    { id: 'solo', label: 'Independent' },
+                    { id: 'existing', label: 'Member of Studio' },
+                    { id: 'new', label: 'New Studio' },
+                  ].map(option => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setFormData({
+                        ...formData,
+                        studioMode: option.id as typeof formData.studioMode,
+                        studioName: option.id === 'solo' ? '' : formData.studioName,
+                      })}
+                      className={cn(
+                        "h-12 rounded-2xl border text-sm font-bold transition-all",
+                        formData.studioMode === option.id ? "bg-lemon-muted text-black border-lemon-muted" : "bg-white/5 border-white/10 text-white/60 hover:border-white/30"
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                {formData.studioMode === 'existing' && (
+                  <select
+                    value={formData.studioName}
+                    onChange={(e) => setFormData({ ...formData, studioName: e.target.value })}
+                    className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                  >
+                    <option value="">Choose a registered studio</option>
+                    {registeredStudios.map(studio => (
+                      <option key={studio} value={studio}>{studio}</option>
+                    ))}
+                  </select>
+                )}
+                {formData.studioMode === 'new' && (
+                  <input
+                    value={formData.studioName}
+                    onChange={(e) => setFormData({ ...formData, studioName: e.target.value })}
+                    className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                    placeholder="Enter the new studio name"
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-3 mb-6 px-4">
+               <Globe size={20} className="text-lemon-muted" />
+               <h3 className="text-xl font-display font-black uppercase italic tracking-tight">Application Links & Story Intent</h3>
+            </div>
+            <div className="p-8 bg-ink-deep border border-white/5 rounded-[40px] space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Portfolio Link</label>
+                <input
+                  type="url"
+                  value={formData.portfolio}
+                  onChange={(e) => setFormData({ ...formData, portfolio: e.target.value })}
+                  className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Instagram</label>
+                  <input
+                    value={formData.socialLinks.instagram}
+                    onChange={(e) => setFormData({ ...formData, socialLinks: { ...formData.socialLinks, instagram: e.target.value } })}
+                    className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                    placeholder="@username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">TikTok</label>
+                  <input
+                    value={formData.socialLinks.tiktok}
+                    onChange={(e) => setFormData({ ...formData, socialLinks: { ...formData.socialLinks, tiktok: e.target.value } })}
+                    className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                    placeholder="@username"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Sample Work Link</label>
+                <input
+                  type="url"
+                  value={formData.socialLinks.sampleWork}
+                  onChange={(e) => setFormData({ ...formData, socialLinks: { ...formData.socialLinks, sampleWork: e.target.value } })}
+                  className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Main Genre</label>
+                <select
+                  value={formData.mainGenre}
+                  onChange={(e) => setFormData({ ...formData, mainGenre: e.target.value })}
+                  className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                >
+                  {GENRES.map(genre => <option key={genre} value={genre}>{genre}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Story Intent</label>
+                <textarea
+                  value={formData.storyIntent}
+                  onChange={(e) => setFormData({ ...formData, storyIntent: e.target.value })}
+                  className="w-full h-24 bg-white/5 border border-white/5 rounded-2xl p-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors resize-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Why Lemonade</label>
+                <textarea
+                  value={formData.whyLemonade}
+                  onChange={(e) => setFormData({ ...formData, whyLemonade: e.target.value })}
+                  className="w-full h-24 bg-white/5 border border-white/5 rounded-2xl p-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors resize-none"
+                />
+              </div>
+              <label className="flex items-center gap-3 p-5 bg-white/5 rounded-2xl border border-white/5">
+                <input
+                  type="checkbox"
+                  checked={formData.hasStoryReady}
+                  onChange={(e) => setFormData({ ...formData, hasStoryReady: e.target.checked })}
+                  className="w-5 h-5 rounded border-white/20 accent-lemon-muted"
+                />
+                <span className="text-sm font-bold text-white/70">I have a story ready to publish.</span>
+              </label>
             </div>
           </section>
 

@@ -25,6 +25,8 @@ export interface CreatorApplication {
     sampleWork?: string;
   };
   dropsomethingUrl?: string;
+  studioMode?: 'solo' | 'existing' | 'new';
+  studioName?: string;
   storyIntent: string;
   mainGenre: string;
   hasStoryReady: boolean;

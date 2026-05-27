@@ -146,6 +146,7 @@ export const useUpdateCreatorProfile = () => {
       avatar: string; 
       bio: string; 
       category: string[] | "Artist" | "Writer" | "Studio";
+      location?: string;
       dropsomethingUrl?: string;
       supportEnabled: boolean;
       userId?: string;

@@ -377,6 +377,8 @@ const applicationFromDoc = (doc: any): CreatorApplication => ({
   sampleWorkUrl: doc.socialLinks?.sampleWork,
   socialLinks: doc.socialLinks || {},
   dropsomethingUrl: doc.dropsomethingUrl,
+  studioMode: doc.studioMode || 'solo',
+  studioName: doc.studioName || '',
   storyIntent: doc.storyIntent || '',
   mainGenre: doc.mainGenre || '',
   hasStoryReady: !!doc.hasStoryReady,
