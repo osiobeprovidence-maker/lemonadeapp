@@ -2,6 +2,7 @@ import { convex } from './convex';
 import { api } from '../../convex/_generated/api';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_STORY_FILE_BYTES = 25 * 1024 * 1024;
 
 const requireConvex = () => {
   if (!convex) {
@@ -59,6 +60,45 @@ export const uploadImage = async (
     }
 
     return await client.mutation(api.files.getUrl, { storageId });
+  } catch (error) {
+    throw normalizeUploadError(error);
+  }
+};
+
+export const uploadStoryFile = async (
+  file: File,
+  userId: string
+): Promise<{ name: string; type: string; size: number; url: string }> => {
+  void userId;
+  try {
+    if (file.size > MAX_STORY_FILE_BYTES) {
+      throw new Error('Story files must be less than 25MB.');
+    }
+
+    const client = requireConvex();
+    const uploadUrl = await client.mutation(api.files.generateUploadUrl, {});
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
+    });
+
+    if (!response.ok) {
+      throw new Error(`File upload failed with status ${response.status}.`);
+    }
+
+    const { storageId } = await response.json();
+    if (!storageId) {
+      throw new Error('File upload completed without a storage id.');
+    }
+
+    const url = await client.mutation(api.files.getUrl, { storageId });
+    return {
+      name: file.name,
+      type: file.type || 'application/octet-stream',
+      size: file.size,
+      url,
+    };
   } catch (error) {
     throw normalizeUploadError(error);
   }
