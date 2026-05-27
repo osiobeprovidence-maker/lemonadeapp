@@ -35,19 +35,25 @@ export default function AdminApplications() {
   const pendingApps = applications.filter(a => a.status === 'pending');
   const pastApps = applications.filter(a => a.status !== 'pending');
 
-  const handleApprove = (id: string) => {
-    approveCreatorApplication(id);
-    setSelectedApp(null);
-    alert('Application Approved! (Mock)');
+  const handleApprove = async (id: string) => {
+    try {
+      await approveCreatorApplication(id);
+      setSelectedApp(null);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to approve application.');
+    }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (selectedApp) {
-      rejectCreatorApplication(selectedApp.id, rejectionFeedback);
-      setShowFeedbackModal(false);
-      setSelectedApp(null);
-      setRejectionFeedback('');
-      alert('Application Rejected (Mock)');
+      try {
+        await rejectCreatorApplication(selectedApp.id, rejectionFeedback);
+        setShowFeedbackModal(false);
+        setSelectedApp(null);
+        setRejectionFeedback('');
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Unable to reject application.');
+      }
     }
   };
 
@@ -264,7 +270,9 @@ export default function AdminApplications() {
                        </div>
                     </div>
                     <button 
-                      onClick={() => alert('Info request sent to applicant (Mock)')}
+                      onClick={() => {
+                        setShowFeedbackModal(true);
+                      }}
                       className="px-4 py-2 bg-orange-500/10 text-orange-500 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all"
                     >
                       Request

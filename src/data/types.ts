@@ -3,16 +3,21 @@ export type Format = "Manga" | "Manhwa" | "Webcomic" | "Novel";
 
 export type PremiumState = "Free Reader" | "Premium Reader" | "Expired Premium" | "Trial Active";
 
-export type CreatorAccessStatus = 'none' | 'pending' | 'approved' | 'rejected';
+export type CreatorAccessStatus = 'none' | 'pending' | 'needs_info' | 'approved' | 'rejected';
 
 export interface CreatorApplication {
   id: string;
   userId: string;
   creatorName: string;
+  fullName?: string;
+  email?: string;
+  socialUsername?: string;
   category: "Artist" | "Writer" | "Illustrator" | "Studio" | "Animator";
   location: string;
   bio: string;
   portfolioLink: string;
+  portfolioUrl?: string;
+  sampleWorkUrl?: string;
   socialLinks: {
     instagram?: string;
     tiktok?: string;

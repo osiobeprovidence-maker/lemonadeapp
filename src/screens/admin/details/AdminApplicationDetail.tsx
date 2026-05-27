@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   FileText, 
@@ -23,34 +23,118 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { api } from '../../../../convex/_generated/api';
+import { convex } from '../../../lib/convex';
+import { useApp } from '../../../contexts/AppContext';
+import type { CreatorApplication } from '../../../data/types';
 
 export default function AdminApplicationDetail() {
   const { applicationId } = useParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('pending');
+  const { applications, adminSession, user, approveCreatorApplication, rejectCreatorApplication } = useApp();
+  const [remoteApplication, setRemoteApplication] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const localApplication = applications.find((app) => app.id === applicationId);
 
-  // Mock data
-  const application = {
-    id: applicationId || 'APP-8429',
-    applicant: 'John Doe',
-    email: 'john@example.com',
-    category: 'Original Novelist',
-    location: 'London, UK',
-    bio: 'Writers Guild member since 2018. Looking to bring my high-fantasy series "The Glass Kingdom" to Lemonade readers.',
-    portfolioUrl: 'https://behance.net/johndoe_writer',
-    sampleWorkUrl: 'https://docs.google.com/document/johndoe_sample',
-    dropSomethingUrl: 'https://dropsomething.com/johndoe',
-    genre: 'High Fantasy / Dark Themes',
-    storyIntent: 'Serial novel with weekly updates. Targeted at mature young adults.',
-    isOriginal: true,
-    submittedDate: 'Apr 24, 2026',
-    status: status,
-    adminFeedback: ''
+  useEffect(() => {
+    const loadApplication = async () => {
+      if (!applicationId || !convex) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const result = await convex.query(api.applications.getById, {
+          applicationId: applicationId as any,
+        });
+        setRemoteApplication(result);
+        setFeedback(result?.adminFeedback || '');
+      } catch (error) {
+        console.error('Failed to load application', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadApplication();
+  }, [applicationId]);
+
+  const application = useMemo(() => {
+    const source: any = remoteApplication || localApplication;
+    if (!source) return null;
+
+    return {
+      id: source._id || source.id,
+      applicant: source.creatorName || source.fullName || source.applicantName || 'Unknown creator',
+      email: source.email || 'No email on file',
+      category: Array.isArray(source.category) ? source.category.join(', ') : source.category || 'Creator',
+      location: source.location || 'Not provided',
+      bio: source.bio || 'No bio provided.',
+      portfolioUrl: source.portfolioLink || source.portfolioUrl,
+      sampleWorkUrl: source.socialLinks?.sampleWork || source.sampleWorkUrl,
+      dropSomethingUrl: source.dropsomethingUrl,
+      genre: source.mainGenre || 'Not provided',
+      storyIntent: source.storyIntent || 'Not provided',
+      whyLemonade: source.whyLemonade || 'Not provided',
+      isOriginal: !!source.hasStoryReady,
+      submittedDate: source.submittedAt ? new Date(source.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not available',
+      status: source.status || 'pending',
+      adminFeedback: source.adminFeedback || '',
+    };
+  }, [remoteApplication, localApplication]);
+
+  const handleAction = async (newStatus: 'approved' | 'rejected' | 'needs_info') => {
+    if (!applicationId || !application) return;
+    if ((newStatus === 'rejected' || newStatus === 'needs_info') && !feedback.trim()) {
+      alert('Please add feedback before sending this decision.');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      if (newStatus === 'approved') {
+        await approveCreatorApplication(applicationId);
+      } else if (newStatus === 'rejected') {
+        await rejectCreatorApplication(applicationId, feedback.trim());
+      } else {
+        if (!convex) throw new Error('Convex is not configured.');
+        await convex.mutation(api.applications.review, {
+          applicationId: applicationId as any,
+          status: 'needs_info',
+          adminEmail: adminSession?.email || user?.email || 'admin@lemonade.app',
+          adminFeedback: feedback.trim(),
+        });
+      }
+
+      setRemoteApplication((prev: any) => prev ? {
+        ...prev,
+        status: newStatus,
+        adminFeedback: feedback.trim() || prev.adminFeedback,
+      } : prev);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to save application decision.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleAction = (newStatus: string) => {
-    setStatus(newStatus);
-  };
+  if (isLoading) {
+    return <div className="p-10 text-sm font-black uppercase tracking-widest text-white/40">Loading application...</div>;
+  }
+
+  if (!application) {
+    return (
+      <div className="p-10 space-y-6">
+        <button onClick={() => navigate('/admin/applications')} className="text-white/50 hover:text-white font-bold">Back to Applications</button>
+        <div className="rounded-3xl border border-white/10 bg-ink-deep p-10">
+          <h2 className="font-display text-2xl font-black uppercase italic">Application not found</h2>
+          <p className="mt-2 text-sm font-bold text-white/40">This application does not exist in Convex or may have been removed.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-20">
@@ -67,12 +151,14 @@ export default function AdminApplicationDetail() {
 
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => handleAction('more_info')}
+            disabled={isSaving}
+            onClick={() => handleAction('needs_info')}
             className="flex items-center justify-center px-6 h-12 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-all border border-white/5"
           >
             Request More Info
           </button>
           <button 
+            disabled={isSaving}
             onClick={() => handleAction('approved')}
             className="flex items-center gap-2 px-6 h-12 bg-green-400 text-black rounded-xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-green-400/20"
           >
@@ -80,6 +166,7 @@ export default function AdminApplicationDetail() {
             Approve
           </button>
           <button 
+            disabled={isSaving}
             onClick={() => handleAction('rejected')}
             className="flex items-center gap-2 px-6 h-12 bg-white/5 hover:bg-red-400 hover:text-white rounded-xl font-black uppercase tracking-widest transition-all border border-white/5"
           >
@@ -104,12 +191,12 @@ export default function AdminApplicationDetail() {
                     </div>
                  </div>
                  <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border ${
-                    status === 'pending' ? 'bg-orange-400/10 text-orange-400 border-orange-400/20' :
-                    status === 'approved' ? 'bg-green-400/10 text-green-400 border-green-400/20' :
-                    status === 'more_info' ? 'bg-blue-400/10 text-blue-400 border-blue-400/20' :
+                    application.status === 'pending' ? 'bg-orange-400/10 text-orange-400 border-orange-400/20' :
+                    application.status === 'approved' ? 'bg-green-400/10 text-green-400 border-green-400/20' :
+                    application.status === 'needs_info' ? 'bg-blue-400/10 text-blue-400 border-blue-400/20' :
                     'bg-red-400/10 text-red-400 border-red-400/20'
                  }`}>
-                    {status.replace('_', ' ')}
+                    {application.status.replace('_', ' ')}
                  </span>
               </div>
 
@@ -166,11 +253,17 @@ export default function AdminApplicationDetail() {
               <div className="space-y-6">
                  <textarea 
                    placeholder="Provide constructive feedback for the applicant..."
+                   value={feedback}
+                   onChange={(event) => setFeedback(event.target.value)}
                    className="w-full h-40 bg-white/5 border border-white/5 rounded-3xl p-6 font-medium text-sm focus:outline-none focus:border-lemon-muted/50 transition-all resize-none"
                  />
                  <div className="flex items-center gap-4">
-                    <button className="flex-1 py-4 bg-lemon-muted text-black rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-transform">
-                       Save Decision
+                    <button
+                      disabled={isSaving}
+                      onClick={() => handleAction(application.status === 'pending' ? 'needs_info' : application.status)}
+                      className="flex-1 py-4 bg-lemon-muted text-black rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-transform disabled:opacity-50"
+                    >
+                       {isSaving ? 'Saving...' : 'Save Decision'}
                     </button>
                     <button className="flex items-center justify-center w-14 h-14 bg-white/5 hover:bg-white/10 text-white rounded-2xl transition-all border border-white/5">
                        <Send size={20} />
@@ -188,6 +281,7 @@ export default function AdminApplicationDetail() {
                  <h3 className="text-lg font-display font-black tracking-tight uppercase italic">Portfolio</h3>
               </div>
               <div className="space-y-4">
+                 {application.portfolioUrl ? (
                  <a 
                    href={application.portfolioUrl} 
                    target="_blank" 
@@ -200,6 +294,8 @@ export default function AdminApplicationDetail() {
                     </div>
                     <ExternalLink size={18} className="text-white/20 group-hover:text-lemon-muted" />
                  </a>
+                 ) : null}
+                 {application.sampleWorkUrl ? (
                  <a 
                    href={application.sampleWorkUrl} 
                    target="_blank" 
@@ -212,6 +308,8 @@ export default function AdminApplicationDetail() {
                     </div>
                     <ExternalLink size={18} className="text-white/20 group-hover:text-lemon-muted" />
                  </a>
+                 ) : null}
+                 {application.dropSomethingUrl ? (
                  <a 
                    href={application.dropSomethingUrl} 
                    target="_blank" 
@@ -224,6 +322,12 @@ export default function AdminApplicationDetail() {
                     </div>
                     <ExternalLink size={18} className="text-white/20 group-hover:text-lemon-muted" />
                  </a>
+                 ) : null}
+                 {!application.portfolioUrl && !application.sampleWorkUrl && !application.dropSomethingUrl && (
+                   <div className="rounded-2xl border border-white/5 bg-white/5 p-5 text-sm font-bold text-white/40">
+                     No portfolio links were provided.
+                   </div>
+                 )}
               </div>
            </div>
 
@@ -234,15 +338,17 @@ export default function AdminApplicationDetail() {
                  <h3 className="text-lg font-display font-black tracking-tight uppercase italic">Audit Trail</h3>
               </div>
               <div className="space-y-6">
+                 {application.adminFeedback && (
+                 <div className="relative pl-6 pb-6 border-l border-white/10">
+                    <div className="absolute left-[-5px] top-0 w-2 h-2 rounded-full bg-lemon-muted" />
+                    <p className="text-xs font-black uppercase text-white/40 mb-1">Latest Decision</p>
+                    <p className="text-sm font-bold italic text-white/80">"{application.adminFeedback}"</p>
+                    <p className="text-[10px] font-black uppercase text-lemon-muted mt-2">Status: {application.status.replace('_', ' ')}</p>
+                 </div>
+                 )}
                  <div className="relative pl-6 pb-6 border-l border-white/10 last:pb-0">
                     <div className="absolute left-[-5px] top-0 w-2 h-2 rounded-full bg-lemon-muted" />
-                    <p className="text-xs font-black uppercase text-white/40 mb-1">Feb 24, 2026</p>
-                    <p className="text-sm font-bold italic text-white/80">"Portfolio looks strong but missing comic samples. Requesting more work."</p>
-                    <p className="text-[10px] font-black uppercase text-lemon-muted mt-2">Admin: mod_sarah</p>
-                 </div>
-                 <div className="relative pl-6 pb-6 border-l border-white/10 last:pb-0">
-                    <div className="absolute left-[-5px] top-0 w-2 h-2 rounded-full bg-white/20" />
-                    <p className="text-xs font-black uppercase text-white/40 mb-1">Jan 12, 2026</p>
+                    <p className="text-xs font-black uppercase text-white/40 mb-1">{application.submittedDate}</p>
                     <p className="text-sm font-bold">Application Received</p>
                     <p className="text-[10px] text-white/30 mt-1">Pending validation of portfolio links</p>
                  </div>

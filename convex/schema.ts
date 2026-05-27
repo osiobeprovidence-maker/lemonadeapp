@@ -11,6 +11,7 @@ const userRole = v.union(
 const creatorAccessStatus = v.union(
   v.literal("none"),
   v.literal("pending"),
+  v.literal("needs_info"),
   v.literal("approved"),
   v.literal("rejected"),
 );

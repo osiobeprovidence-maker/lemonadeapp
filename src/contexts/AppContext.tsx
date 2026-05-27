@@ -182,8 +182,8 @@ interface AppContextType {
   updateLocalUser: (updates: Partial<AppUser>) => void;
   markNotificationsAsRead: () => void;
   submitCreatorApplication: (application: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => void;
-  approveCreatorApplication: (appId: string) => void;
-  rejectCreatorApplication: (appId: string, feedback: string) => void;
+  approveCreatorApplication: (appId: string) => Promise<void>;
+  rejectCreatorApplication: (appId: string, feedback: string) => Promise<void>;
   
   // Platform Settings
   showMockData: boolean;
@@ -357,6 +357,30 @@ const storyFromDoc = (doc: any, creator: Creator): Story => ({
   isOriginal: doc.isOriginal,
 });
 
+const applicationFromDoc = (doc: any): CreatorApplication => ({
+  id: doc._id,
+  userId: doc.userId,
+  creatorName: doc.creatorName || doc.applicantName || 'Unknown creator',
+  fullName: doc.creatorName || doc.applicantName || 'Unknown creator',
+  email: doc.email,
+  socialUsername: doc.username,
+  category: Array.isArray(doc.category) ? (doc.category[0] || 'Writer') : doc.category,
+  location: doc.location || '',
+  bio: doc.bio || '',
+  portfolioLink: doc.portfolioLink || '',
+  portfolioUrl: doc.portfolioLink || '',
+  sampleWorkUrl: doc.socialLinks?.sampleWork,
+  socialLinks: doc.socialLinks || {},
+  dropsomethingUrl: doc.dropsomethingUrl,
+  storyIntent: doc.storyIntent || '',
+  mainGenre: doc.mainGenre || '',
+  hasStoryReady: !!doc.hasStoryReady,
+  whyLemonade: doc.whyLemonade || '',
+  submittedAt: doc.submittedAt,
+  status: doc.status,
+  adminFeedback: doc.adminFeedback,
+});
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [liveCreators, setLiveCreators] = useState<Record<string, Creator>>({});
@@ -376,9 +400,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const loadLiveContent = async () => {
       try {
-        let [creatorDocs, storyDocs, platformSettings] = await Promise.all([
+        let [creatorDocs, storyDocs, applicationDocs, platformSettings] = await Promise.all([
           convex.query(api.creators.list, {}),
           convex.query(api.stories.listPublished, {}),
+          convex.query(api.applications.list, {}),
           convex.query(api.settings.get, {}),
         ]);
 
@@ -413,6 +438,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (liveStories.length > 0) {
           setLiveStories(liveStories);
         }
+        setApplications(applicationDocs.map(applicationFromDoc));
       } catch (error) {
         console.error('Failed to load live Convex content; using bundled fallback.', error);
       }
@@ -1027,13 +1053,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const approveCreatorApplication = (appId: string) => {
+  const approveCreatorApplication = async (appId: string) => {
     const app = applications.find(a => a.id === appId);
     if (!app) return;
 
     setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: 'approved' } : a));
+
+    if (convex) {
+      await convex.mutation(api.applications.review, {
+        applicationId: appId as any,
+        status: 'approved',
+        adminEmail: adminSession?.email || user?.email || 'admin@lemonade.app',
+      });
+    }
     
-    // In a real app we'd find the user by ID
     if (user && user.id === app.userId) {
       setUser(prev => prev ? { ...prev, creatorAccessStatus: 'approved', role: 'creator' } : null);
       
@@ -1046,11 +1079,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const rejectCreatorApplication = (appId: string, feedback: string) => {
+  const rejectCreatorApplication = async (appId: string, feedback: string) => {
     const app = applications.find(a => a.id === appId);
     if (!app) return;
 
     setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: 'rejected', adminFeedback: feedback } : a));
+
+    if (convex) {
+      await convex.mutation(api.applications.review, {
+        applicationId: appId as any,
+        status: 'rejected',
+        adminEmail: adminSession?.email || user?.email || 'admin@lemonade.app',
+        adminFeedback: feedback,
+      });
+    }
     
     if (user && user.id === app.userId) {
       setUser(prev => prev ? { ...prev, creatorAccessStatus: 'rejected' } : null);
