@@ -1,14 +1,36 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Plus, Eye, UserPlus, DollarSign, BookOpen, MessageCircle, Coffee, ExternalLink, Settings as SettingsIcon, Loader } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useCurrentUser, useStories } from '../hooks/useConvex';
+import { api } from '../../convex/_generated/api';
+import { auth } from '../lib/firebase';
+import { convex } from '../lib/convex';
+
+const formatNaira = (amount: number) => `NGN ${(amount || 0).toLocaleString()}`;
 
 export default function CreatorDashboard() {
-  const { user, firebaseUid } = useCurrentUser();
+  const { user } = useCurrentUser();
   const creatorStories = useStories(user?._id);
   const myStories = (creatorStories || []).slice(0, 6);
+  const [creatorEarnings, setCreatorEarnings] = useState(0);
+  const [hasPayoutAccount, setHasPayoutAccount] = useState(false);
+
+  useEffect(() => {
+    const loadCreatorWallet = async () => {
+      if (!auth.currentUser || !convex) return;
+      const summary = await convex.query(api.payments.creatorPayoutSummary, {
+        firebaseUid: auth.currentUser.uid,
+      });
+      setCreatorEarnings(summary.availableToWithdraw);
+      setHasPayoutAccount(summary.hasPayoutAccount);
+    };
+
+    loadCreatorWallet().catch((error) => {
+      console.error('Failed to load creator wallet summary', error);
+    });
+  }, [user?.id]);
   
   // Calculate stats from real data
   const stats = useMemo(() => {
@@ -19,10 +41,10 @@ export default function CreatorDashboard() {
     return [
       { label: "Total Reads", value: totalReads.toLocaleString(), icon: Eye, color: "text-blue-400" },
       { label: "Followers", value: followers.toLocaleString(), icon: UserPlus, color: "text-green-400" },
-      { label: "Earnings (30d)", value: "NGN 0", icon: DollarSign, color: "text-lemon-muted" },
+      { label: "Creator Wallet", value: formatNaira(creatorEarnings), icon: DollarSign, color: "text-lemon-muted" },
       { label: "Active Stories", value: activeStories.toString(), icon: BookOpen, color: "text-purple-400" },
     ];
-  }, [myStories, user]);
+  }, [creatorEarnings, myStories, user]);
 
   return (
     <div className="flex flex-col w-full min-h-screen p-6 md:p-12">
@@ -109,6 +131,23 @@ export default function CreatorDashboard() {
 
         {/* Sidebar */}
         <div className="flex flex-col gap-8">
+           {/* Creator wallet */}
+           <div className="bg-ink-deep border border-white/5 rounded-3xl p-6">
+             <h3 className="font-semibold text-lg mb-4 flex items-center gap-2"><DollarSign size={18} className="text-lemon-muted" /> Creator Wallet</h3>
+             <p className="font-display font-black text-3xl text-lemon-muted">{formatNaira(creatorEarnings)}</p>
+             <p className="text-sm text-white/40 mt-2">
+               {hasPayoutAccount ? 'Payout account ready.' : 'Add your payout account before withdrawing.'}
+             </p>
+             <div className="grid grid-cols-2 gap-3 mt-6">
+               <Link to="/studio/wallet">
+                 <Button size="sm" fullWidth>Open Wallet</Button>
+               </Link>
+               <Link to="/settings/creator">
+                 <Button size="sm" variant="outline" fullWidth>Account</Button>
+               </Link>
+             </div>
+           </div>
+
            {/* Recent Comments */}
            <div className="bg-ink-deep border border-white/5 rounded-3xl p-6">
              <h3 className="font-semibold text-lg mb-6 flex items-center gap-2"><MessageCircle size={18} className="text-lemon-muted" /> New Comments</h3>

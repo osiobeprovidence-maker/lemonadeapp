@@ -12,6 +12,7 @@ import StoryDetail from './screens/StoryDetail';
 import Reader from './screens/Reader';
 import Library from './screens/Library';
 import CreatorDashboard from './screens/CreatorDashboard';
+import CreatorWallet from './screens/CreatorWallet';
 import UploadFlow from './screens/UploadFlow';
 import CreatorProfile from './screens/CreatorProfile';
 import ReaderProfile from './screens/ReaderProfile';
@@ -131,6 +132,11 @@ function AnimatedRoutes() {
           <Route path="/studio/upload" element={
             <StudioAccessGuard>
               <UploadFlow />
+            </StudioAccessGuard>
+          } />
+          <Route path="/studio/wallet" element={
+            <StudioAccessGuard>
+              <CreatorWallet />
             </StudioAccessGuard>
           } />
         </Route>
@@ -324,4 +330,3 @@ export default function App() {
     </Router>
   );
 }
-

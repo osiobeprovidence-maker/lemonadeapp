@@ -58,6 +58,17 @@ export const creatorPayoutSummary = query({
       availableToWithdraw: lifetimeEarnings,
       pendingClearance: 0,
       lifetimeEarnings,
+      recentEarnings: creatorSupportTransactions
+        .slice()
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 10)
+        .map((transaction) => ({
+          id: transaction._id,
+          amount: Number(transaction.amount || 0),
+          createdAt: transaction.createdAt,
+          reference: transaction.reference,
+          supporter: transaction.metadata?.supporterUsername || transaction.metadata?.username || transaction.userId,
+        })),
       hasPayoutAccount: Boolean(
         payoutAccount?.bankName &&
         payoutAccount?.accountNumber &&

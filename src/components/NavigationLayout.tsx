@@ -63,7 +63,7 @@ export default function NavigationLayout() {
   const appNav = isStudio ? [
     { name: 'Dashboard', path: '/studio', icon: Home },
     { name: 'Upload', path: '/studio/upload', icon: PenTool },
-    { name: 'Wallet', path: '/wallet', icon: Wallet },
+    { name: 'Wallet', path: '/studio/wallet', icon: Wallet },
     { name: 'Reader App', path: '/home', icon: Compass },
   ] : mainNav;
 
