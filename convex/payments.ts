@@ -18,6 +18,56 @@ export const listByUser = query({
   },
 });
 
+export const creatorPayoutSummary = query({
+  args: { firebaseUid: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found for payout summary.");
+    }
+
+    const creator = await ctx.db
+      .query("creators")
+      .withIndex("by_username", (q) => q.eq("username", user.username))
+      .unique();
+
+    const payoutAccount = creator?.profile?.payoutAccount || null;
+    const transactions = await ctx.db.query("walletTransactions").collect();
+    const creatorSupportTransactions = transactions.filter((transaction) => (
+      transaction.type === "creator_support" &&
+      transaction.status === "success" &&
+      (
+        transaction.metadata?.creatorUsername === user.username ||
+        transaction.metadata?.username === user.username ||
+        transaction.metadata?.creatorId === creator?._id ||
+        transaction.metadata?.creatorId === creator?.externalId ||
+        transaction.metadata?.creatorId === user.username
+      )
+    ));
+
+    const lifetimeEarnings = creatorSupportTransactions.reduce(
+      (total, transaction) => total + Number(transaction.amount || 0),
+      0,
+    );
+
+    return {
+      availableToWithdraw: lifetimeEarnings,
+      pendingClearance: 0,
+      lifetimeEarnings,
+      hasPayoutAccount: Boolean(
+        payoutAccount?.bankName &&
+        payoutAccount?.accountNumber &&
+        payoutAccount?.accountName
+      ),
+      payoutAccount,
+    };
+  },
+});
+
 export const record = mutation({
   args: {
     userId: v.string(),

@@ -22,7 +22,10 @@ export default function SettingsCreator() {
     dropSomething: '',
     portfolio: '',
     banner: '',
-    collaboration: true
+    collaboration: true,
+    bankName: '',
+    accountNumber: '',
+    accountName: '',
   });
 
   useEffect(() => {
@@ -31,7 +34,10 @@ export default function SettingsCreator() {
         dropSomething: creatorData.dropsomethingUrl || '',
         portfolio: creatorData.portfolioLink || '',
         banner: creatorData.banner || '',
-        collaboration: creatorData.supportEnabled ?? true
+        collaboration: creatorData.supportEnabled ?? true,
+        bankName: creatorData.profile?.payoutAccount?.bankName || '',
+        accountNumber: creatorData.profile?.payoutAccount?.accountNumber || '',
+        accountName: creatorData.profile?.payoutAccount?.accountName || '',
       });
     }
   }, [creatorData]);
@@ -72,6 +78,11 @@ export default function SettingsCreator() {
           ...(creatorData.profile || {}),
           banner: formData.banner,
           portfolioLink: formData.portfolio,
+          payoutAccount: {
+            bankName: formData.bankName.trim(),
+            accountNumber: formData.accountNumber.trim(),
+            accountName: formData.accountName.trim(),
+          },
         },
       });
       setTimeout(() => setIsLoading(false), 500);
@@ -196,6 +207,46 @@ export default function SettingsCreator() {
                     <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-lg transition-all ${formData.collaboration ? 'left-7' : 'left-1'}`} />
                   </button>
                </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-3 mb-6 px-4">
+               <Briefcase size={20} className="text-lemon-muted" />
+               <h3 className="text-xl font-display font-black uppercase italic tracking-tight">Payout Account</h3>
+            </div>
+            <div className="p-8 bg-ink-deep border border-white/5 rounded-[40px] grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Bank Name</label>
+                <input
+                  value={formData.bankName}
+                  onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                  className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                  placeholder="Bank name"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Account Number</label>
+                <input
+                  value={formData.accountNumber}
+                  onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
+                  className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                  placeholder="0000000000"
+                  inputMode="numeric"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Account Name</label>
+                <input
+                  value={formData.accountName}
+                  onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
+                  className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-6 font-bold focus:outline-none focus:border-lemon-muted/50 transition-colors"
+                  placeholder="Account holder"
+                />
+              </div>
+              <p className="md:col-span-3 text-[10px] font-bold text-white/20 ml-4 italic">
+                Save these details before requesting a creator payout. Withdrawals remain locked until all payout fields are filled.
+              </p>
             </div>
           </section>
 

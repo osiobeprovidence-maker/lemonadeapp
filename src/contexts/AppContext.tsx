@@ -337,6 +337,7 @@ const creatorFromDoc = (doc: any): Creator => ({
   totalStories: doc.totalStories,
   dropsomethingUrl: doc.dropsomethingUrl,
   supportEnabled: doc.supportEnabled,
+  profile: doc.profile,
   ...(doc.profile || {}),
 });
 

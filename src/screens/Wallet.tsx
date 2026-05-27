@@ -36,6 +36,12 @@ export default function Wallet() {
   const [customCoins, setCustomCoins] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [payoutSummary, setPayoutSummary] = useState({
+    availableToWithdraw: 0,
+    pendingClearance: 0,
+    lifetimeEarnings: 0,
+    hasPayoutAccount: false,
+  });
   const userRole = user?.role || 'reader';
 
   const customCoinAmount = Math.max(0, parseInt(customCoins || '0', 10) || 0);
@@ -43,8 +49,25 @@ export default function Wallet() {
   const currentCoins = customCoins ? customCoinAmount : (currentPackage ? currentPackage.coins + currentPackage.bonus : 250);
   const currentPrice = customCoins ? Math.round(customCoinAmount * 3) : currentPackage?.price || 600;
   const readerBalance = isGuest ? '0' : (user?.walletBalance ?? 0).toLocaleString();
-  const displayBalance = userRole === 'creator' ? formatNaira(4250) : readerBalance;
+  const displayBalance = userRole === 'creator' ? formatNaira(payoutSummary.availableToWithdraw) : readerBalance;
   const displayUnit = userRole === 'creator' ? 'available to withdraw' : 'coins available';
+
+  useEffect(() => {
+    const loadPayoutSummary = async () => {
+      if (userRole !== 'creator' || !auth.currentUser || !convex) return;
+
+      try {
+        const summary = await convex.query(api.payments.creatorPayoutSummary, {
+          firebaseUid: auth.currentUser.uid,
+        });
+        setPayoutSummary(summary);
+      } catch (error) {
+        console.error('Failed to load creator payout summary', error);
+      }
+    };
+
+    loadPayoutSummary();
+  }, [userRole, user?.id]);
 
   useEffect(() => {
     const reference = searchParams.get('reference') || searchParams.get('trxref');
@@ -175,7 +198,7 @@ export default function Wallet() {
 
         <div className="bg-ink-deep/70 border border-white/10 rounded-lg p-5 md:p-6 shadow-xl">
           {userRole === 'creator' ? (
-            <CreatorPayoutPanel />
+            <CreatorPayoutPanel payoutSummary={payoutSummary} />
           ) : (
             <TopUpPanel
               customCoins={customCoins}
@@ -237,7 +260,17 @@ function BalancePanel({ balance, unit, paymentStatus }: { balance: string; unit:
   );
 }
 
-function CreatorPayoutPanel() {
+function CreatorPayoutPanel({ payoutSummary }: {
+  payoutSummary: {
+    availableToWithdraw: number;
+    pendingClearance: number;
+    lifetimeEarnings: number;
+    hasPayoutAccount: boolean;
+  };
+}) {
+  const navigate = useNavigate();
+  const canWithdraw = payoutSummary.hasPayoutAccount && payoutSummary.availableToWithdraw > 0;
+
   return (
     <div className="h-full flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
@@ -253,16 +286,35 @@ function CreatorPayoutPanel() {
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="rounded-lg border border-white/10 bg-black/20 p-4">
           <p className="text-sm text-white/45 mb-1">Pending Clearance</p>
-          <h4 className="font-display font-bold text-2xl">{formatNaira(340)}</h4>
+          <h4 className="font-display font-bold text-2xl">{formatNaira(payoutSummary.pendingClearance)}</h4>
         </div>
         <div className="rounded-lg border border-white/10 bg-black/20 p-4">
           <p className="text-sm text-white/45 mb-1">Lifetime Earnings</p>
-          <h4 className="font-display font-bold text-2xl">{formatNaira(12450)}</h4>
+          <h4 className="font-display font-bold text-2xl">{formatNaira(payoutSummary.lifetimeEarnings)}</h4>
         </div>
       </div>
 
-      <Button size="lg" className="mt-auto w-full">
-        <ArrowUpRight size={18} className="mr-2" /> Withdraw
+      {!payoutSummary.hasPayoutAccount && (
+        <div className="rounded-lg border border-orange-400/20 bg-orange-400/10 p-4 text-sm font-bold text-orange-100">
+          Add a payout bank account in Creator Settings before withdrawing earnings.
+        </div>
+      )}
+
+      <Button
+        size="lg"
+        className="mt-auto w-full"
+        disabled={payoutSummary.hasPayoutAccount && !canWithdraw}
+        onClick={() => {
+          if (!payoutSummary.hasPayoutAccount) {
+            navigate('/settings/creator');
+            return;
+          }
+          if (payoutSummary.availableToWithdraw <= 0) {
+            alert('No creator earnings are available to withdraw yet.');
+          }
+        }}
+      >
+        <ArrowUpRight size={18} className="mr-2" /> {payoutSummary.hasPayoutAccount ? 'Withdraw' : 'Set up payout account'}
       </Button>
     </div>
   );
