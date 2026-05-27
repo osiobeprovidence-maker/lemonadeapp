@@ -133,17 +133,14 @@ export default function CreatorDashboard() {
         <div className="flex flex-col gap-8">
            {/* Creator wallet */}
            <div className="bg-ink-deep border border-white/5 rounded-3xl p-6">
-             <h3 className="font-semibold text-lg mb-4 flex items-center gap-2"><DollarSign size={18} className="text-lemon-muted" /> Creator Wallet</h3>
+             <h3 className="font-semibold text-lg mb-4">Creator Wallet</h3>
              <p className="font-display font-black text-3xl text-lemon-muted">{formatNaira(creatorEarnings)}</p>
              <p className="text-sm text-white/40 mt-2">
                {hasPayoutAccount ? 'Payout account ready.' : 'Add your payout account before withdrawing.'}
              </p>
-             <div className="grid grid-cols-2 gap-3 mt-6">
+             <div className="mt-6">
                <Link to="/studio/wallet">
                  <Button size="sm" fullWidth>Open Wallet</Button>
-               </Link>
-               <Link to="/settings/creator">
-                 <Button size="sm" variant="outline" fullWidth>Account</Button>
                </Link>
              </div>
            </div>

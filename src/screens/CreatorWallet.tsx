@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, Banknote, History, Settings, WalletCards } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ArrowUpRight, Banknote, History, Save, WalletCards } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { api } from '../../convex/_generated/api';
 import { auth } from '../lib/firebase';
 import { convex } from '../lib/convex';
+import { useApp } from '../contexts/AppContext';
+import { useUpdateCreatorProfile } from '../hooks/useConvex';
 
 const formatNaira = (amount: number) => `NGN ${(amount || 0).toLocaleString()}`;
 
@@ -37,9 +39,18 @@ const emptySummary: PayoutSummary = {
 };
 
 export default function CreatorWallet() {
-  const navigate = useNavigate();
+  const { user, creators } = useApp();
+  const updateCreatorProfile = useUpdateCreatorProfile();
   const [summary, setSummary] = useState<PayoutSummary>(emptySummary);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingPayout, setIsSavingPayout] = useState(false);
+  const [payoutMessage, setPayoutMessage] = useState<string | null>(null);
+  const [payoutForm, setPayoutForm] = useState({
+    bankName: '',
+    accountNumber: '',
+    accountName: '',
+  });
+  const creatorData = user ? Object.values(creators as Record<string, any>).find((creator) => creator.username === user.username) : null;
 
   useEffect(() => {
     const loadSummary = async () => {
@@ -53,6 +64,11 @@ export default function CreatorWallet() {
           firebaseUid: auth.currentUser.uid,
         });
         setSummary(result);
+        setPayoutForm({
+          bankName: result.payoutAccount?.bankName || '',
+          accountNumber: result.payoutAccount?.accountNumber || '',
+          accountName: result.payoutAccount?.accountName || '',
+        });
       } catch (error) {
         console.error('Failed to load creator wallet', error);
       } finally {
@@ -64,6 +80,52 @@ export default function CreatorWallet() {
   }, []);
 
   const canWithdraw = summary.hasPayoutAccount && summary.availableToWithdraw > 0;
+  const canSavePayout = Boolean(
+    payoutForm.bankName.trim() &&
+    payoutForm.accountNumber.trim() &&
+    payoutForm.accountName.trim()
+  );
+
+  const handleSavePayout = async () => {
+    if (!user || !creatorData || !canSavePayout) return;
+
+    setIsSavingPayout(true);
+    setPayoutMessage(null);
+    try {
+      const payoutAccount = {
+        bankName: payoutForm.bankName.trim(),
+        accountNumber: payoutForm.accountNumber.trim(),
+        accountName: payoutForm.accountName.trim(),
+      };
+
+      await updateCreatorProfile({
+        name: user.name,
+        username: user.username,
+        avatar: user.avatar,
+        bio: user.bio || '',
+        category: creatorData.category || 'Writer',
+        dropsomethingUrl: creatorData.dropsomethingUrl || '',
+        supportEnabled: creatorData.supportEnabled ?? true,
+        userId: user.id,
+        profile: {
+          ...(creatorData.profile || {}),
+          payoutAccount,
+        },
+      });
+
+      setSummary((current) => ({
+        ...current,
+        hasPayoutAccount: true,
+        payoutAccount,
+      }));
+      setPayoutMessage('Payout account saved.');
+    } catch (error) {
+      console.error('Failed to save payout account', error);
+      setPayoutMessage('Could not save payout account. Please try again.');
+    } finally {
+      setIsSavingPayout(false);
+    }
+  };
 
   return (
     <div className="flex flex-col w-full min-h-screen px-4 py-6 sm:px-6 md:p-10 xl:p-12 max-w-6xl mx-auto pb-32 md:pb-12">
@@ -131,30 +193,68 @@ export default function CreatorWallet() {
             </div>
           ) : (
             <div className="rounded-lg border border-orange-400/20 bg-orange-400/10 p-4 text-sm font-bold text-orange-100">
-              Add your payout bank account before requesting withdrawals.
+              Add your payout bank account here before requesting withdrawals.
             </div>
+          )}
+
+          <div className="grid md:grid-cols-3 gap-3">
+            <label className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-white/35">Bank Name</span>
+              <input
+                value={payoutForm.bankName}
+                onChange={(event) => setPayoutForm((current) => ({ ...current, bankName: event.target.value }))}
+                className="w-full h-12 rounded-lg border border-white/10 bg-black/20 px-4 text-sm font-bold outline-none transition-colors focus:border-lemon-muted/60"
+                placeholder="Bank name"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-white/35">Account Number</span>
+              <input
+                value={payoutForm.accountNumber}
+                onChange={(event) => setPayoutForm((current) => ({ ...current, accountNumber: event.target.value }))}
+                className="w-full h-12 rounded-lg border border-white/10 bg-black/20 px-4 text-sm font-bold outline-none transition-colors focus:border-lemon-muted/60"
+                placeholder="0000000000"
+                inputMode="numeric"
+              />
+            </label>
+            <label className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-white/35">Account Name</span>
+              <input
+                value={payoutForm.accountName}
+                onChange={(event) => setPayoutForm((current) => ({ ...current, accountName: event.target.value }))}
+                className="w-full h-12 rounded-lg border border-white/10 bg-black/20 px-4 text-sm font-bold outline-none transition-colors focus:border-lemon-muted/60"
+                placeholder="Account holder"
+              />
+            </label>
+          </div>
+
+          {payoutMessage && (
+            <p className={`text-xs font-bold ${payoutMessage.includes('saved') ? 'text-green-400' : 'text-orange-300'}`}>
+              {payoutMessage}
+            </p>
           )}
 
           <div className="grid sm:grid-cols-2 gap-3 mt-auto">
             <Button
               size="lg"
+              variant="glass"
+              className="w-full bg-white/5"
+              disabled={!canSavePayout || isSavingPayout}
+              onClick={handleSavePayout}
+            >
+              <Save size={18} className="mr-2" /> {isSavingPayout ? 'Saving...' : 'Save Payout'}
+            </Button>
+            <Button
+              size="lg"
               className="w-full"
-              disabled={summary.hasPayoutAccount && !canWithdraw}
+              disabled={!summary.hasPayoutAccount || !canWithdraw}
               onClick={() => {
-                if (!summary.hasPayoutAccount) {
-                  navigate('/settings/creator');
-                  return;
-                }
+                if (!summary.hasPayoutAccount) return;
                 if (!canWithdraw) alert('No creator earnings are available to withdraw yet.');
               }}
             >
-              <ArrowUpRight size={18} className="mr-2" /> {summary.hasPayoutAccount ? 'Withdraw' : 'Set up payout'}
+              <ArrowUpRight size={18} className="mr-2" /> Withdraw
             </Button>
-            <Link to="/settings/creator">
-              <Button size="lg" variant="glass" className="w-full bg-white/5">
-                <Settings size={18} className="mr-2" /> Account
-              </Button>
-            </Link>
           </div>
         </div>
       </div>
