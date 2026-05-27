@@ -13,9 +13,16 @@ export default function Reader() {
   const story = stories.find(s => s.id === id) || stories[0];
 
   const chapterId = `c${chapterNum}`;
-  const isPaid = parseInt(chapterNum || '1') > 3;
+  // Prefer chapter-level monetization if available
+  const chaptersFromMedia = story.media?.chapters;
+  const chapterIndex = Math.max(0, (parseInt(chapterNum || '1') - 1));
+  const chapterData = Array.isArray(chaptersFromMedia) && chaptersFromMedia.length > chapterIndex ? chaptersFromMedia[chapterIndex] : undefined;
+  const isPaid = !!(
+    (chapterData && (chapterData.monetization === 'paid' || (chapterData.price && chapterData.price > 0))) ||
+    (story.media && (story.media.monetization === 'paid' || (story.media.price && story.media.price > 0)))
+  );
+  const price = (chapterData && chapterData.price) || story.media?.price || 0;
   const isUnlocked = !isPaid || user?.unlockedChapters.includes(`${id}-${chapterId}`) || user?.isPremium;
-  const price = 10; // Default price
 
   const [showUI, setShowUI] = useState(true);
   const [fontSize, setFontSize] = useState<number>(user?.settings.readerFontSize || 18);
@@ -30,7 +37,7 @@ export default function Reader() {
 
   const isNovel = story.format === 'Novel';
 
-  // Track reading
+  // Track reading when content is available and unlocked
   useEffect(() => {
     if (isUnlocked && id && chapterNum) {
       trackReading(id, chapterId);
@@ -218,20 +225,60 @@ export default function Reader() {
 
       {/* Content Area */}
       <div className="pt-24 pb-24" onClick={() => { setShowUI(!showUI); setShowSettings(false); setShowMoreMenu(false); }}>
-        {isNovel ? (
-          <div 
-            className="max-w-2xl mx-auto px-6 py-8 font-sans leading-[1.8]"
-            style={{ fontSize: `${fontSize}px` }}
-          >
-            <h2 className="font-display font-black text-3xl md:text-5xl mb-6">Chapter content unavailable</h2>
-            <p className="mb-6 text-white/60">This chapter has not been uploaded yet.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center max-w-[800px] mx-auto bg-black px-6 py-16 text-center">
-            <h2 className="font-display font-black text-3xl md:text-5xl mb-6">Chapter pages unavailable</h2>
-            <p className="text-white/60">The creator has not uploaded pages for this chapter yet.</p>
-          </div>
-        )}
+        {(() => {
+          // Determine content source: chapterData (array) or top-level media
+          const attachments = chapterData?.attachments || story.media?.attachments || [];
+          const chapterText = chapterData?.text || (chapterNum === '1' ? story.media?.chapterText : undefined) || '';
+
+          if (!isUnlocked) {
+            return null; // Locked reader screen handled above
+          }
+
+          // If novel and has text
+          if (isNovel) {
+            if (chapterText && chapterText.trim().length > 0) {
+              return (
+                <div className="max-w-2xl mx-auto px-6 py-8 font-sans leading-[1.8]" style={{ fontSize: `${fontSize}px` }}>
+                  <h2 className="sr-only">{story.title} — Chapter {chapterNum}</h2>
+                  {chapterText.split('\n\n').map((para, idx) => (
+                    <p key={idx} className="mb-6 text-white/90">{para}</p>
+                  ))}
+                </div>
+              );
+            }
+
+            return (
+              <div className="max-w-2xl mx-auto px-6 py-8 font-sans leading-[1.8]">
+                <h2 className="font-display font-black text-3xl md:text-5xl mb-6">Chapter content unavailable</h2>
+                <p className="mb-6 text-white/60">This chapter has not been uploaded yet.</p>
+              </div>
+            );
+          }
+
+          // For comics / image-based
+          if (attachments && attachments.length > 0) {
+            return (
+              <div className="flex flex-col items-center max-w-[900px] mx-auto px-6">
+                {attachments.map((att: any, idx: number) => (
+                  <div key={idx} className="w-full mb-6">
+                    {att.type?.startsWith('image') || att.url?.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
+                      <img src={att.url} alt={`page-${idx}`} className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+                    ) : (
+                      <a href={att.url} target="_blank" rel="noreferrer" className="text-lemon-muted underline">Open attachment</a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex flex-col items-center max-w-[800px] mx-auto bg-black px-6 py-16 text-center">
+              <h2 className="font-display font-black text-3xl md:text-5xl mb-6">Chapter pages unavailable</h2>
+              <p className="text-white/60">The creator has not uploaded pages for this chapter yet.</p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Bottom Footer Action Area */}

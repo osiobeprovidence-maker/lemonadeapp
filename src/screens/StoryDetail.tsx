@@ -170,7 +170,7 @@ export default function StoryDetail() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 md:px-12 mt-32 md:mt-12 pb-24">
+      <div className="max-w-4xl mx-auto px-6 md:px-12 mt-6 md:mt-12 pb-24">
         {/* Creator Section */}
         <div className="bg-gradient-to-br from-ink-deep to-black border border-white/10 rounded-3xl p-6 md:p-8 mb-12 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-64 h-64 bg-lemon-muted/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
