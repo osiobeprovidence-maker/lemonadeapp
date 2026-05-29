@@ -1229,38 +1229,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-<<<<<<< HEAD
   const updateLocalUser = (updates: Partial<AppUser>) => {
     setUser(prev => prev ? { ...prev, ...updates } : null);
   };
 
-  const submitCreatorApplication = async (appData: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => {
-    if (!user || user.isGuest) return;
-    
-    const newApp: CreatorApplication = {
-      ...appData,
-      id: Math.random().toString(36).substr(2, 9),
-      userId: user.id,
-      submittedAt: new Date().toISOString(),
-      status: 'pending'
-    };
-    
-    setApplications(prev => [newApp, ...prev]);
-    setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
-
-    if (convex && isAuthenticated && auth.currentUser) {
-      try {
-        await convex.mutation(api.applications.submit, {
-          userId: user.id,
-          firebaseUid: auth.currentUser.uid,
-          ...appData,
-        } as any);
-      } catch (error) {
-        console.error('Failed to persist application', error);
-      }
-    }
-    
-=======
   const submitCreatorApplication = async (appData: Omit<CreatorApplication, 'id' | 'userId' | 'submittedAt' | 'status'>) => {
     if (!user || user.isGuest) return;
 
@@ -1268,8 +1240,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const res: any = await convex.mutation(api.applications.submit, {
           userId: user.id,
+          firebaseUid: auth.currentUser?.uid,
           creatorName: appData.creatorName,
-          category: appData.category,
+          category: Array.isArray(appData.category) ? appData.category : [appData.category],
           location: appData.location,
           bio: appData.bio,
           portfolioLink: appData.portfolioLink,
@@ -1313,7 +1286,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
     }
 
->>>>>>> copilot/worktree-2026-04-29T00-02-32
     addNotification({
       type: 'update',
       title: 'Application Submitted',

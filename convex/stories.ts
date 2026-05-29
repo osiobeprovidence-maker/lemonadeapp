@@ -56,6 +56,7 @@ export const create = mutation({
     bannerImage: v.string(),
     tags: v.array(v.string()),
     isOriginal: v.boolean(),
+    episodes: v.optional(v.number()),
     status: v.optional(v.union(
       v.literal("draft"),
       v.literal("published"),
@@ -72,7 +73,7 @@ export const create = mutation({
       rating: 0,
       views: 0,
       saves: 0,
-      episodes: 0,
+      episodes: args.episodes ?? 0,
       isFeatured: false,
       status: status ?? "draft",
       createdAt: timestamp,

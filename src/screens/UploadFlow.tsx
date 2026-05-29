@@ -228,6 +228,10 @@ export default function UploadFlow() {
         bannerImage: assets.bannerImage || '',
         tags: formData.tags,
         isOriginal: true,
+        episodes: Math.max(
+          1,
+          assets.chapters?.length || chapters.length || (formData.chapterText.trim() || assets.attachments.length > 0 ? 1 : 0),
+        ),
         status,
         media: {
           chapterText: formData.chapterText,
