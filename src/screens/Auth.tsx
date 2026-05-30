@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, User, PenTool, Globe } from 'lucide-react';
+import { ArrowLeft, User, PenTool, Globe, Eye, EyeOff } from 'lucide-react';
+import { setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { Button } from '../components/ui/Button';
 import { StatusMessage } from '../components/ui/StatusMessage';
 import { useAuth } from '../contexts/AppContext';
+import { auth } from '../lib/firebase';
 import { AppErrorMessage, getAuthErrorMessage } from '../lib/errorMessages';
 
 export default function Auth() {
@@ -19,6 +21,8 @@ export default function Auth() {
   
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'role'>(defaultMode as any);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<AppErrorMessage | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -53,6 +57,14 @@ export default function Auth() {
     }
   };
 
+  const setAuthPersistence = async () => {
+    try {
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+    } catch (error) {
+      console.error('Failed to set auth persistence', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -66,6 +78,7 @@ export default function Auth() {
     const username = String(formData.get('username') || '');
 
     try {
+      await setAuthPersistence();
       if (mode === 'forgot') {
         await resetPassword(email);
         setNotice('Password reset email sent. Check your inbox.');
@@ -97,6 +110,7 @@ export default function Auth() {
     setNotice(null);
     setLoading(true);
     try {
+      await setAuthPersistence();
       await signInWithGoogle();
       if (mode === 'signup') {
         setMode('role');
@@ -214,14 +228,40 @@ export default function Auth() {
                     <Input name="email" type="email" placeholder="Email address" required />
                     
                     {mode !== 'forgot' && (
-                      <Input name="password" type="password" placeholder="Password" required minLength={6} />
+                      <div className="relative">
+                        <Input
+                          name="password"
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="Password"
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
+                        >
+                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                     )}
 
                     {mode === 'signin' && (
-                      <div className="flex justify-end my-1">
-                        <button type="button" onClick={() => setMode('forgot')} className="text-sm font-medium text-white/60 hover:text-white transition-colors">
-                          Forgot password?
-                        </button>
+                      <div className="flex flex-col gap-3 mb-1">
+                        <label className="inline-flex items-center gap-3 text-sm text-white/60">
+                          <input
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={() => setRememberMe((prev) => !prev)}
+                            className="form-checkbox h-4 w-4 rounded border-white/10 bg-black text-lemon-muted focus:ring-lemon-muted"
+                          />
+                          Keep me signed in
+                        </label>
+                        <div className="flex justify-end">
+                          <button type="button" onClick={() => setMode('forgot')} className="text-sm font-medium text-white/60 hover:text-white transition-colors">
+                            Forgot password?
+                          </button>
+                        </div>
                       </div>
                     )}
 

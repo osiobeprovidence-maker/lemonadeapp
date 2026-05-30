@@ -58,7 +58,7 @@ export type PremiumBillingCycle = 'monthly' | 'yearly';
 
 export interface Notification {
   id: string;
-  type: 'follow' | 'save' | 'unlock' | 'premium' | 'support' | 'update' | 'wallet';
+  type: 'follow' | 'save' | 'unlock' | 'premium' | 'support' | 'update' | 'wallet' | 'release' | 'reply' | 'badge' | 'novel' | 'manga' | 'content';
   title: string;
   message: string;
   timestamp: string;
@@ -81,8 +81,14 @@ export interface UserSettings {
   novelTheme: 'dark' | 'sepia' | 'light';
   notifications: {
     newChapters: boolean;
-    replies: boolean;
-    promotions: boolean;
+    creatorReplies: boolean;
+    premiumUpdates: boolean;
+    paymentAlerts: boolean;
+    emailMarketing: boolean;
+    pushActivity: boolean;
+    newNovels: boolean;
+    newManga: boolean;
+    newContent: boolean;
   };
 }
 
@@ -166,6 +172,7 @@ interface AppContextType {
   removeModerator: (modId: string) => void;
   updateModerator: (modId: string, updates: Partial<Moderator>) => void;
   logAdminActivity: (action: string) => void;
+  broadcastNotification: (notif: Omit<Notification, 'id' | 'timestamp' | 'read'>) => Promise<void>;
 
   setPendingAction: (type: string, payload?: any) => void;
   executePendingAction: () => void;
@@ -205,8 +212,14 @@ const DEFAULT_SETTINGS: UserSettings = {
   novelTheme: 'dark',
   notifications: {
     newChapters: true,
-    replies: true,
-    promotions: true,
+    creatorReplies: true,
+    premiumUpdates: true,
+    paymentAlerts: true,
+    emailMarketing: false,
+    pushActivity: true,
+    newNovels: true,
+    newManga: true,
+    newContent: true,
   }
 };
 
@@ -505,7 +518,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [allUsers, setAllUsers] = useState<AppUser[]>([]);
   const [reports, setReports] = useState<ContentReport[]>([]);
   const [activityLog, setActivityLog] = useState<AdminActivity[]>([]);
-  const [showMockData, setShowMockData] = useState<boolean>(import.meta.env.DEV);
+  const [showMockData, setShowMockData] = useState<boolean>(false);
 
   useEffect(() => {
     if (!convex) return;
@@ -839,17 +852,68 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } : null);
 
     if (convex && isAuthenticated && user.id) {
-       try {
-         await convex.mutation(api.users.createNotification, {
-           userId: user.id,
-           type: notif.type as any,
-           title: notif.title,
-           message: notif.message,
-           link: notif.link,
-         });
-       } catch (error) {
-         console.error('Failed to persist notification', error);
-       }
+      try {
+        await convex.mutation(api.users.createNotification, {
+          userId: user.id,
+          type: notif.type as any,
+          title: notif.title,
+          message: notif.message,
+          link: notif.link,
+        });
+      } catch (error) {
+        console.error('Failed to persist notification', error);
+      }
+    }
+  };
+
+  const broadcastNotification = async (notif: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+    const targetUsers = allUsers.filter((target) => target.role !== 'guest');
+    const timestamp = new Date().toISOString();
+
+    const persisted = targetUsers.map(async (target) => {
+      if (convex) {
+        try {
+          await convex.mutation(api.users.createNotification, {
+            userId: target.id,
+            type: notif.type as any,
+            title: notif.title,
+            message: notif.message,
+            link: notif.link,
+          });
+        } catch (error) {
+          console.error(`Failed to broadcast notification to ${target.id}`, error);
+        }
+      }
+    });
+
+    await Promise.all(persisted);
+
+    setAllUsers(prev => prev.map((target) => ({
+      ...target,
+      notifications: [
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          ...notif,
+          timestamp,
+          read: false,
+        },
+        ...(target.notifications || []),
+      ],
+    })));
+
+    if (user && !user.isGuest) {
+      setUser(prev => prev ? {
+        ...prev,
+        notifications: [
+          {
+            id: Math.random().toString(36).substr(2, 9),
+            ...notif,
+            timestamp,
+            read: false,
+          },
+          ...prev.notifications,
+        ],
+      } : null);
     }
   };
 
@@ -1425,6 +1489,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       removeModerator,
       updateModerator,
       logAdminActivity,
+      broadcastNotification,
       adminSession,
       moderators,
       allUsers,
