@@ -154,9 +154,22 @@ export const performWeeklySpin = mutation({
 
     if (!user) throw new Error("User not found for spin.");
 
-    const eligibility = await ctx.call("gamification.eligibleForWeeklySpin", { firebaseUid: args.firebaseUid, weekStart: args.weekStart });
-    if (!eligibility.eligible) {
-      throw new Error(`Not eligible for weekly spin: ${eligibility.counted}/${eligibility.required}`);
+    // Check eligibility by manually checking engagement events
+    const events = await ctx.db
+      .query("engagementEvents")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const required = 10;
+    const weekStartTs = Date.parse(args.weekStart);
+    const weekEndTs = weekStartTs + 7 * 24 * 60 * 60 * 1000;
+    const counted = events.filter((e) => {
+      const t = Date.parse(e.timestamp);
+      return e.counted && t >= weekStartTs && t < weekEndTs;
+    }).length;
+
+    if (counted < required) {
+      throw new Error(`Not eligible for weekly spin: ${counted}/${required}`);
     }
 
     const inventory = await ctx.db
