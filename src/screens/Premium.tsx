@@ -87,7 +87,11 @@ export default function Premium() {
             premiumReference: reference,
           } as any);
         }
-        setSuccess('Payment successful. Your premium membership is now active.');
+        setSuccess(
+          activation.activated
+            ? 'Payment successful. Your premium membership is now active.'
+            : 'Your premium membership is already active. No further action was needed.'
+        );
         window.history.replaceState(null, '', '/premium');
       } catch (error) {
         setSuccess(null);

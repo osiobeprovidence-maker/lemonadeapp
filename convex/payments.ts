@@ -214,7 +214,11 @@ export const activatePremiumAfterPaystack = mutation({
       .withIndex("by_reference", (q) => q.eq("reference", args.reference))
       .unique();
 
-    if (existing && user.premiumStatus === "premium" && user.premiumReference === args.reference) {
+    const alreadyActivated = Boolean(
+      existing && user.premiumStatus === "premium" && user.premiumReference === args.reference
+    );
+
+    if (alreadyActivated) {
       return { activated: false, transactionId: existing._id, renewsAt: user.premiumRenewsAt };
     }
 
@@ -239,7 +243,7 @@ export const activatePremiumAfterPaystack = mutation({
     });
 
     if (existing) {
-      return { activated: user.premiumStatus !== "premium", transactionId: existing._id, renewsAt: renewsAt.toISOString() };
+      return { activated: true, transactionId: existing._id, renewsAt: renewsAt.toISOString() };
     }
 
     const transactionId = await ctx.db.insert("walletTransactions", {

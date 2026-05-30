@@ -8,7 +8,7 @@ const successfulRevenueAmount = (transaction: any) => {
   if (transaction.type === "wallet_topup") {
     return Number(transaction.metadata?.nairaAmount || 0);
   }
-  if (transaction.type === "premium") {
+  if (transaction.type === "premium" || transaction.type === "creator_support") {
     return Number(transaction.amount || 0);
   }
   return 0;
