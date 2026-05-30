@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, FileText, Image as ImageIcon, Loader, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Check, FileText, Image as ImageIcon, Loader, Plus, Trash2, Upload, Send } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { api } from '../../convex/_generated/api';
 import { convex } from '../lib/convex';
@@ -288,6 +288,30 @@ export default function CreatorStoryEditor() {
     } catch (err) {
       console.error('Failed to archive story', err);
       setError('Unable to archive story. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const publishStory = async () => {
+    if (!story || !convex) return;
+    if (story.status === 'published') {
+      setError('This story is already published.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await convex.mutation(api.stories.update, {
+        externalId: story.externalId || story._id,
+        status: 'published',
+      });
+      setSuccess('Story published successfully!');
+      setStory({ ...story, status: 'published' });
+    } catch (err) {
+      console.error('Failed to publish story', err);
+      setError('Unable to publish story. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -593,6 +617,11 @@ export default function CreatorStoryEditor() {
               <Button onClick={saveChanges} disabled={saving}>
                 {saving ? <Loader size={16} className="mr-2 animate-spin" /> : <Check size={16} className="mr-2" />} Save changes
               </Button>
+              {story.status === 'draft' && (
+                <Button onClick={publishStory} disabled={saving} className="bg-lemon-muted text-black hover:bg-lemon-muted/90">
+                  {saving ? <Loader size={16} className="mr-2 animate-spin" /> : <Send size={16} className="mr-2" />} Publish story
+                </Button>
+              )}
               <Button variant="outline" className="text-red-300 border-red-500/20 hover:border-red-400 hover:text-red-100" onClick={archiveStory} disabled={saving}>
                 <Trash2 size={16} className="mr-2" /> Archive story
               </Button>
