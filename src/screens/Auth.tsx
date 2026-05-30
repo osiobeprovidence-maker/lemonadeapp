@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, User, PenTool, Globe } from 'lucide-react';
@@ -10,15 +10,27 @@ import { AppErrorMessage, getAuthErrorMessage } from '../lib/errorMessages';
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { signIn, signUp, signInWithGoogle, resetPassword, continueAsGuest, executePendingAction } = useAuth();
+  const { user, isAuthenticated, authReady, signIn, signUp, signInWithGoogle, resetPassword, continueAsGuest, executePendingAction } = useAuth();
   
   const defaultMode = searchParams.get('mode') || 'signin';
   const intent = searchParams.get('intent');
+  const redirect = searchParams.get('redirect');
+  const safeRedirect = redirect?.startsWith('/') ? redirect : null;
   
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'role'>(defaultMode as any);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<AppErrorMessage | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authReady || !isAuthenticated || user?.isGuest) return;
+
+    if (safeRedirect) {
+      navigate(safeRedirect, { replace: true });
+    } else if (intent === 'studio') {
+      navigate(user.creatorAccessStatus === 'approved' ? '/studio' : '/creator-application', { replace: true });
+    }
+  }, [authReady, isAuthenticated, user, safeRedirect, intent, navigate]);
 
   const handleAuthSuccess = async (role: 'reader' | 'creator') => {
     // Execute any pending action that was intercepted
@@ -27,10 +39,12 @@ export default function Auth() {
     // Store selected role in sessionStorage for reference
     sessionStorage.setItem('selectedRole', role);
 
-    if (role === 'creator') {
+    if (safeRedirect) {
+      navigate(safeRedirect, { replace: true });
+    } else if (role === 'creator') {
       navigate('/creator-application');
     } else if (intent === 'studio') {
-      navigate('/creator-application');
+      navigate('/studio');
     } else if (intent) {
       // Navigate back to where they came from if it was an intent
       navigate(-1);

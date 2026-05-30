@@ -135,6 +135,7 @@ interface AppContextType {
   user: AppUser | null;
   isGuest: boolean;
   isAuthenticated: boolean;
+  authReady: boolean;
   creators: Record<string, Creator>;
   stories: Story[];
   applications: CreatorApplication[];
@@ -493,6 +494,7 @@ const activityFromDoc = (doc: any): AdminActivity => ({
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(() => readPersistedUser());
+  const [authReady, setAuthReady] = useState(() => Boolean(readPersistedUser()));
   const [liveCreators, setLiveCreators] = useState<Record<string, Creator>>(MOCK_CREATORS as unknown as Record<string, Creator>);
   const [liveStories, setLiveStories] = useState<Story[]>(MOCK_STORIES as unknown as Story[]);
   const [applications, setApplications] = useState<CreatorApplication[]>([]);
@@ -621,6 +623,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Persistence
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let isMounted = true;
     const savedAdminState = localStorage.getItem('lemonade_admin_session');
 
     if (savedAdminState) {
@@ -631,17 +635,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const startAuthListener = async () => {
+      await authPersistenceReady;
+      if (!isMounted) return;
+
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         const savedUser = readPersistedUser();
         const explicitlyLoggedOut = localStorage.getItem(AUTH_EXPLICIT_LOGOUT_KEY) === 'true';
 
         if (savedUser && !explicitlyLoggedOut) {
           setUser(savedUser);
+          setAuthReady(true);
           return;
         }
 
         setUser(GUEST_USER);
+        setAuthReady(true);
         return;
       }
 
@@ -652,10 +662,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const fallbackUser = appUserFromFirebase(firebaseUser);
         persistUserSession(fallbackUser);
         setUser(fallbackUser);
+      } finally {
+        setAuthReady(true);
       }
+      });
+    };
+
+    startAuthListener().catch((error) => {
+      console.error('Failed to initialize auth listener', error);
+      const savedUser = readPersistedUser();
+      setUser(savedUser || GUEST_USER);
+      setAuthReady(true);
     });
 
-    return unsubscribe;
+    return () => {
+      isMounted = false;
+      unsubscribe?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -1363,6 +1386,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       user, 
       isGuest: !!user?.isGuest, 
       isAuthenticated: !!user?.isAuthenticated,
+      authReady,
       creators,
       stories,
       login,

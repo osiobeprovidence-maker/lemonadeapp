@@ -91,6 +91,7 @@ export const useCreatePayment = () => {
         callbackUrl: `${window.location.origin}/premium`,
         metadata: {
           userId: args.userId,
+          firebaseUid: auth.currentUser.uid,
           planType: args.planType,
           billingCycle: args.billingCycle,
           product: 'premium',

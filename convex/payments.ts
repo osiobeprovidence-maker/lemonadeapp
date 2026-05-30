@@ -173,8 +173,8 @@ export const creditWalletAfterPaystack = mutation({
 
 export const activatePremiumAfterPaystack = mutation({
   args: {
-    firebaseUid: v.string(),
-    userId: v.string(),
+    firebaseUid: v.optional(v.string()),
+    userId: v.optional(v.string()),
     reference: v.string(),
     planType: v.union(v.literal("premium"), v.literal("patron")),
     billingCycle: v.union(v.literal("monthly"), v.literal("yearly")),
@@ -187,10 +187,23 @@ export const activatePremiumAfterPaystack = mutation({
       throw new Error("Invalid premium payment amount.");
     }
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", args.firebaseUid))
-      .unique();
+    const providerMetadata = args.providerPayload?.metadata || {};
+    const firebaseUid = args.firebaseUid || providerMetadata.firebaseUid;
+    const userId = args.userId || providerMetadata.userId || providerMetadata.convexUserId;
+
+    let user = firebaseUid
+      ? await ctx.db
+        .query("users")
+        .withIndex("by_firebaseUid", (q) => q.eq("firebaseUid", firebaseUid))
+        .unique()
+      : null;
+
+    if (!user && userId) {
+      const normalizedUserId = ctx.db.normalizeId("users", userId);
+      if (normalizedUserId) {
+        user = await ctx.db.get(normalizedUserId);
+      }
+    }
 
     if (!user) {
       throw new Error("User not found for premium activation.");
@@ -201,7 +214,7 @@ export const activatePremiumAfterPaystack = mutation({
       .withIndex("by_reference", (q) => q.eq("reference", args.reference))
       .unique();
 
-    if (existing) {
+    if (existing && user.premiumStatus === "premium" && user.premiumReference === args.reference) {
       return { activated: false, transactionId: existing._id, renewsAt: user.premiumRenewsAt };
     }
 
@@ -225,8 +238,12 @@ export const activatePremiumAfterPaystack = mutation({
       updatedAt: now.toISOString(),
     });
 
+    if (existing) {
+      return { activated: user.premiumStatus !== "premium", transactionId: existing._id, renewsAt: renewsAt.toISOString() };
+    }
+
     const transactionId = await ctx.db.insert("walletTransactions", {
-      userId: args.userId,
+      userId: user._id,
       type: "premium",
       amount,
       currency: "NGN",

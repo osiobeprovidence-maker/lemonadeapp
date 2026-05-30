@@ -14,7 +14,7 @@ export default function Premium() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, firebaseUid } = useCurrentUser();
-  const { updateLocalUser } = useApp();
+  const { updateLocalUser, authReady } = useApp();
   const createPayment = useCreatePayment();
   
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
@@ -32,7 +32,7 @@ export default function Premium() {
       setError('Payment failed. Please try again.');
       return;
     }
-    if (!reference || !firebaseUid || !user) return;
+    if (!reference || !authReady) return;
     if (processedReferenceRef.current === reference) return;
     processedReferenceRef.current = reference;
 
@@ -52,31 +52,41 @@ export default function Premium() {
 
         if (!convex) throw new Error('Convex is not configured. Premium could not be activated.');
 
-        const metadata = transaction.metadata || {};
+        const metadata = typeof transaction.metadata === 'string'
+          ? JSON.parse(transaction.metadata || '{}')
+          : transaction.metadata || {};
         const planType = metadata.planType === 'patron' ? 'patron' : 'premium';
         const billingCycle = metadata.billingCycle === 'yearly' ? 'yearly' : 'monthly';
-        const amount = Number(transaction.amount || 0) / 100;
+        const transactionAmount = Number(transaction.amount || 0);
+        const metadataAmount = Number(metadata.amount || 0);
+        const amount = transactionAmount > 0 ? transactionAmount / 100 : metadataAmount;
 
-        const activation = await convex.mutation(api.payments.activatePremiumAfterPaystack, {
-          firebaseUid,
-          userId: user._id || user.id,
+        const activationPayload: any = {
           reference,
           planType,
           billingCycle,
           amount,
           providerPayload: transaction,
-        });
+        };
+        const activationFirebaseUid = firebaseUid || metadata.firebaseUid;
+        const activationUserId = user?._id || user?.id || metadata.userId;
+        if (activationFirebaseUid) activationPayload.firebaseUid = activationFirebaseUid;
+        if (activationUserId) activationPayload.userId = activationUserId;
 
-        updateLocalUser({
-          isPremium: true,
-          premiumStatus: 'premium',
-          premiumPlan: planType,
-          premiumBillingCycle: billingCycle,
-          premiumRenewsAt: activation.renewsAt,
-          premiumCancelAtPeriodEnd: false,
-          premiumProvider: 'paystack',
-          premiumReference: reference,
-        } as any);
+        const activation = await convex.mutation(api.payments.activatePremiumAfterPaystack, activationPayload);
+
+        if (user) {
+          updateLocalUser({
+            isPremium: true,
+            premiumStatus: 'premium',
+            premiumPlan: planType,
+            premiumBillingCycle: billingCycle,
+            premiumRenewsAt: activation.renewsAt,
+            premiumCancelAtPeriodEnd: false,
+            premiumProvider: 'paystack',
+            premiumReference: reference,
+          } as any);
+        }
         setSuccess('Payment successful. Your premium membership is now active.');
         window.history.replaceState(null, '', '/premium');
       } catch (error) {
@@ -88,7 +98,7 @@ export default function Premium() {
     };
 
     confirmPremiumPayment();
-  }, [searchParams, firebaseUid, user, updateLocalUser]);
+  }, [searchParams, authReady, firebaseUid, user, updateLocalUser]);
 
   useEffect(() => {
     if (user?.premiumStatus === 'premium') {

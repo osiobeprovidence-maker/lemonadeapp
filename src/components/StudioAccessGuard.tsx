@@ -7,10 +7,10 @@ interface StudioAccessGuardProps {
 }
 
 export default function StudioAccessGuard({ children }: StudioAccessGuardProps) {
-  const { user, isGuest } = useApp();
+  const { user, isGuest, authReady } = useApp();
   const location = useLocation();
 
-  if (!user) {
+  if (!authReady || !user) {
     return null;
   }
 

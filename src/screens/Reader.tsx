@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { Button } from '../components/ui/Button';
 import { useApp } from '../contexts/AppContext';
+import { convex } from '../lib/convex';
+import { api } from '../../convex/_generated/api';
 import AdPrerollModal from '../components/ads/AdPrerollModal';
 import { useAdGate } from '../hooks/useAdGate';
 import { useEngagement } from '../hooks/useEngagement';
@@ -33,6 +35,12 @@ export default function Reader() {
   const [theme, setTheme] = useState<'dark' | 'cream'>('dark');
   const [showSettings, setShowSettings] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [localComments, setLocalComments] = useState<any[]>(Array.isArray(story?.comments) ? story.comments : []);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsHasMore, setCommentsHasMore] = useState(false);
+  const [commentsCursor, setCommentsCursor] = useState<string | undefined>(undefined);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('Wrong content');
   const [reportMessage, setReportMessage] = useState('');
@@ -59,6 +67,74 @@ export default function Reader() {
       trackReading(id, chapterId);
     }
   }, [id, chapterNum, canReadContent]);
+
+  useEffect(() => {
+    if (!showComments || !story?.id || !chapterNum) return;
+
+    const fetchComments = async () => {
+      try {
+        setCommentsLoading(true);
+        const page = await convex.query(api.interactions.listCommentsPaged, {
+          storyId: story.id,
+          chapterId,
+          limit: 8,
+        });
+
+        if (Array.isArray(page)) {
+          setLocalComments(page.map((c: any) => ({
+            author: c.authorName,
+            avatar: c.authorAvatar,
+            message: c.message,
+            time: c.createdAt,
+            likes: c.likesCount || 0,
+          })));
+          setCommentsHasMore(page.length === 8);
+          setCommentsCursor(page.length > 0 ? page[page.length - 1].createdAt : undefined);
+        }
+      } catch (err) {
+        console.error('Failed to load comments', err);
+      } finally {
+        setCommentsLoading(false);
+      }
+    };
+
+    void fetchComments();
+  }, [showComments, story?.id, chapterId, chapterNum]);
+
+  const loadMoreComments = async () => {
+    if (!story?.id || !commentsCursor || commentsLoading) return;
+
+    try {
+      setCommentsLoading(true);
+      const page = await convex.query(api.interactions.listCommentsPaged, {
+        storyId: story.id,
+        chapterId,
+        limit: 8,
+        before: commentsCursor,
+      });
+
+      if (Array.isArray(page) && page.length > 0) {
+        setLocalComments((prev) => [
+          ...prev,
+          ...page.map((c: any) => ({
+            author: c.authorName,
+            avatar: c.authorAvatar,
+            message: c.message,
+            time: c.createdAt,
+            likes: c.likesCount || 0,
+          })),
+        ]);
+        setCommentsHasMore(page.length === 8);
+        setCommentsCursor(page[page.length - 1].createdAt);
+      } else {
+        setCommentsHasMore(false);
+      }
+    } catch (err) {
+      console.error('Failed to load more comments', err);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
 
   // Engagement instrumentation: track scroll and time spent
   useEngagement({ storyId: id, chapterId: chapterId });
@@ -114,13 +190,13 @@ export default function Reader() {
                  <h3 className="font-display font-medium text-sm truncate w-full text-center">{story.title}</h3>
                  <span className="text-[10px] text-white/50 uppercase tracking-widest font-black truncate w-full text-center">Chapter {chapterNum}</span>
                </div>
-               <div className="flex items-center gap-1">
+               <div className="flex items-center gap-2">
                  {isNovel && (
                    <button onClick={() => { setShowSettings(!showSettings); setShowMoreMenu(false); }} className={cn("p-2 rounded-full hover:bg-white/10 transition-colors", showSettings && "bg-white/10")}>
                      <Settings2 size={20} />
                    </button>
                  )}
-                 <button onClick={() => { setShowMoreMenu(!showMoreMenu); setShowSettings(false); }} className={cn("p-2 -mr-2 rounded-full hover:bg-white/10 transition-colors", showMoreMenu && "bg-white/10")}>
+                 <button onClick={() => { setShowMoreMenu(!showMoreMenu); setShowSettings(false); }} className={cn("p-2 -mr-2 rounded-full hover:bg-white/10 transition-colors", showMoreMenu && "bg-white/10")}> 
                    <MoreHorizontal size={20} />
                  </button>
                </div>
@@ -342,7 +418,7 @@ export default function Reader() {
                 className="text-white/60 px-4 h-11 w-auto flex gap-2 font-bold text-sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/story/${story.id}`);
+                  setShowComments(true);
                 }}
               >
                 <MessageCircle size={18} /> {commentCount}
@@ -355,6 +431,56 @@ export default function Reader() {
           </motion.div>
         )}
       </AnimatePresence>
+
+          {/* Comments bottom sheet */}
+          <AnimatePresence>
+            {showComments && (
+              <div className="fixed inset-0 z-60 flex items-end justify-center">
+                <div className="absolute inset-0 bg-black/70" onClick={() => setShowComments(false)} />
+                <motion.div initial={{ y: 400 }} animate={{ y: 0 }} exit={{ y: 400 }} className="w-full max-w-[100vw] mx-auto p-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+                  <div className="rounded-[28px] bg-[#141414] p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3 className="font-black">Comments</h3>
+                      <button onClick={() => setShowComments(false)} className="text-white/40">Close</button>
+                    </div>
+                    <form onSubmit={(ev) => { ev.preventDefault(); const msg = commentDraft.trim(); if (!msg) return; const newC = { author: user?.name || 'Guest', avatar: user?.avatar, message: msg, time: new Date().toISOString(), likes: 0 }; setLocalComments((c) => [newC, ...c]); setCommentDraft(''); try { if (convex && user && !user.isGuest) { void convex.mutation(api.interactions.createComment, { storyId: story.id, chapterId: `c${chapterNum}`, authorId: user.id, authorName: user.name, authorAvatar: user.avatar, message: msg, }); } } catch (err) { console.error('Failed to persist comment', err); } }} className="flex gap-2 mb-3">
+                      <input value={commentDraft} onChange={(e) => setCommentDraft(e.target.value)} placeholder="Add a comment..." className="flex-1 rounded-xl bg-black px-3 py-2 text-white outline-none" />
+                      <button type="submit" className="rounded-xl bg-lemon-muted px-3 py-2 text-black">Post</button>
+                    </form>
+                    <div className="space-y-2 max-h-[55vh] overflow-auto">
+                      {localComments.length > 0 ? localComments.map((c, i) => (
+                        <div key={`${c.time}-${i}`} className="flex gap-3 p-2 rounded-lg items-start">
+                          <img src={c.avatar || `https://picsum.photos/seed/comment-${i}/100`} className="h-8 w-8 rounded-full object-cover" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-sm font-semibold">{c.author}</div>
+                                <div className="text-[11px] text-white/40">{new Date(c.time).toLocaleString()}</div>
+                              </div>
+                              <div className="text-[11px] text-white/40">{c.likes || 0}</div>
+                            </div>
+                            <p className="mt-1 text-sm text-white/70">{c.message}</p>
+                          </div>
+                        </div>
+                      )) : <div className="text-center text-white/50">No comments yet</div>}
+                    </div>
+                    {commentsHasMore && (
+                      <div className="mt-3 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={loadMoreComments}
+                          disabled={commentsLoading}
+                          className="rounded-full bg-lemon-muted px-4 py-2 text-black font-bold transition hover:bg-lemon-muted/90 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {commentsLoading ? 'Loading...' : 'Load more'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
     </div>
   );

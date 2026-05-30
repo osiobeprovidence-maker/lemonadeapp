@@ -141,6 +141,13 @@ export interface Story {
   media?: {
     chapterText?: string;
     attachments?: Array<{ name: string; url: string; type?: string; size?: number }>;
+    chapters?: Array<{
+      title: string;
+      text: string;
+      attachments?: Array<{ name: string; url: string; type?: string; size?: number }>;
+      monetization?: string;
+      price?: number;
+    }>;
     monetization?: string;
     credits?: string;
   };

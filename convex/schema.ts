@@ -249,6 +249,23 @@ export default defineSchema({
     link: v.optional(v.string()),
   }).index("by_userId", ["userId"]),
 
+  comments: defineTable({
+    storyId: v.string(),
+    chapterId: v.optional(v.string()),
+    parentCommentId: v.optional(v.id("comments")),
+    authorId: v.string(),
+    authorName: v.string(),
+    authorAvatar: v.optional(v.string()),
+    message: v.string(),
+    likesCount: v.number(),
+    likedBy: v.array(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.optional(v.string()),
+  })
+    .index("by_story", ["storyId"])
+    .index("by_story_chapter", ["storyId", "chapterId"])
+    .index("by_parentCommentId", ["parentCommentId"]),
+
   platformSettings: defineTable({
     showMockData: v.boolean(),
     maintenanceMode: v.boolean(),

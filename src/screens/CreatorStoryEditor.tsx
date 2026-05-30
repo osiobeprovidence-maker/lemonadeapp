@@ -25,10 +25,26 @@ interface StoryDocument {
   media?: {
     chapterText?: string;
     attachments?: Array<{ name: string; url: string; type?: string; size?: number }>;
+    chapters?: ManagedChapter[];
     monetization?: string;
     credits?: string;
   };
 }
+
+type StoryAttachment = {
+  name: string;
+  url: string;
+  type?: string;
+  size?: number;
+};
+
+type ManagedChapter = {
+  title: string;
+  text: string;
+  attachments: StoryAttachment[];
+  monetization?: string;
+  price?: number;
+};
 
 export default function CreatorStoryEditor() {
   const { id } = useParams();
@@ -56,7 +72,8 @@ export default function CreatorStoryEditor() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [panelFiles, setPanelFiles] = useState<File[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<Array<{ name: string; url: string; type?: string; size?: number }>>([]);
+  const [existingAttachments, setExistingAttachments] = useState<StoryAttachment[]>([]);
+  const [managedChapters, setManagedChapters] = useState<ManagedChapter[]>([]);
   const [newChapterText, setNewChapterText] = useState('');
 
   const isCreator = Boolean(user && story && user.username === story.creatorUsername);
@@ -90,6 +107,20 @@ export default function CreatorStoryEditor() {
         setCoverPreview(storyDoc.coverImage || '');
         setBannerPreview(storyDoc.bannerImage || '');
         setExistingAttachments(storyDoc.media?.attachments || []);
+        const sourceChapters = Array.isArray(storyDoc.media?.chapters) ? storyDoc.media.chapters : [];
+        const hydratedChapters = sourceChapters.length > 0
+          ? sourceChapters.map((chapter: any, index: number) => ({
+            title: chapter.title || `Episode ${index + 1}`,
+            text: chapter.text || '',
+            attachments: Array.isArray(chapter.attachments) ? chapter.attachments : [],
+            monetization: chapter.monetization,
+            price: chapter.price,
+          }))
+          : storyDoc.media?.chapterText
+            ? [{ title: 'Episode 1', text: storyDoc.media.chapterText, attachments: [] }]
+            : [];
+        setManagedChapters(hydratedChapters);
+        setEpisodes(Math.max(1, hydratedChapters.length || storyDoc.episodes || 1));
       } catch (err) {
         console.error('Failed to load story', err);
         setError('Unable to load story. Please try again.');
@@ -146,6 +177,39 @@ export default function CreatorStoryEditor() {
     };
   };
 
+  const setChaptersAndEpisodeCount = (updater: (current: ManagedChapter[]) => ManagedChapter[]) => {
+    setManagedChapters((current) => {
+      const next = updater(current);
+      setEpisodes(Math.max(1, next.length || 1));
+      return next;
+    });
+  };
+
+  const updateChapter = (index: number, updates: Partial<ManagedChapter>) => {
+    setChaptersAndEpisodeCount((current) => current.map((chapter, chapterIndex) => (
+      chapterIndex === index ? { ...chapter, ...updates } : chapter
+    )));
+  };
+
+  const deleteChapter = (index: number) => {
+    const chapter = managedChapters[index];
+    const confirmed = window.confirm(`Delete ${chapter?.title || `Episode ${index + 1}`}? This removes it after you save changes.`);
+    if (!confirmed) return;
+
+    setChaptersAndEpisodeCount((current) => current.filter((_, chapterIndex) => chapterIndex !== index));
+    setSuccess('Episode removed locally. Save changes to sync it.');
+  };
+
+  const normalizedChapters = () => managedChapters
+    .map((chapter, index) => ({
+      title: chapter.title.trim() || `Episode ${index + 1}`,
+      text: chapter.text,
+      attachments: chapter.attachments || [],
+      monetization: chapter.monetization,
+      price: chapter.price,
+    }))
+    .filter((chapter) => chapter.title.trim() || chapter.text.trim() || chapter.attachments.length > 0);
+
   const saveChanges = async () => {
     if (!story || !convex) return;
     setSaving(true);
@@ -154,6 +218,9 @@ export default function CreatorStoryEditor() {
 
     try {
       const assets = await uploadAssets();
+      const chaptersForSave = normalizedChapters();
+      const firstChapterText = chaptersForSave[0]?.text ?? formData.chapterText;
+      const episodeCount = Math.max(1, chaptersForSave.length || episodes);
       const payload = {
         externalId: story.externalId || story._id,
         title: formData.title.trim() || story.title,
@@ -164,10 +231,11 @@ export default function CreatorStoryEditor() {
         bannerImage: assets.bannerImage,
         tags: formData.tags,
         isOriginal: story.isOriginal,
-        episodes,
+        episodes: episodeCount,
         media: {
-          chapterText: formData.chapterText,
+          chapterText: firstChapterText,
           attachments: assets.attachments,
+          chapters: chaptersForSave,
           monetization: formData.monetization,
           credits: formData.credits,
         },
@@ -176,6 +244,9 @@ export default function CreatorStoryEditor() {
       await convex.mutation(api.stories.update, payload);
       setSuccess('Story changes saved successfully.');
       setPanelFiles([]);
+      setExistingAttachments(assets.attachments);
+      setEpisodes(episodeCount);
+      setManagedChapters(chaptersForSave);
       if (story.externalId) {
         setStory({ ...story, ...payload, media: payload.media } as StoryDocument);
       }
@@ -189,19 +260,17 @@ export default function CreatorStoryEditor() {
 
   const addChapter = () => {
     if (!story) return;
-    setEpisodes((current) => current + 1);
-    if (newChapterText.trim()) {
-      setFormData((current) => ({
-        ...current,
-        chapterText: `${current.chapterText.trim()}
-
----
-
-${newChapterText.trim()}`.trim(),
-      }));
-      setNewChapterText('');
-    }
-    setSuccess('Chapter added locally. Save changes to sync it.');
+    const nextIndex = managedChapters.length + 1;
+    setChaptersAndEpisodeCount((current) => ([
+      ...current,
+      {
+        title: `Episode ${nextIndex}`,
+        text: newChapterText.trim(),
+        attachments: [],
+      },
+    ]));
+    setNewChapterText('');
+    setSuccess('Episode added locally. Save changes to sync it.');
   };
 
   const archiveStory = async () => {
@@ -354,33 +423,86 @@ ${newChapterText.trim()}`.trim(),
             <div className="flex items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="font-bold text-2xl">Chapter manager</h2>
-                <p className="text-sm text-white/40">Add new chapters and update story text or attachments.</p>
+                <p className="text-sm text-white/40">Add, edit, and delete story episodes before publishing updates.</p>
               </div>
-              <div className="rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-white/80">{episodes} chapters</div>
+              <div className="rounded-2xl bg-white/5 px-4 py-2 text-sm font-semibold text-white/80">{managedChapters.length || episodes} episodes</div>
             </div>
 
             <div className="space-y-6">
-              <div>
-                <label className="text-sm font-semibold text-white/50 mb-2 block">Current chapter text</label>
-                <textarea
-                  value={formData.chapterText}
-                  onChange={(e) => setFormData((current) => ({ ...current, chapterText: e.target.value }))}
-                  rows={8}
-                  className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none resize-none focus:border-lemon-muted"
-                />
-              </div>
+              {managedChapters.length > 0 ? (
+                <div className="space-y-4">
+                  {managedChapters.map((chapter, index) => (
+                    <article key={`${chapter.title}-${index}`} className="rounded-3xl border border-white/10 bg-black/25 p-4 sm:p-5">
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.28em] text-lemon-muted">Episode {index + 1}</p>
+                          <p className="mt-1 text-sm text-white/40">{chapter.text.trim() ? `${chapter.text.trim().split(/\s+/).length} words` : 'No story text yet'}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => deleteChapter(index)}
+                          className="rounded-xl bg-red-500/10 p-2 text-red-300 transition-colors hover:bg-red-500 hover:text-white"
+                          aria-label={`Delete ${chapter.title || `Episode ${index + 1}`}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold text-white/50">Episode title</label>
+                          <input
+                            value={chapter.title}
+                            onChange={(e) => updateChapter(index, { title: e.target.value })}
+                            className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none focus:border-lemon-muted"
+                            placeholder={`Episode ${index + 1}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold text-white/50">Episode text</label>
+                          <textarea
+                            value={chapter.text}
+                            onChange={(e) => updateChapter(index, { text: e.target.value })}
+                            rows={7}
+                            className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none resize-none focus:border-lemon-muted"
+                            placeholder="Write or paste the episode text here."
+                          />
+                        </div>
+                        {chapter.attachments.length > 0 && (
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                            <p className="mb-2 text-xs font-black uppercase tracking-widest text-white/35">Episode files</p>
+                            <div className="space-y-2">
+                              {chapter.attachments.map((attachment, attachmentIndex) => (
+                                <div key={`${attachment.name}-${attachmentIndex}`} className="flex items-center gap-2 text-sm text-white/60">
+                                  <FileText size={14} className="text-lemon-muted" />
+                                  <span className="truncate">{attachment.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-dashed border-white/15 bg-black/25 p-6 text-center">
+                  <FileText size={24} className="mx-auto mb-3 text-lemon-muted" />
+                  <p className="font-bold">No episodes yet</p>
+                  <p className="mx-auto mt-2 max-w-sm text-sm text-white/45">Create the first episode, add text, then save changes to publish the new structure.</p>
+                </div>
+              )}
 
               <div className="space-y-3">
-                <label className="text-sm font-semibold text-white/50 mb-2 block">New chapter notes</label>
+                <label className="text-sm font-semibold text-white/50 mb-2 block">New episode starter text</label>
                 <textarea
                   value={newChapterText}
                   onChange={(e) => setNewChapterText(e.target.value)}
                   rows={4}
                   className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none resize-none focus:border-lemon-muted"
-                  placeholder="Add a short extra chapter note or new chapter section before saving."
+                  placeholder="Optional: paste the first draft of the next episode here."
                 />
                 <Button variant="outline" onClick={addChapter} disabled={saving}>
-                  <Plus size={16} className="mr-2" /> Add chapter
+                  <Plus size={16} className="mr-2" /> Add episode
                 </Button>
               </div>
 

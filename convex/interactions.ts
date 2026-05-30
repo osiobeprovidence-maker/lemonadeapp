@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
 const now = () => new Date().toISOString();
 
@@ -105,5 +105,101 @@ export const trackReadingByFirebaseUid = mutation({
       chapterId: args.chapterId,
       timestamp: now(),
     });
+  },
+});
+
+export const createComment = mutation({
+  args: {
+    storyId: v.string(),
+    chapterId: v.optional(v.string()),
+    parentCommentId: v.optional(v.id("comments")),
+    authorId: v.string(),
+    authorName: v.string(),
+    authorAvatar: v.optional(v.string()),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const comment = {
+      storyId: args.storyId,
+      chapterId: args.chapterId ?? null,
+      parentCommentId: args.parentCommentId ?? null,
+      authorId: args.authorId,
+      authorName: args.authorName,
+      authorAvatar: args.authorAvatar ?? null,
+      message: args.message,
+      likesCount: 0,
+      likedBy: [],
+      createdAt: now(),
+    };
+    return await ctx.db.insert("comments", comment);
+  },
+});
+
+export const listComments = query({
+  args: {
+    storyId: v.string(),
+    chapterId: v.optional(v.string()),
+    parentCommentId: v.optional(v.id("comments")),
+  },
+  handler: async (ctx, args) => {
+    if (args.parentCommentId) {
+      return await ctx.db.query("comments").withIndex("by_parentCommentId", (q) => q.eq("parentCommentId", args.parentCommentId)).collect();
+    }
+    let rows;
+    if (args.chapterId) {
+      rows = await ctx.db.query("comments").withIndex("by_story_chapter", (q) => q.eq("storyId", args.storyId).eq("chapterId", args.chapterId)).collect();
+    } else {
+      rows = await ctx.db.query("comments").withIndex("by_story", (q) => q.eq("storyId", args.storyId)).collect();
+    }
+    return rows.filter((r: any) => !r.parentCommentId);
+  },
+});
+
+export const listCommentsPaged = query({
+  args: {
+    storyId: v.string(),
+    chapterId: v.optional(v.string()),
+    parentCommentId: v.optional(v.id("comments")),
+    limit: v.optional(v.number()),
+    before: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let rows;
+    if (args.parentCommentId) {
+      rows = await ctx.db.query("comments").withIndex("by_parentCommentId", (q) => q.eq("parentCommentId", args.parentCommentId)).collect();
+    } else if (args.chapterId) {
+      rows = await ctx.db.query("comments").withIndex("by_story_chapter", (q) => q.eq("storyId", args.storyId).eq("chapterId", args.chapterId)).collect();
+    } else {
+      rows = await ctx.db.query("comments").withIndex("by_story", (q) => q.eq("storyId", args.storyId)).collect();
+    }
+
+    // Filter to only root comments when no parent is provided
+    if (!args.parentCommentId) {
+      rows = rows.filter((r: any) => !r.parentCommentId);
+    }
+
+    // Sort descending by createdAt
+    rows.sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
+
+    const before = args.before;
+    if (before) {
+      rows = rows.filter((r: any) => r.createdAt < before);
+    }
+
+    const limit = args.limit ?? 10;
+    return rows.slice(0, limit);
+  },
+});
+
+export const toggleLikeComment = mutation({
+  args: { commentId: v.id("comments"), userId: v.string() },
+  handler: async (ctx, args) => {
+    const comment = await ctx.db.get(args.commentId);
+    if (!comment) return null;
+    const already = (comment.likedBy || []).includes(args.userId);
+    const likedBy = already ? comment.likedBy.filter((u: string) => u !== args.userId) : [...(comment.likedBy || []), args.userId];
+    const likesCount = likedBy.length;
+    await ctx.db.patch(args.commentId, { likedBy, likesCount, updatedAt: now() });
+    return { likesCount };
   },
 });

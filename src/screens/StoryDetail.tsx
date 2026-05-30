@@ -8,6 +8,8 @@ import { FollowButton, SupportButton } from '../components/InteractionButtons';
 import { SensitiveActionWrapper } from '../components/SensitiveActionWrapper';
 import { cn } from '../lib/utils';
 import { useCurrentUser, useIncrementStoryView, useSaveStory, useStoryById, useUnlockChapter } from '../hooks/useConvex';
+import { convex } from '../lib/convex';
+import { api } from '../../convex/_generated/api';
 
 type ChapterItem = {
   chapterId: string;
@@ -18,6 +20,8 @@ type ChapterItem = {
 };
 
 type StoryComment = {
+  _id?: string;
+  parentCommentId?: string | null;
   author?: string;
   avatar?: string;
   message: string;
@@ -39,6 +43,13 @@ export default function StoryDetail() {
   const [activeTab, setActiveTab] = useState<(typeof tabLabels)[number]>('chapters');
   const [commentDraft, setCommentDraft] = useState('');
   const [localComments, setLocalComments] = useState<StoryComment[]>([]);
+  const [likedComments, setLikedComments] = useState<Record<string, boolean>>({});
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsHasMore, setCommentsHasMore] = useState(false);
+  const [commentsCursor, setCommentsCursor] = useState<string | undefined>(undefined);
+  const [repliesByComment, setRepliesByComment] = useState<Record<string, StoryComment[]>>({});
+  const [openReplyBox, setOpenReplyBox] = useState<Record<string, boolean>>({});
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
 
   const chapters = useMemo<ChapterItem[]>(() => {
     if (!story) return [];
@@ -75,7 +86,104 @@ export default function StoryDetail() {
     setCommentDraft('');
     setActiveTab('chapters');
     setHasIncremented(false);
+    // Fetch first page of persisted comments
+    (async () => {
+      try {
+        if (convex && story?.id) {
+          setCommentsLoading(true);
+          const page = await convex.query(api.interactions.listCommentsPaged, { storyId: story.id, limit: 8 });
+          if (Array.isArray(page)) {
+            setLocalComments(page.map((c: any) => ({ _id: c._id, author: c.authorName, avatar: c.authorAvatar, message: c.message, time: c.createdAt, likes: c.likesCount || 0 })));
+            setCommentsHasMore((page as any).length === 8);
+            if ((page as any).length > 0) setCommentsCursor(page[page.length - 1].createdAt);
+          }
+        }
+      } catch (err) {
+        // ignore
+      } finally {
+        setCommentsLoading(false);
+      }
+    })();
   }, [story?.id]);
+
+  const fetchReplies = async (commentId: string) => {
+    if (!story?.id || !commentId) return;
+    setRepliesByComment((prev) => ({ ...prev, [commentId]: prev[commentId] || [] }));
+    try {
+      const page = await convex.query(api.interactions.listCommentsPaged, {
+        storyId: story.id,
+        parentCommentId: commentId,
+        limit: 6,
+      });
+      if (Array.isArray(page)) {
+        setRepliesByComment((prev) => ({
+          ...prev,
+          [commentId]: page.map((c: any) => ({ _id: c._id, parentCommentId: c.parentCommentId ?? null, author: c.authorName, avatar: c.authorAvatar, message: c.message, time: c.createdAt, likes: c.likesCount || 0 }))
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to load replies', err);
+    }
+  };
+
+  const loadMoreComments = async () => {
+    if (!story?.id || commentsLoading) return;
+    try {
+      setCommentsLoading(true);
+      const page = await convex.query(api.interactions.listCommentsPaged, { storyId: story.id, limit: 8, before: commentsCursor });
+      if (Array.isArray(page) && page.length > 0) {
+        setLocalComments((prev) => [...prev, ...page.map((c: any) => ({ _id: c._id, parentCommentId: c.parentCommentId ?? null, author: c.authorName, avatar: c.authorAvatar, message: c.message, time: c.createdAt, likes: c.likesCount || 0 }))]);
+        setCommentsHasMore(page.length === 8);
+        setCommentsCursor(page[page.length - 1].createdAt);
+      } else {
+        setCommentsHasMore(false);
+      }
+    } catch (err) {
+      console.error('Failed to load more comments', err);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const toggleReplyBox = (commentId: string) => {
+    setOpenReplyBox((prev) => ({ ...prev, [commentId]: !prev[commentId] }));
+    if (!openReplyBox[commentId]) {
+      void fetchReplies(commentId);
+    }
+  };
+
+  const submitReply = async (commentId: string) => {
+    const message = replyDrafts[commentId]?.trim();
+    if (!message || !story || !user || user.isGuest) return;
+    const newReply = {
+      _id: `local-reply-${Math.random().toString(36).substr(2, 9)}`,
+      parentCommentId: commentId,
+      author: user.name,
+      avatar: user.avatar,
+      message,
+      time: new Date().toISOString(),
+      likes: 0,
+    };
+    setRepliesByComment((prev) => ({
+      ...prev,
+      [commentId]: [newReply, ...(prev[commentId] || [])],
+    }));
+    setReplyDrafts((prev) => ({ ...prev, [commentId]: '' }));
+
+    try {
+      await convex.mutation(api.interactions.createComment, {
+        storyId: story.id,
+        chapterId: undefined,
+        parentCommentId: commentId,
+        authorId: user.id,
+        authorName: user.name,
+        authorAvatar: user.avatar,
+        message,
+      });
+    } catch (err) {
+      console.error('Failed to persist reply', err);
+    }
+  };
 
   useEffect(() => {
     if (!story || hasIncremented) return;
@@ -158,17 +266,64 @@ export default function StoryDetail() {
     const message = commentDraft.trim();
     if (!message) return;
 
-    setLocalComments((comments) => [
-      {
-        author: user?.name || 'Guest Reader',
-        avatar: user?.avatar,
-        message,
-        time: 'Just now',
-        likes: 0,
-      },
-      ...comments,
-    ]);
+    const newLocal = {
+      _id: `local-${Math.random().toString(36).substr(2, 9)}`,
+      author: user?.name || 'Guest Reader',
+      avatar: user?.avatar,
+      message,
+      time: new Date().toISOString(),
+      likes: 0,
+    };
+    setLocalComments((comments) => [newLocal, ...comments]);
     setCommentDraft('');
+
+    // Persist comment to backend when possible
+    try {
+      if (convex && user && !user.isGuest) {
+        void convex.mutation(api.interactions.createComment, {
+          storyId: story.id,
+          chapterId: undefined,
+          parentCommentId: undefined,
+          authorId: user.id,
+          authorName: user.name,
+          authorAvatar: user.avatar,
+          message,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to persist comment', err);
+    }
+  };
+
+  const timeAgo = (iso?: string) => {
+    if (!iso) return 'Just now';
+    const diff = Date.now() - new Date(iso).getTime();
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60) return `${sec}s`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h`;
+    const days = Math.floor(hr / 24);
+    return `${days}d`;
+  };
+
+  const toggleLike = (index: number) => {
+    setLocalComments((current) => current.map((c, i) => i === index ? { ...c, likes: (c.likes || 0) + 1 } : c));
+    setLikedComments((prev) => ({ ...prev, [String(index)]: true }));
+
+    // Persist like to backend if comment has been persisted (best-effort)
+    try {
+      const comment = localComments[index];
+      if (convex && comment && comment._id && user && !user.isGuest) {
+        void convex.mutation(api.interactions.toggleLikeComment, {
+          commentId: comment._id,
+          userId: user.id,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to persist like', err);
+    }
   };
 
   return (
@@ -377,22 +532,98 @@ export default function StoryDetail() {
                 </form>
 
                 {localComments.length > 0 ? (
-                  localComments.map((comment, index) => (
-                    <div key={`${comment.time}-${index}`} className="flex gap-3 rounded-2xl bg-[#141414] p-3">
-                      <img src={comment.avatar || `https://picsum.photos/seed/comment-${index}/100`} className="h-9 w-9 rounded-full object-cover" referrerPolicy="no-referrer" />
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-center gap-2">
-                          <span className="truncate text-sm font-semibold">{comment.author || 'Anonymous'}</span>
-                          <span className="shrink-0 text-[11px] text-white/35">{comment.time || 'Just now'}</span>
+                  localComments.map((comment, index) => {
+                    const commentId = comment._id || `${comment.time}-${index}`;
+                    const replies = comment._id ? repliesByComment[comment._id] || [] : [];
+                    const isReplyOpen = comment._id ? openReplyBox[comment._id] : false;
+
+                    return (
+                      <div key={commentId} className="flex flex-col gap-3 rounded-2xl bg-[#141414] p-3">
+                        <div className="flex gap-3">
+                          <img src={comment.avatar || `https://picsum.photos/seed/comment-${index}/100`} className="h-9 w-9 rounded-full object-cover" referrerPolicy="no-referrer" />
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="truncate text-sm font-semibold">{comment.author || 'Anonymous'}</span>
+                                  <span className="shrink-0 text-[11px] text-white/35">{timeAgo(comment.time)}</span>
+                                </div>
+                                <p className="text-sm leading-5 text-white/72 mt-1">{comment.message}</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleLike(index)}
+                                  className="rounded-lg p-2 text-white/60 hover:text-lemon-muted transition-colors"
+                                  aria-label="Like comment"
+                                >
+                                  <Heart size={16} className={likedComments[String(index)] ? 'text-lemon-muted' : ''} />
+                                </button>
+                                <span className="text-[11px] text-white/40">{comment.likes || 0}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs font-semibold text-white/50">
+                              <button
+                                type="button"
+                                onClick={() => comment._id && toggleReplyBox(comment._id)}
+                                className="hover:text-lemon-muted"
+                              >
+                                Reply
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-sm leading-5 text-white/72">{comment.message}</p>
+
+                        {comment._id && isReplyOpen && (
+                          <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-[#0F0F0F] p-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                value={replyDrafts[comment._id] || ''}
+                                onChange={(event) => setReplyDrafts((prev) => ({ ...prev, [comment._id]: event.target.value }))}
+                                type="text"
+                                placeholder="Write a reply..."
+                                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-white/30"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => submitReply(comment._id!)}
+                                disabled={!replyDrafts[comment._id]?.trim()}
+                                className="rounded-xl bg-lemon-muted px-3 py-2 text-xs font-semibold text-black disabled:opacity-40"
+                              >
+                                Send
+                              </button>
+                            </div>
+                            {replies.length > 0 ? (
+                              <div className="space-y-2">
+                                {replies.map((reply) => (
+                                  <div key={reply._id || `${reply.time}-${commentId}`} className="ml-6 md:ml-10 rounded-2xl bg-[#1A1A1A] p-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-xs font-semibold text-white">{reply.author || 'Anonymous'}</span>
+                                      <span className="text-[10px] text-white/40">{timeAgo(reply.time)}</span>
+                                    </div>
+                                    <p className="mt-1 text-sm leading-5 text-white/70">{reply.message}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="ml-10 text-xs text-white/40">No replies yet.</p>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="rounded-3xl border border-white/8 bg-[#141414] p-6 text-center">
                     <p className="mb-2 text-[11px] font-black uppercase tracking-widest text-white/35">No comments yet</p>
                     <p className="text-sm text-white/58">Be the first to leave feedback on this story.</p>
+                  </div>
+                )}
+                {commentsHasMore && (
+                  <div className="mt-3 flex justify-center">
+                    <button onClick={loadMoreComments} disabled={commentsLoading} className="rounded-xl px-4 py-2 bg-white/5 text-sm font-bold text-white/80 hover:bg-white/10">
+                      {commentsLoading ? 'Loading...' : 'Load more comments'}
+                    </button>
                   </div>
                 )}
               </div>
