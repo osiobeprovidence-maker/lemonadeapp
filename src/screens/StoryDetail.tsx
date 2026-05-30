@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, Coffee, Eye, Heart, Lock, MessageCircle, Play, Send, Star } from 'lucide-react';
+import { ArrowRight, Check, Coffee, Eye, Heart, Lock, MessageCircle, Play, Star } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { FormatBadge, GenreBadge, LockedContentCTA, SupportStatusBadge } from '../components/ui/Cards';
+import CommentsSection from '../components/ui/CommentsSection';
 import { FollowButton, SupportButton } from '../components/InteractionButtons';
 import { SensitiveActionWrapper } from '../components/SensitiveActionWrapper';
 import { cn } from '../lib/utils';
@@ -295,19 +296,6 @@ export default function StoryDetail() {
     }
   };
 
-  const timeAgo = (iso?: string) => {
-    if (!iso) return 'Just now';
-    const diff = Date.now() - new Date(iso).getTime();
-    const sec = Math.floor(diff / 1000);
-    if (sec < 60) return `${sec}s`;
-    const min = Math.floor(sec / 60);
-    if (min < 60) return `${min}m`;
-    const hr = Math.floor(min / 60);
-    if (hr < 24) return `${hr}h`;
-    const days = Math.floor(hr / 24);
-    return `${days}d`;
-  };
-
   const toggleLike = (index: number) => {
     setLocalComments((current) => current.map((c, i) => i === index ? { ...c, likes: (c.likes || 0) + 1 } : c));
     setLikedComments((prev) => ({ ...prev, [String(index)]: true }));
@@ -512,121 +500,28 @@ export default function StoryDetail() {
             )}
 
             {activeTab === 'comments' && (
-              <div className="flex flex-col gap-4">
-                <form onSubmit={submitComment} className="flex items-center gap-2 rounded-2xl border border-white/8 bg-[#141414] p-2">
-                  <input
-                    value={commentDraft}
-                    onChange={(event) => setCommentDraft(event.target.value)}
-                    type="text"
-                    placeholder="Add a comment..."
-                    className="min-w-0 flex-1 bg-transparent px-2 text-sm font-semibold text-white outline-none placeholder:text-white/28"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!commentDraft.trim()}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-lemon-muted text-black disabled:opacity-40"
-                    aria-label="Post comment"
-                  >
-                    <Send size={15} />
-                  </button>
-                </form>
-
-                {localComments.length > 0 ? (
-                  localComments.map((comment, index) => {
-                    const commentId = comment._id || `${comment.time}-${index}`;
-                    const replies = comment._id ? repliesByComment[comment._id] || [] : [];
-                    const isReplyOpen = comment._id ? openReplyBox[comment._id] : false;
-
-                    return (
-                      <div key={commentId} className="flex flex-col gap-3 rounded-2xl bg-[#141414] p-3">
-                        <div className="flex gap-3">
-                          <img src={comment.avatar || `https://picsum.photos/seed/comment-${index}/100`} className="h-9 w-9 rounded-full object-cover" referrerPolicy="no-referrer" />
-                          <div className="min-w-0 flex-1">
-                            <div className="mb-1 flex items-center justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="truncate text-sm font-semibold">{comment.author || 'Anonymous'}</span>
-                                  <span className="shrink-0 text-[11px] text-white/35">{timeAgo(comment.time)}</span>
-                                </div>
-                                <p className="text-sm leading-5 text-white/72 mt-1">{comment.message}</p>
-                              </div>
-                              <div className="flex flex-col items-end gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => toggleLike(index)}
-                                  className="rounded-lg p-2 text-white/60 hover:text-lemon-muted transition-colors"
-                                  aria-label="Like comment"
-                                >
-                                  <Heart size={16} className={likedComments[String(index)] ? 'text-lemon-muted' : ''} />
-                                </button>
-                                <span className="text-[11px] text-white/40">{comment.likes || 0}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 text-xs font-semibold text-white/50">
-                              <button
-                                type="button"
-                                onClick={() => comment._id && toggleReplyBox(comment._id)}
-                                className="hover:text-lemon-muted"
-                              >
-                                Reply
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {comment._id && isReplyOpen && (
-                          <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-[#0F0F0F] p-3">
-                            <div className="flex items-center gap-2">
-                              <input
-                                value={replyDrafts[comment._id] || ''}
-                                onChange={(event) => setReplyDrafts((prev) => ({ ...prev, [comment._id]: event.target.value }))}
-                                type="text"
-                                placeholder="Write a reply..."
-                                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-white/30"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => submitReply(comment._id!)}
-                                disabled={!replyDrafts[comment._id]?.trim()}
-                                className="rounded-xl bg-lemon-muted px-3 py-2 text-xs font-semibold text-black disabled:opacity-40"
-                              >
-                                Send
-                              </button>
-                            </div>
-                            {replies.length > 0 ? (
-                              <div className="space-y-2">
-                                {replies.map((reply) => (
-                                  <div key={reply._id || `${reply.time}-${commentId}`} className="ml-6 md:ml-10 rounded-2xl bg-[#1A1A1A] p-3">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="text-xs font-semibold text-white">{reply.author || 'Anonymous'}</span>
-                                      <span className="text-[10px] text-white/40">{timeAgo(reply.time)}</span>
-                                    </div>
-                                    <p className="mt-1 text-sm leading-5 text-white/70">{reply.message}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="ml-10 text-xs text-white/40">No replies yet.</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="rounded-3xl border border-white/8 bg-[#141414] p-6 text-center">
-                    <p className="mb-2 text-[11px] font-black uppercase tracking-widest text-white/35">No comments yet</p>
-                    <p className="text-sm text-white/58">Be the first to leave feedback on this story.</p>
-                  </div>
-                )}
-                {commentsHasMore && (
-                  <div className="mt-3 flex justify-center">
-                    <button onClick={loadMoreComments} disabled={commentsLoading} className="rounded-xl px-4 py-2 bg-white/5 text-sm font-bold text-white/80 hover:bg-white/10">
-                      {commentsLoading ? 'Loading...' : 'Load more comments'}
-                    </button>
-                  </div>
-                )}
-              </div>
+              <CommentsSection
+                open={true}
+                onClose={() => {}}
+                comments={localComments}
+                loading={commentsLoading}
+                hasMore={commentsHasMore}
+                currentUserAvatar={user?.avatar}
+                currentUserName={user?.name}
+                commentDraft={commentDraft}
+                onCommentDraftChange={setCommentDraft}
+                onSubmitComment={submitComment}
+                onLoadMore={loadMoreComments}
+                onLike={(_comment, index) => toggleLike(index)}
+                repliesByComment={repliesByComment}
+                onToggleReplyBox={toggleReplyBox}
+                openReplyBox={openReplyBox}
+                replyDrafts={replyDrafts}
+                onReplyDraftChange={(commentId, value) => setReplyDrafts((prev) => ({ ...prev, [commentId]: value }))}
+                onSubmitReply={submitReply}
+                disabled={!user || user.isGuest}
+                variant="inline"
+              />
             )}
           </div>
         </section>
