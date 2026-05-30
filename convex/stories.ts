@@ -52,8 +52,8 @@ export const create = mutation({
     genre: v.string(),
     format: v.string(),
     synopsis: v.string(),
-    coverImage: v.string(),
-    bannerImage: v.string(),
+    coverImage: v.optional(v.string()),
+    bannerImage: v.optional(v.string()),
     tags: v.array(v.string()),
     isOriginal: v.boolean(),
     episodes: v.optional(v.number()),
@@ -66,16 +66,37 @@ export const create = mutation({
     media: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
+    if (!args.creatorId || !args.creatorUsername) {
+      throw new Error("Missing creator information.");
+    }
+
     const timestamp = now();
-    const { status, ...story } = args;
+
+    const existingStory = args.externalId
+      ? await ctx.db
+          .query("stories")
+          .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId as string))
+          .unique()
+      : null;
+
+    if (existingStory) {
+      throw new Error("A story with this ID already exists. Use update instead.");
+    }
+
+    // Filter out empty strings for optional string fields
+    const cleanCoverImage = args.coverImage && args.coverImage.trim() ? args.coverImage : undefined;
+    const cleanBannerImage = args.bannerImage && args.bannerImage.trim() ? args.bannerImage : undefined;
+
     return await ctx.db.insert("stories", {
-      ...story,
+      ...args,
+      coverImage: cleanCoverImage,
+      bannerImage: cleanBannerImage,
       rating: 0,
       views: 0,
       saves: 0,
       episodes: args.episodes ?? 0,
       isFeatured: false,
-      status: status ?? "draft",
+      status: args.status ?? "draft",
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -146,7 +167,12 @@ export const publish = mutation({
       .query("stories")
       .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
       .unique();
-    if (!story) return null;
+    if (!story) {
+      throw new Error("Story not found.");
+    }
+    if (story.status === "published") {
+      throw new Error("This story is already published.");
+    }
     await ctx.db.patch(story._id, { status: "published", updatedAt: now() });
     return story._id;
   },

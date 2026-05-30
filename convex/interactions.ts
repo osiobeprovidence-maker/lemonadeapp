@@ -112,7 +112,7 @@ export const createComment = mutation({
   args: {
     storyId: v.string(),
     chapterId: v.optional(v.string()),
-    parentCommentId: v.optional(v.id("comments")),
+    parentCommentId: v.optional(v.string()),
     authorId: v.string(),
     authorName: v.string(),
     authorAvatar: v.optional(v.string()),
@@ -139,7 +139,7 @@ export const listComments = query({
   args: {
     storyId: v.string(),
     chapterId: v.optional(v.string()),
-    parentCommentId: v.optional(v.id("comments")),
+    parentCommentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     if (args.parentCommentId) {
@@ -159,7 +159,7 @@ export const listCommentsPaged = query({
   args: {
     storyId: v.string(),
     chapterId: v.optional(v.string()),
-    parentCommentId: v.optional(v.id("comments")),
+    parentCommentId: v.optional(v.string()),
     limit: v.optional(v.number()),
     before: v.optional(v.string()),
   },
@@ -192,14 +192,15 @@ export const listCommentsPaged = query({
 });
 
 export const toggleLikeComment = mutation({
-  args: { commentId: v.id("comments"), userId: v.string() },
+  args: { commentId: v.string(), userId: v.string() },
   handler: async (ctx, args) => {
-    const comment = await ctx.db.get(args.commentId);
+    const comments = await ctx.db.query("comments").collect();
+    const comment = comments.find(c => c._id === args.commentId as any);
     if (!comment) return null;
     const already = (comment.likedBy || []).includes(args.userId);
     const likedBy = already ? comment.likedBy.filter((u: string) => u !== args.userId) : [...(comment.likedBy || []), args.userId];
     const likesCount = likedBy.length;
-    await ctx.db.patch(args.commentId, { likedBy, likesCount, updatedAt: now() });
+    await ctx.db.patch(comment._id, { likedBy, likesCount, updatedAt: now() });
     return { likesCount };
   },
 });

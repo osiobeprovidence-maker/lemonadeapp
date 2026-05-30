@@ -139,9 +139,9 @@ export const review = mutation({
 
     if (!user) {
       try {
-        user = await ctx.db.get(application.userId as any);
+        user = await ctx.db.get(application.userId as Id<"users">);
       } catch (e) {
-        user = null as any;
+        user = null;
       }
     }
 
@@ -158,7 +158,19 @@ export const review = mutation({
           .withIndex("by_userId", (q) => q.eq("userId", user._id))
           .unique();
 
-        const creatorProfile = {
+        const creatorProfile: {
+          userId: string;
+          name: string;
+          username: string;
+          avatar: string;
+          bio: string;
+          category: string[] | "Artist" | "Writer" | "Studio";
+          location: string;
+          dropsomethingUrl?: string;
+          supportEnabled: boolean;
+          profile: Record<string, unknown>;
+          updatedAt: string;
+        } = {
           userId: user._id,
           name: application.creatorName || user.name,
           username: user.username,

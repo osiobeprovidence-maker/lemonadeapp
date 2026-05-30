@@ -260,7 +260,17 @@ export const listSpinRewards = query({
 export const createSpinReward = mutation({
   args: {
     rewardId: v.string(),
-    type: v.string(),
+    type: v.union(
+      v.literal("airtime"),
+      v.literal("data"),
+      v.literal("cash"),
+      v.literal("gift_card"),
+      v.literal("bonus_spin"),
+      v.literal("lemon_coins"),
+      v.literal("cosmetic"),
+      v.literal("premium"),
+      v.literal("badge"),
+    ),
     amount: v.optional(v.number()),
     metadata: v.optional(v.any()),
     weight: v.number(),
