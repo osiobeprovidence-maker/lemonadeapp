@@ -47,7 +47,7 @@ export default function Library() {
         
         return readingStories;
       case 'downloads':
-        return []; // TODO: Load downloaded stories
+        return []; // Offline downloads not yet available in this build.
       case 'unlocked':
         if (!user || user.isGuest) return [];
         return stories.filter(s => user.unlockedChapters.some(uc => uc.startsWith(s.id)));
@@ -86,15 +86,27 @@ export default function Library() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
-          <div className="col-span-full flex items-center justify-center p-8">
-            <Loader className="animate-spin" />
+          <div className="col-span-full flex flex-col gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-4 bg-ink-deep p-4 rounded-2xl border border-white/5 animate-pulse">
+                <div className="w-16 h-20 rounded-xl bg-white/10" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-white/10 rounded w-3/4" />
+                  <div className="h-3 bg-white/10 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : displayStories && displayStories.length > 0 ? (
           displayStories.map((story: any) => (
             <HorizontalStoryCard key={story.id} story={story} />
           ))
         ) : (
-          <div className="col-span-full p-8 text-center text-white/60">No items to show for this tab.</div>
+          <div className="col-span-full p-8 text-center text-white/60">
+            {activeTab === 'downloads'
+              ? 'Offline downloads are not available yet. Save stories to read them here later.'
+              : 'No items to show for this tab.'}
+          </div>
         )}
       </div>
     </div>

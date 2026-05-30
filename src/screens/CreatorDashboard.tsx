@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Activity, ChevronRight, Plus, Eye, UserPlus, DollarSign, BookOpen, MessageCircle, Coffee, TrendingUp } from 'lucide-react';
+import { Activity, ChevronRight, Plus, Eye, UserPlus, DollarSign, Heart, BookOpen, MessageCircle, Coffee, TrendingUp, Loader } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useCurrentUser, useStories } from '../hooks/useConvex';
 import { api } from '../../convex/_generated/api';
@@ -16,6 +15,7 @@ export default function CreatorDashboard() {
   const myStories = (creatorStories || []).slice(0, 6);
   const [creatorEarnings, setCreatorEarnings] = useState(0);
   const [hasPayoutAccount, setHasPayoutAccount] = useState(false);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
   const [adSummary, setAdSummary] = useState({
     impressions: 0,
     completedViews: 0,
@@ -27,35 +27,67 @@ export default function CreatorDashboard() {
     ctr: 0,
     topContent: [] as Array<{ storyId?: string; creatorRevenueNaira: number; impressions: number }>,
   });
+  const [recentComments, setRecentComments] = useState<any[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(true);
 
   useEffect(() => {
     const loadCreatorWallet = async () => {
       if (!auth.currentUser || !convex) return;
-      const summary = await convex.query(api.payments.creatorPayoutSummary, {
-        firebaseUid: auth.currentUser.uid,
-      });
-      setCreatorEarnings(summary.availableToWithdraw);
-      setHasPayoutAccount(summary.hasPayoutAccount);
+      try {
+        const summary = await convex.query(api.payments.creatorPayoutSummary, {
+          firebaseUid: auth.currentUser.uid,
+        });
+        setCreatorEarnings(summary.availableToWithdraw);
+        setHasPayoutAccount(summary.hasPayoutAccount);
+      } catch (error) {
+        console.error('Failed to load creator wallet summary', error);
+      }
     };
 
-    loadCreatorWallet().catch((error) => {
-      console.error('Failed to load creator wallet summary', error);
-    });
+    loadCreatorWallet().finally(() => setDashboardLoading(false));
   }, [user?.id]);
 
   useEffect(() => {
     const loadAdSummary = async () => {
       if (!user?.username || !convex) return;
-      const summary = await convex.query(api.ads.creatorSummary, {
-        creatorUsername: user.username,
-      });
-      setAdSummary(summary);
+      try {
+        const summary = await convex.query(api.ads.creatorSummary, {
+          creatorUsername: user.username,
+        });
+        setAdSummary(summary);
+      } catch (error) {
+        console.error('Failed to load creator ad analytics', error);
+      }
     };
 
-    loadAdSummary().catch((error) => {
-      console.error('Failed to load creator ad analytics', error);
-    });
+    loadAdSummary();
   }, [user?.username]);
+
+  useEffect(() => {
+    const loadComments = async () => {
+      if (!myStories.length || !convex) {
+        setCommentsLoading(false);
+        return;
+      }
+      try {
+        const allComments: any[] = [];
+        for (const story of myStories.slice(0, 3)) {
+          const rows = await convex.query(api.interactions.listComments, {
+            storyId: story.id,
+            chapterId: '',
+          });
+          allComments.push(...(rows || []).map((c: any) => ({ ...c, storyTitle: story.title })));
+        }
+        setRecentComments(allComments.slice(0, 5));
+      } catch (error) {
+        console.error('Failed to load comments', error);
+      } finally {
+        setCommentsLoading(false);
+      }
+    };
+
+    loadComments();
+  }, [myStories.length]);
   
   // Calculate stats from real data
   const stats = useMemo(() => {
@@ -141,7 +173,7 @@ export default function CreatorDashboard() {
                        <p className="text-sm text-white/50 mb-2">{story.chapters?.length || story.episodes || 1} Published Chapters</p>
                        <div className="flex gap-4 text-xs font-medium text-white/40">
                          <span className="flex items-center gap-1"><Eye size={12}/> {(story.views ?? 0).toLocaleString()}</span>
-                         <span className="flex items-center gap-1"><DollarSign size={12}/> 1.2K</span>
+                         <span className="flex items-center gap-1"><Heart size={12}/> {(story.saves ?? 0).toLocaleString()}</span>
                        </div>
                      </div>
                      <ChevronRight className="text-white/20 group-hover:text-lemon-muted" />
@@ -203,9 +235,25 @@ export default function CreatorDashboard() {
            {/* Recent Comments */}
            <div className="bg-ink-deep border border-white/5 rounded-3xl p-6">
              <h3 className="font-semibold text-lg mb-6 flex items-center gap-2"><MessageCircle size={18} className="text-lemon-muted" /> New Comments</h3>
-             <div className="rounded-2xl border border-white/5 bg-black/20 p-5 text-sm font-bold text-white/40">
-               No comments yet.
-             </div>
+             {commentsLoading ? (
+               <div className="flex items-center justify-center py-6">
+                 <Loader className="animate-spin text-white/30" size={18} />
+               </div>
+             ) : recentComments.length > 0 ? (
+               <div className="space-y-3">
+                 {recentComments.map((comment) => (
+                   <div key={comment._id} className="rounded-xl border border-white/5 bg-black/20 p-4">
+                     <p className="text-sm font-bold text-white/80">{comment.storyTitle}</p>
+                     <p className="text-xs text-white/50 mt-1 line-clamp-2">{comment.text}</p>
+                     <p className="text-[10px] text-white/30 mt-2 uppercase tracking-wider">{new Date(comment.createdAt).toLocaleDateString()}</p>
+                   </div>
+                 ))}
+               </div>
+             ) : (
+               <div className="rounded-2xl border border-white/5 bg-black/20 p-5 text-sm font-bold text-white/40 text-center">
+                 No comments yet. Engage with readers to build your community.
+               </div>
+             )}
              <Button variant="outline" size="sm" fullWidth className="mt-6 text-white/70">View All Comments</Button>
            </div>
 
@@ -257,11 +305,11 @@ export default function CreatorDashboard() {
                <div className="grid grid-cols-2 gap-4 mt-2">
                   <div className="bg-ink-deep p-4 rounded-2xl">
                     <p className="text-xs text-white/40 mb-1">Support Clicks (30d)</p>
-                    <p className="font-display font-bold text-2xl">0</p>
+                    <p className="font-display font-bold text-2xl">{dashboardLoading ? '-' : '0'}</p>
                   </div>
                   <div className="bg-ink-deep p-4 rounded-2xl">
                     <p className="text-xs text-white/40 mb-1">Est. Revenue</p>
-                    <p className="font-display font-bold text-2xl text-lemon-muted">NGN 0</p>
+                    <p className="font-display font-bold text-2xl text-lemon-muted">{dashboardLoading ? '-' : formatNaira(0)}</p>
                   </div>
                </div>
              </div>

@@ -20,11 +20,12 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AppContext';
 import { SensitiveActionWrapper } from './SensitiveActionWrapper';
+import { AppSkeleton } from './ui/Skeleton';
 
 export default function NavigationLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
-  const { user, isAuthenticated, isGuest } = useAuth();
+  const { user, isAuthenticated, isGuest, contentLoading } = useAuth();
   const isStudio = location.pathname.startsWith('/studio');
   const userRole = user?.role || (isGuest ? 'reader' : 'reader');
   const isCreatorMode = userRole === 'creator' || isStudio;
@@ -85,6 +86,10 @@ export default function NavigationLayout() {
   const hideNavPages = ['/', '/onboarding', '/auth'];
   const isReaderView = location.pathname.startsWith('/read/');
   const shouldHideNav = hideNavPages.includes(location.pathname) || isReaderView;
+
+  if (contentLoading) {
+    return <AppSkeleton />;
+  }
 
   return (
     <div className="flex min-h-screen w-full bg-black-core">

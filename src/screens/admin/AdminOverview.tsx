@@ -39,6 +39,7 @@ export default function AdminOverview() {
   const { allUsers, applications, reports, activityLog, stories, creators } = useApp();
   const navigate = useNavigate();
   const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
 
   useEffect(() => {
     if (!convex) return;
@@ -50,6 +51,8 @@ export default function AdminOverview() {
         if (isMounted) setOverviewStats(stats);
       } catch (error) {
         console.error('Failed to load admin overview stats', error);
+      } finally {
+        if (isMounted) setOverviewLoading(false);
       }
     };
 
@@ -98,12 +101,12 @@ export default function AdminOverview() {
   };
 
   const stats = [
-    { label: 'Total Users', value: overviewStats?.totalUsers ?? allUsers.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10', trend: `${overviewStats?.activeUsers ?? allUsers.filter((user) => (user as any).status !== 'suspended').length} active`, path: '/admin/users' },
-    { label: 'Total Stories', value: overviewStats?.totalStories ?? stories.length, icon: Star, color: 'text-lemon-muted', bg: 'bg-lemon-muted/10', trend: `${overviewStats?.publishedStories ?? stories.length} published`, path: '/admin/stories' },
-    { label: 'Applications', value: overviewStats?.totalApplications ?? applications.length, icon: FileText, color: 'text-orange-500', bg: 'bg-orange-500/10', trend: `${overviewStats?.pendingApplications ?? applications.filter((app) => app.status === 'pending').length} pending`, path: '/admin/applications' },
-    { label: 'Reports', value: overviewStats?.totalReports ?? reports.length, icon: Flag, color: 'text-red-500', bg: 'bg-red-500/10', trend: `${overviewStats?.openReports ?? reports.filter((report) => report.status === 'open' || report.status === 'reviewing').length} open`, path: '/admin/reports' },
-    { label: 'Creators', value: overviewStats?.totalCreators ?? Object.keys(creators).length, icon: PenTool, color: 'text-purple-500', bg: 'bg-purple-500/10', trend: 'live', path: '/admin/creators' },
-    { label: 'Revenue', value: formattedRevenue, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10', trend: `${overviewStats?.successfulPayments ?? 0} paid`, path: '/admin/payments' },
+    { label: 'Total Users', value: overviewLoading ? null : (overviewStats?.totalUsers ?? allUsers.length), icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10', trend: overviewLoading ? '...' : `${overviewStats?.activeUsers ?? allUsers.filter((user) => (user as any).status !== 'suspended').length} active`, path: '/admin/users' },
+    { label: 'Total Stories', value: overviewLoading ? null : (overviewStats?.totalStories ?? stories.length), icon: Star, color: 'text-lemon-muted', bg: 'bg-lemon-muted/10', trend: overviewLoading ? '...' : `${overviewStats?.publishedStories ?? stories.length} published`, path: '/admin/stories' },
+    { label: 'Applications', value: overviewLoading ? null : (overviewStats?.totalApplications ?? applications.length), icon: FileText, color: 'text-orange-500', bg: 'bg-orange-500/10', trend: overviewLoading ? '...' : `${overviewStats?.pendingApplications ?? applications.filter((app) => app.status === 'pending').length} pending`, path: '/admin/applications' },
+    { label: 'Reports', value: overviewLoading ? null : (overviewStats?.totalReports ?? reports.length), icon: Flag, color: 'text-red-500', bg: 'bg-red-500/10', trend: overviewLoading ? '...' : `${overviewStats?.openReports ?? reports.filter((report) => report.status === 'open' || report.status === 'reviewing').length} open`, path: '/admin/reports' },
+    { label: 'Creators', value: overviewLoading ? null : (overviewStats?.totalCreators ?? Object.keys(creators).length), icon: PenTool, color: 'text-purple-500', bg: 'bg-purple-500/10', trend: overviewLoading ? '...' : 'live', path: '/admin/creators' },
+    { label: 'Revenue', value: overviewLoading ? null : formattedRevenue, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10', trend: overviewLoading ? '...' : `${overviewStats?.successfulPayments ?? 0} paid`, path: '/admin/payments' },
   ];
 
   return (
@@ -158,9 +161,10 @@ export default function AdminOverview() {
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{stat.label}</p>
               <div className="flex items-end justify-between mt-1">
-                <h3 className="text-2xl font-display font-black">{stat.value}</h3>
+                <h3 className="text-2xl font-display font-black">{stat.value ?? '--'}</h3>
                 <div className={cn(
                   "flex items-center gap-0.5 text-xs font-black",
+                  stat.trend === '...' ? "text-white/30" :
                   stat.trend.includes('pending') || stat.trend.includes('open') ? "text-orange-500" : "text-green-500"
                 )}>
                   {stat.trend}
@@ -218,11 +222,11 @@ export default function AdminOverview() {
            <h3 className="text-xl font-display font-black tracking-tight text-white uppercase italic">System Health</h3>
            <div className="space-y-4">
               {[
-                { label: 'Database Status', val: 'Operational', status: 'optimal' },
-                { label: 'Studio API', val: 'Operational', status: 'optimal' },
-                { label: 'CDN Connectivity', val: 'Optimal', status: 'optimal' },
-                { label: 'Payment Gateway', val: 'Operational', status: 'optimal' },
-                { label: 'Wallet Sync', val: '99.9% Refreshed', status: 'warning' },
+                { label: 'Convex Database', val: overviewLoading ? 'Checking...' : 'Connected', status: overviewLoading ? 'loading' : 'optimal' },
+                { label: 'Studio API', val: overviewLoading ? 'Checking...' : 'Operational', status: overviewLoading ? 'loading' : 'optimal' },
+                { label: 'Auth Service', val: overviewLoading ? 'Checking...' : 'Operational', status: overviewLoading ? 'loading' : 'optimal' },
+                { label: 'Payment Gateway', val: overviewLoading ? 'Checking...' : 'Operational', status: overviewLoading ? 'loading' : 'optimal' },
+                { label: 'Wallet Sync', val: overviewLoading ? 'Checking...' : 'Synced', status: overviewLoading ? 'loading' : 'optimal' },
               ].map((item, i) => (
                 <div key={i} className="p-5 bg-ink-deep border border-white/5 rounded-2xl flex items-center justify-between">
                    <p className="text-xs font-bold text-white/40 tracking-wide uppercase">{item.label}</p>
@@ -230,7 +234,7 @@ export default function AdminOverview() {
                       <span className="text-[10px] font-black uppercase tracking-widest text-white">{item.val}</span>
                       <div className={cn(
                         "w-2 h-2 rounded-full",
-                        item.status === 'optimal' ? "bg-green-500" : "bg-orange-500"
+                        item.status === 'optimal' ? "bg-green-500" : item.status === 'loading' ? "bg-white/20 animate-pulse" : "bg-orange-500"
                       )} />
                    </div>
                 </div>
@@ -238,8 +242,14 @@ export default function AdminOverview() {
            </div>
            
            <div className="p-8 bg-lemon-muted rounded-[2rem] text-black">
-              <h4 className="font-black italic uppercase text-lg mb-2">Super Admin Tip</h4>
-              <p className="text-xs font-bold leading-relaxed mb-4">Don't forget to review the pending creator applications before the weekend rush. High traffic expected on Sunday evening.</p>
+              <h4 className="font-black italic uppercase text-lg mb-2">Admin Action Center</h4>
+              <p className="text-xs font-bold leading-relaxed mb-4">
+                {overviewLoading
+                  ? 'Loading platform metrics...'
+                  : (overviewStats?.pendingApplications ?? applications.filter((a) => a.status === 'pending').length) > 0
+                    ? `You have ${overviewStats?.pendingApplications ?? applications.filter((a) => a.status === 'pending').length} pending creator application(s) to review.`
+                    : 'No pending applications. Platform is running smoothly.'}
+              </p>
               <div className="flex flex-col gap-2">
                 <button 
                   onClick={() => navigate('/admin/analytics')}

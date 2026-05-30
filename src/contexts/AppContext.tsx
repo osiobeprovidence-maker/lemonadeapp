@@ -10,7 +10,6 @@ import {
   type User as FirebaseUser,
 } from 'firebase/auth';
 import type { Creator, Story, SupportTransaction, CreatorApplication, CreatorAccessStatus } from '../data/types';
-import { MOCK_CREATORS, MOCK_STORIES } from '../data/mock';
 import { api } from '../../convex/_generated/api';
 import { auth, authPersistenceReady, googleProvider } from '../lib/firebase';
 import { convex } from '../lib/convex';
@@ -173,6 +172,8 @@ interface AppContextType {
   updateModerator: (modId: string, updates: Partial<Moderator>) => void;
   logAdminActivity: (action: string) => void;
   broadcastNotification: (notif: Omit<Notification, 'id' | 'timestamp' | 'read'>) => Promise<void>;
+
+  contentLoading: boolean;
 
   setPendingAction: (type: string, payload?: any) => void;
   executePendingAction: () => void;
@@ -508,9 +509,10 @@ const activityFromDoc = (doc: any): AdminActivity => ({
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(() => readPersistedUser());
   const [authReady, setAuthReady] = useState(() => Boolean(readPersistedUser()));
-  const [liveCreators, setLiveCreators] = useState<Record<string, Creator>>(MOCK_CREATORS as unknown as Record<string, Creator>);
-  const [liveStories, setLiveStories] = useState<Story[]>(MOCK_STORIES as unknown as Story[]);
+  const [liveCreators, setLiveCreators] = useState<Record<string, Creator>>({});
+  const [liveStories, setLiveStories] = useState<Story[]>([]);
   const [applications, setApplications] = useState<CreatorApplication[]>([]);
+  const [contentLoading, setContentLoading] = useState(true);
   
   // Admin State
   const [adminSession, setAdminSession] = useState<AdminSession | null>(null);
@@ -566,12 +568,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           })
           .filter(Boolean) as Story[];
 
-        if (Object.keys(liveCreators).length > 0) {
-          setLiveCreators(liveCreators);
-        }
-        if (liveStories.length > 0) {
-          setLiveStories(liveStories);
-        }
+        setLiveCreators(liveCreators);
+        setLiveStories(liveStories);
         setApplications(applicationDocs.map(applicationFromDoc));
         setAllUsers(userDocs.map(appUserFromDoc));
         setReports(reportDocs.map(reportFromDoc));
@@ -585,6 +583,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           status: doc.status,
           lastActive: doc.lastActive,
         })));
+        setContentLoading(false);
       } catch (error) {
         if (!isBackgroundRefresh) {
           console.error('Failed to load live Convex content; using bundled fallback.', error);
@@ -708,73 +707,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  // Local admin sample data only exists in development.
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-
-    // Populate with some mock data if empty
-    if (allUsers.length === 0) {
-      setAllUsers([
-        { ...INITIAL_READER, id: 'u1', name: 'Leke Adesina', username: 'leke_adesina', email: 'leke@live.com', role: 'reader', premiumStatus: 'free', walletBalance: 1250, creatorAccessStatus: 'none', settings: DEFAULT_SETTINGS, notifications: [] } as any,
-        { id: 'u2', name: 'Tunde Bakare', username: 'tunde_b', email: 'tunde@bakare.com', role: 'reader', premiumStatus: 'premium', walletBalance: 5000, creatorAccessStatus: 'none', settings: DEFAULT_SETTINGS, notifications: [] } as any,
-        { id: 'u3', name: 'Zaria Williams', username: 'zaria_w', email: 'zaria@works.com', role: 'creator', premiumStatus: 'free', walletBalance: 120, creatorAccessStatus: 'approved', settings: DEFAULT_SETTINGS, notifications: [] } as any,
-      ]);
-    }
-
-    if (applications.length === 0) {
-      setApplications([
-        {
-          id: 'app1',
-          userId: 'u2',
-          fullName: 'Tunde Bakare',
-          email: 'tunde@bakare.com',
-          socialUsername: 'tunde_the_artist',
-          portfolioUrl: 'https://behance.net/tunde',
-          sampleWorkUrl: 'https://artstation.com/tunde',
-          mainGenre: 'Afro-Futurism',
-          bio: 'I want to create stories that reflect the vibrant culture of Lagos in 2100.',
-          submittedAt: new Date().toISOString(),
-          status: 'pending'
-        }
-      ]);
-    }
-    
-    if (moderators.length === 0) {
-      setModerators([
-        {
-          id: 'm1',
-          name: 'Ridwan Ade',
-          email: 'riderezzy@lemons.com',
-          role: 'super_admin',
-          permissions: ['all'],
-          status: 'active',
-          lastActive: new Date().toISOString()
-        }
-      ]);
-    }
-
-    if (reports.length === 0) {
-      setReports([
-        {
-          id: 'r1',
-          type: 'story',
-          targetId: 's1',
-          targetName: 'Sample story',
-          reportedBy: 'tunde_b',
-          reason: 'Inappropriate content',
-          message: 'The chapter 4 has some graphic scenes that violate rules.',
-          date: new Date().toISOString(),
-          status: 'open'
-        }
-      ]);
-    }
-    
-    if (activityLog.length === 0) {
-      setActivityLog([
-        { id: 'log1', action: 'System initialized', adminEmail: 'system', timestamp: new Date().toISOString() }
-      ]);
-    }
-  }, []);
+  // DEV seeding removed — all data now comes from Convex.
+  // Empty states are handled by individual screens.
 
   const adminLogin = (email: string, role: AdminRole) => {
     const session: AdminSession = {
@@ -1497,7 +1431,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       activityLog,
       applications,
       showMockData,
-      updatePlatformSettings
+      updatePlatformSettings,
+      contentLoading
     }}>
       {children}
     </AppContext.Provider>
