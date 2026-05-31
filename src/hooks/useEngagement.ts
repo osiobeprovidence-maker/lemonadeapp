@@ -1,9 +1,17 @@
-import { useEffect, useRef } from 'react';
-import { api } from '../../convex/_generated/api';
-import { convex } from '../lib/convex';
-import { auth } from '../lib/firebase';
+import { useEffect, useRef } from "react";
+import { api } from "../../convex/_generated/api";
+import { convex } from "../lib/convex";
+import { auth } from "../lib/firebase";
 
-export function useEngagement({ storyId, chapterId }: { storyId?: string; chapterId?: string }) {
+export function useEngagement({
+  storyId,
+  chapterId,
+  onReward,
+}: {
+  storyId?: string;
+  chapterId?: string;
+  onReward?: (reward: any) => void;
+}) {
   const sessionId = useRef(`sess_${Math.random().toString(36).slice(2, 9)}`);
   const startTs = useRef<number | null>(null);
   const sentRef = useRef(false);
@@ -17,23 +25,42 @@ export function useEngagement({ storyId, chapterId }: { storyId?: string; chapte
       const now = Date.now();
       const durationMs = Math.max(0, now - (startTs.current || now));
 
-      const docHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-      const winHeight = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-      const completionPct = Math.min(100, Math.round(((scrollY + winHeight) / Math.max(1, docHeight)) * 100));
+      const docHeight = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+      );
+      const winHeight =
+        window.innerHeight ||
+        document.documentElement.clientHeight ||
+        document.body.clientHeight;
+      const scrollY =
+        window.scrollY ||
+        window.pageYOffset ||
+        document.documentElement.scrollTop ||
+        0;
+      const completionPct = Math.min(
+        100,
+        Math.round(((scrollY + winHeight) / Math.max(1, docHeight)) * 100),
+      );
 
       try {
-        await convex.mutation(api.gamification.recordEngagement, {
-          firebaseUid: auth.currentUser.uid,
-          sessionId: sessionId.current,
-          storyId,
-          chapterId,
-          durationMs,
-          completionPct,
-          scrollCompletionPct: completionPct,
-          returningVisit: false,
-          timestamp: new Date().toISOString(),
-        });
+        const result = await convex.mutation(
+          api.gamification.recordEngagement,
+          {
+            firebaseUid: auth.currentUser.uid,
+            sessionId: sessionId.current,
+            storyId,
+            chapterId,
+            durationMs,
+            completionPct,
+            scrollCompletionPct: completionPct,
+            returningVisit: false,
+            timestamp: new Date().toISOString(),
+          },
+        );
+        if (result?.rewardMessage || result?.coinsAwarded) {
+          onReward?.(result);
+        }
         sentRef.current = true;
       } catch (error) {
         // ignore
@@ -51,12 +78,12 @@ export function useEngagement({ storyId, chapterId }: { storyId?: string; chapte
       }
     };
 
-    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       window.clearInterval(interval);
-      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener("visibilitychange", handleVisibility);
       void sendEvent({ force: true });
     };
-  }, [storyId, chapterId]);
+  }, [storyId, chapterId, onReward]);
 }

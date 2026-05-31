@@ -1,12 +1,10 @@
-import React, { useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Bookmark, ChevronRight, Play, Search } from 'lucide-react';
-import { StoryCard, FormatBadge, GenreBadge } from '../components/ui/Cards';
-import { Button } from '../components/ui/Button';
-import { useStories, useTrendingStories } from '../hooks/useConvex';
-import { useApp } from '../contexts/AppContext';
-import SpinWheel from '../components/ui/SpinWheel';
-import StreakBadge from '../components/ui/StreakBadge';
+import React, { useMemo } from "react";
+import { Link } from "react-router-dom";
+import { Bookmark, ChevronRight, Play, Search } from "lucide-react";
+import { StoryCard, FormatBadge, GenreBadge } from "../components/ui/Cards";
+import { Button } from "../components/ui/Button";
+import { useStories, useTrendingStories } from "../hooks/useConvex";
+import { useApp } from "../contexts/AppContext";
 
 export default function Home() {
   const { user } = useApp();
@@ -17,23 +15,45 @@ export default function Home() {
   const featured = allStories[0];
 
   const sections = useMemo(() => {
-    const trending = trendingStories?.length > 0 ? trendingStories.slice(0, 6) : allStories.slice(1, 7);
+    const trending =
+      trendingStories?.length > 0
+        ? trendingStories.slice(0, 6)
+        : allStories.slice(1, 7);
 
     return [
-      { title: 'Trending Now', stories: trending },
-      { title: 'Lemonade Originals', stories: allStories.filter((story) => story.isOriginal) },
-      { title: 'African Fantasy', stories: allStories.filter((story) => story.genre === 'African Fantasy') },
-      { title: 'Sci-Fi & Cyberpunk', stories: allStories.filter((story) => story.genre === 'Sci-Fi & Cyberpunk') },
+      { title: "Trending Now", stories: trending },
+      {
+        title: "Lemonade Originals",
+        stories: allStories.filter((story) => story.isOriginal),
+      },
+      {
+        title: "African Fantasy",
+        stories: allStories.filter(
+          (story) => story.genre === "African Fantasy",
+        ),
+      },
+      {
+        title: "Sci-Fi & Cyberpunk",
+        stories: allStories.filter(
+          (story) => story.genre === "Sci-Fi & Cyberpunk",
+        ),
+      },
     ].filter((section) => section.stories.length > 0);
   }, [allStories, trendingStories]);
 
   const continueReadingStory = useMemo(() => {
-    if (!user || user.isGuest || !user.readingHistory || user.readingHistory.length === 0) {
+    if (
+      !user ||
+      user.isGuest ||
+      !user.readingHistory ||
+      user.readingHistory.length === 0
+    ) {
       return null;
     }
 
     const latest = [...user.readingHistory].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     )[0];
 
     return allStories.find((story) => story.id === latest.storyId) || null;
@@ -42,8 +62,13 @@ export default function Home() {
   if (!featured) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-        <h1 className="font-display text-2xl font-black mb-3">No published stories yet</h1>
-        <p className="max-w-sm text-sm text-white/50 font-bold">Stories published from Creator Studio will appear here when Convex is connected.</p>
+        <h1 className="font-display text-2xl font-black mb-3">
+          No published stories yet
+        </h1>
+        <p className="max-w-sm text-sm text-white/50 font-bold">
+          Stories published from Creator Studio will appear here when Convex is
+          connected.
+        </p>
       </div>
     );
   }
@@ -79,7 +104,11 @@ export default function Home() {
                   Read
                 </Button>
               </Link>
-              <Button size="md" variant="glass" className="gap-2 px-4 bg-[#171717]/80">
+              <Button
+                size="md"
+                variant="glass"
+                className="gap-2 px-4 bg-[#171717]/80"
+              >
                 <Bookmark size={15} />
                 Save
               </Button>
@@ -100,7 +129,9 @@ export default function Home() {
         {continueReadingStory && (
           <section className="px-4">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-xl font-black">Continue Reading</h2>
+              <h2 className="font-display text-xl font-black">
+                Continue Reading
+              </h2>
               <ChevronRight size={18} className="text-white/35" />
             </div>
             <Link
@@ -118,12 +149,22 @@ export default function Home() {
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex items-center justify-between gap-3">
                   <span className="text-[10px] font-black uppercase tracking-widest text-lemon-muted">
-                    {user?.readingHistory?.find((item) => item.storyId === continueReadingStory.id)?.chapterId?.split('-')?.pop()?.toUpperCase() || 'Chapter 1'}
+                    {user?.readingHistory
+                      ?.find((item) => item.storyId === continueReadingStory.id)
+                      ?.chapterId?.split("-")
+                      ?.pop()
+                      ?.toUpperCase() || "Chapter 1"}
                   </span>
-                  <span className="shrink-0 text-[11px] font-bold text-white/42">Keep reading</span>
+                  <span className="shrink-0 text-[11px] font-bold text-white/42">
+                    Keep reading
+                  </span>
                 </div>
-                <h3 className="truncate font-display text-base font-bold">{continueReadingStory.title}</h3>
-                <p className="mt-0.5 truncate text-xs text-white/45">{continueReadingStory.creator.name}</p>
+                <h3 className="truncate font-display text-base font-bold">
+                  {continueReadingStory.title}
+                </h3>
+                <p className="mt-0.5 truncate text-xs text-white/45">
+                  {continueReadingStory.creator.name}
+                </p>
                 <div className="mt-2 h-1 overflow-hidden rounded-full bg-black/70">
                   <div className="h-full w-[34%] rounded-full bg-lemon-muted" />
                 </div>
@@ -135,12 +176,19 @@ export default function Home() {
         {sections.map((section) => (
           <section key={section.title} className="px-4">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="font-display text-xl font-black leading-none">{section.title}</h2>
-              <button className="shrink-0 text-[11px] font-black uppercase tracking-wider text-lemon-muted/85">See all</button>
+              <h2 className="font-display text-xl font-black leading-none">
+                {section.title}
+              </h2>
+              <button className="shrink-0 text-[11px] font-black uppercase tracking-wider text-lemon-muted/85">
+                See all
+              </button>
             </div>
             <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 hide-scrollbar">
               {section.stories.map((story) => (
-                <div key={story.id} className="w-[132px] shrink-0 snap-start sm:w-[170px] md:w-[190px]">
+                <div
+                  key={story.id}
+                  className="w-[132px] shrink-0 snap-start sm:w-[170px] md:w-[190px]"
+                >
                   <StoryCard story={story} />
                 </div>
               ))}
