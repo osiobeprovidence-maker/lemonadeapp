@@ -491,4 +491,185 @@ export default defineSchema({
     resolvedAt: v.optional(v.string()),
     reviewedBy: v.optional(v.string()),
   }).index("by_user", ["userId"]),
+
+  marketplaceRewards: defineTable({
+    rewardId: v.string(),
+    name: v.string(),
+    description: v.string(),
+    type: v.union(
+      v.literal("airtime"),
+      v.literal("data"),
+      v.literal("gift_card"),
+      v.literal("cash"),
+      v.literal("premium"),
+      v.literal("subscription"),
+      v.literal("merchandise"),
+      v.literal("lemon_coins"),
+      v.literal("golden_ink"),
+      v.literal("badge"),
+      v.literal("mystery_box")
+    ),
+    coinPrice: v.number(),
+    stock: v.number(),
+    reserved: v.number(),
+    imageUrl: v.optional(v.string()),
+    imageStorageId: v.optional(v.id("_storage")),
+    metadata: v.optional(v.any()),
+    active: v.boolean(),
+    requiresApproval: v.boolean(),
+    ...timestampFields,
+  })
+    .index("by_active", ["active"])
+    .index("by_rewardId", ["rewardId"]),
+
+  rewardRedemptions: defineTable({
+    userId: v.string(),
+    username: v.string(),
+    rewardId: v.string(),
+    redemptionId: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("fulfilled"),
+      v.literal("rejected"),
+      v.literal("cancelled")
+    ),
+    coinsSpent: v.number(),
+    userData: v.optional(v.any()),
+    adminNotes: v.optional(v.string()),
+    reviewedBy: v.optional(v.string()),
+    reviewedAt: v.optional(v.string()),
+    fulfilledAt: v.optional(v.string()),
+    ...timestampFields,
+  })
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_redemptionId", ["redemptionId"]),
+
+  missionsCatalog: defineTable({
+    missionId: v.string(),
+    title: v.string(),
+    description: v.string(),
+    type: v.union(
+      v.literal("read_chapters"),
+      v.literal("read_minutes"),
+      v.literal("complete_stories"),
+      v.literal("leave_comments"),
+      v.literal("write_reviews"),
+      v.literal("daily_login"),
+      v.literal("comment_likes")
+    ),
+    target: v.number(),
+    coinReward: v.number(),
+    xpReward: v.number(),
+    period: v.union(v.literal("daily"), v.literal("weekly"), v.literal("once"), v.literal("event")),
+    active: v.boolean(),
+    ...timestampFields,
+  }).index("by_active", ["active"]),
+
+  userMissions: defineTable({
+    userId: v.string(),
+    missionId: v.string(),
+    progress: v.number(),
+    target: v.number(),
+    periodKey: v.string(),
+    status: v.union(
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("claimed")
+    ),
+    claimedAt: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_user_period", ["userId", "periodKey"])
+    .index("by_user", ["userId"]),
+
+  hiddenRewards: defineTable({
+    rewardId: v.string(),
+    contentType: v.union(v.literal("chapter"), v.literal("story")),
+    contentId: v.string(),
+    rewardType: v.union(
+      v.literal("lemon_coins"),
+      v.literal("golden_ink"),
+      v.literal("xp"),
+      v.literal("badge"),
+      v.literal("mystery_box_key")
+    ),
+    amount: v.optional(v.number()),
+    metadata: v.optional(v.any()),
+    weight: v.number(),
+    active: v.boolean(),
+    ...timestampFields,
+  }).index("by_content", ["contentType", "contentId"]),
+
+  coinTransactions: defineTable({
+    userId: v.string(),
+    type: v.union(
+      v.literal("earn"),
+      v.literal("spend"),
+      v.literal("bonus"),
+      v.literal("admin_adjustment")
+    ),
+    source: v.union(
+      v.literal("reading"),
+      v.literal("comment"),
+      v.literal("achievement"),
+      v.literal("mission"),
+      v.literal("redemption"),
+      v.literal("streak"),
+      v.literal("daily_login"),
+      v.literal("mystery_box"),
+      v.literal("referral"),
+      v.literal("admin")
+    ),
+    amount: v.number(),
+    description: v.string(),
+    metadata: v.optional(v.any()),
+    timestamp: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_timestamp", ["userId", "timestamp"]),
+
+  mysteryBoxes: defineTable({
+    boxId: v.string(),
+    name: v.string(),
+    description: v.string(),
+    coinPrice: v.number(),
+    imageUrl: v.optional(v.string()),
+    imageStorageId: v.optional(v.id("_storage")),
+    active: v.boolean(),
+    ...timestampFields,
+  })
+    .index("by_active", ["active"])
+    .index("by_boxId", ["boxId"]),
+
+  mysteryBoxPrizes: defineTable({
+    boxId: v.string(),
+    prizeId: v.string(),
+    type: v.union(
+      v.literal("airtime"),
+      v.literal("data"),
+      v.literal("gift_card"),
+      v.literal("premium"),
+      v.literal("merchandise"),
+      v.literal("lemon_coins"),
+      v.literal("golden_ink"),
+      v.literal("badge")
+    ),
+    amount: v.optional(v.number()),
+    metadata: v.optional(v.any()),
+    weight: v.number(),
+    active: v.boolean(),
+    ...timestampFields,
+  }).index("by_boxId", ["boxId"]),
+
+  mysteryBoxResults: defineTable({
+    userId: v.string(),
+    boxId: v.string(),
+    prizeId: v.string(),
+    prizeType: v.string(),
+    prizeValue: v.optional(v.any()),
+    openedAt: v.string(),
+  }).index("by_user", ["userId"]),
 });

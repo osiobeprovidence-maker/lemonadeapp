@@ -80,6 +80,7 @@ export const trackReading = mutation({
     });
   },
 });
+
 export const trackReadingByFirebaseUid = mutation({
   args: { firebaseUid: v.string(), storyId: v.string(), chapterId: v.string() },
   handler: async (ctx, args) => {
@@ -89,7 +90,6 @@ export const trackReadingByFirebaseUid = mutation({
       .unique();
     if (!user) throw new Error("User not found");
 
-    // Try to find existing history for this story and user to update/replace
     const existing = await ctx.db
       .query("readingHistory")
       .withIndex("by_user_story", (q) => q.eq("userId", user._id).eq("storyId", args.storyId))
@@ -119,7 +119,7 @@ export const createComment = mutation({
     message: v.string(),
   },
   handler: async (ctx, args) => {
-    const comment = {
+    const commentId = await ctx.db.insert("comments", {
       storyId: args.storyId,
       chapterId: args.chapterId ?? null,
       parentCommentId: args.parentCommentId ?? null,
@@ -132,8 +132,21 @@ export const createComment = mutation({
       dislikesCount: 0,
       dislikedBy: [],
       createdAt: now(),
-    };
-    return await ctx.db.insert("comments", comment);
+    });
+
+    try {
+      await ctx.runMutation(api.rewards.rewardComment, {
+        commentId,
+        message: args.message,
+        authorId: args.authorId,
+        storyId: args.storyId,
+        chapterId: args.chapterId,
+      });
+    } catch (error) {
+      console.error("Failed to reward comment", error);
+    }
+
+    return commentId;
   },
 });
 
@@ -175,17 +188,14 @@ export const listCommentsPaged = query({
       rows = await ctx.db.query("comments").withIndex("by_story", (q) => q.eq("storyId", args.storyId)).collect();
     }
 
-    // Filter to only root comments when no parent is provided
     if (!args.parentCommentId) {
       rows = rows.filter((r: any) => !r.parentCommentId);
     }
 
-    // Sort descending by createdAt
     rows.sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt));
 
-    const before = args.before;
-    if (before) {
-      rows = rows.filter((r: any) => r.createdAt < before);
+    if (args.before) {
+      rows = rows.filter((r: any) => r.createdAt < args.before);
     }
 
     const limit = args.limit ?? 10;
@@ -202,10 +212,22 @@ export const toggleLikeComment = mutation({
     const already = (comment.likedBy || []).includes(args.userId);
     const likedBy = already ? comment.likedBy.filter((u: string) => u !== args.userId) : [...(comment.likedBy || []), args.userId];
     const likesCount = likedBy.length;
-    // Remove from dislikedBy if present
     const dislikedBy = (comment.dislikedBy || []).filter((u: string) => u !== args.userId);
     const dislikesCount = dislikedBy.length;
     await ctx.db.patch(comment._id, { likedBy, likesCount, dislikedBy, dislikesCount, updatedAt: now() });
+
+    if (!already && args.userId !== comment.authorId) {
+      try {
+        await ctx.runMutation(api.rewards.rewardCommentLikes, {
+          commentId: args.commentId,
+          authorId: comment.authorId,
+          likesCount: likesCount,
+        });
+      } catch (error) {
+        console.error("Failed to reward comment likes", error);
+      }
+    }
+
     return { likesCount, dislikesCount };
   },
 });
@@ -219,7 +241,6 @@ export const toggleDislikeComment = mutation({
     const already = (comment.dislikedBy || []).includes(args.userId);
     const dislikedBy = already ? comment.dislikedBy.filter((u: string) => u !== args.userId) : [...(comment.dislikedBy || []), args.userId];
     const dislikesCount = dislikedBy.length;
-    // Remove from likedBy if present
     const likedBy = (comment.likedBy || []).filter((u: string) => u !== args.userId);
     const likesCount = likedBy.length;
     await ctx.db.patch(comment._id, { dislikedBy, dislikesCount, likedBy, likesCount, updatedAt: now() });
@@ -233,15 +254,12 @@ export const deleteComment = mutation({
     const comments = await ctx.db.query("comments").collect();
     const comment = comments.find(c => c._id === args.commentId as any);
     if (!comment) return null;
-    // Allow delete if user is the author
     if (comment.authorId !== args.userId) {
-      // Or check if user is admin
-      const user = await ctx.db.query("users").withIndex("by_id", (q) => q.eq("_id", args.userId as any)).unique();
+      const user = await ctx.db.query("users").withIndex("by_username", (q) => q.eq("username", args.userId as any)).unique();
       if (!user || user.role !== "admin") {
         throw new Error("Not authorized to delete this comment");
       }
     }
-    // Delete all replies first
     const replies = await ctx.db.query("comments").withIndex("by_parentCommentId", (q) => q.eq("parentCommentId", args.commentId)).collect();
     for (const reply of replies) {
       await ctx.db.delete(reply._id);
@@ -260,7 +278,6 @@ export const getCommentCount = query({
     } else {
       rows = await ctx.db.query("comments").withIndex("by_story", (q) => q.eq("storyId", args.storyId)).collect();
     }
-    // Only count root comments (not replies)
     return rows.filter((r: any) => !r.parentCommentId).length;
   },
 });

@@ -247,6 +247,67 @@ export const initialContent = mutation({
       }
     }
 
+    const existingMissions = await ctx.db.query("missionsCatalog").collect();
+    if (existingMissions.length === 0) {
+      const missions = [
+        { missionId: "read_5_chapters", title: "Chapter Explorer", description: "Read 5 chapters this week to build your habit.", type: "read_chapters", target: 5, coinReward: 50, xpReward: 100, period: "weekly" },
+        { missionId: "read_60_minutes", title: "Deep Dive", description: "Spend 60 minutes reading this week.", type: "read_minutes", target: 60, coinReward: 75, xpReward: 150, period: "weekly" },
+        { missionId: "complete_1_story", title: "Finisher", description: "Complete 1 full story this week.", type: "complete_stories", target: 1, coinReward: 100, xpReward: 200, period: "weekly" },
+        { missionId: "leave_3_comments", title: "Conversationalist", description: "Leave 3 meaningful comments this week.", type: "leave_comments", target: 3, coinReward: 40, xpReward: 80, period: "weekly" },
+        { missionId: "daily_login_bonus", title: "Daily Visitor", description: "Log in every day to maintain your streak.", type: "daily_login", target: 7, coinReward: 35, xpReward: 70, period: "daily" },
+      ];
+
+      for (const mission of missions) {
+        await ctx.db.insert("missionsCatalog", {
+          ...mission,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    const existingAchievements = await ctx.db.query("achievementsCatalog").collect();
+    if (existingAchievements.length === 0) {
+      const achievements = [
+        { achievementId: "new_reader", name: "New Reader", description: "Read your first chapters.", criteria: { chaptersRead: 1 }, xpReward: 10, coinReward: 5, icon: "📖" },
+        { achievementId: "bookworm", name: "Bookworm", description: "Read 50 chapters.", criteria: { chaptersRead: 50 }, xpReward: 50, coinReward: 25, icon: "🐛" },
+        { achievementId: "story_sage", name: "Story Sage", description: "Complete 5 stories.", criteria: { storiesCompleted: 5 }, xpReward: 150, coinReward: 75, icon: "📚" },
+        { achievementId: "legend_reader", name: "Legend Reader", description: "Reach a 30-day streak.", criteria: { streakDays: 30 }, xpReward: 300, coinReward: 150, icon: "👑" },
+        { achievementId: "story_critic", name: "Story Critic", description: "Leave 20 high-quality comments.", criteria: { qualityComments: 20 }, xpReward: 100, coinReward: 50, icon: "✍️" },
+      ];
+
+      for (const achievement of achievements) {
+        await ctx.db.insert("achievementsCatalog", {
+          ...achievement,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    const existingRewards = await ctx.db.query("marketplaceRewards").collect();
+    if (existingRewards.length === 0) {
+      const rewards = [
+        { rewardId: "r_100_coins", name: "100 Lemon Coins Pack", description: "Instant 100 Lemon Coins boost for your account.", type: "lemon_coins", coinPrice: 0, stock: 0, active: true, requiresApproval: false },
+        { rewardId: "r_1day_premium", name: "1-Day Premium Pass", description: "Enjoy ad-free reading for 24 hours.", type: "premium", coinPrice: 500, stock: 100, active: true, requiresApproval: false },
+        { rewardId: "r_500_airtime", name: "₦500 Airtime", description: "Get ₦500 mobile airtime credited to your number.", type: "airtime", coinPrice: 800, stock: 50, active: true, requiresApproval: true },
+        { rewardId: "r_1gb_data", name: "1GB Data Bundle", description: "1GB mobile data for any network.", type: "data", coinPrice: 1200, stock: 30, active: true, requiresApproval: true },
+        { rewardId: "r_amazon_5", name: "$5 Amazon Gift Card", description: "$5 Amazon e-gift card delivered to your email.", type: "gift_card", coinPrice: 5000, stock: 20, active: true, requiresApproval: true },
+        { rewardId: "r_mystery_box_small", name: "Lemon Mystery Box", description: "A surprise pack with bonuses, cosmetics, or coins.", type: "mystery_box", coinPrice: 300, stock: 200, active: true, requiresApproval: false },
+      ];
+
+      for (const reward of rewards) {
+        await ctx.db.insert("marketplaceRewards", {
+          ...reward,
+          reserved: 0,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
     return { creatorsInserted, storiesInserted };
   },
 });
