@@ -17,7 +17,7 @@ export default function Reader() {
   const navigate = useNavigate();
   const { stories, user, trackReading, unlockChapter } = useApp();
   const story = stories.find(s => s.id === id) || stories[0];
-  const commentCount = Array.isArray(story.comments) ? story.comments.length : typeof story.commentCount === 'number' ? story.commentCount : 0;
+  const [commentCount, setCommentCount] = useState<number>(typeof story.commentCount === 'number' ? story.commentCount : 0);
 
   const chapterId = `c${chapterNum}`;
   // Prefer chapter-level monetization if available
@@ -75,23 +75,35 @@ export default function Reader() {
     const fetchComments = async () => {
       try {
         setCommentsLoading(true);
-        const page = await convex.query(api.interactions.listCommentsPaged, {
-          storyId: story.id,
-          chapterId,
-          limit: 8,
-        });
+        const [page, count] = await Promise.all([
+          convex.query(api.interactions.listCommentsPaged, {
+            storyId: story.id,
+            chapterId,
+            limit: 8,
+          }),
+          convex.query(api.interactions.getCommentCount, {
+            storyId: story.id,
+            chapterId,
+          }),
+        ]);
 
         if (Array.isArray(page)) {
           setLocalComments(page.map((c: any) => ({
+            _id: c._id,
+            authorId: c.authorId,
             author: c.authorName,
             avatar: c.authorAvatar,
             message: c.message,
             time: c.createdAt,
             likes: c.likesCount || 0,
+            dislikes: c.dislikesCount || 0,
+            likedBy: c.likedBy || [],
+            dislikedBy: c.dislikedBy || [],
           })));
           setCommentsHasMore(page.length === 8);
           setCommentsCursor(page.length > 0 ? page[page.length - 1].createdAt : undefined);
         }
+        if (typeof count === 'number') setCommentCount(count);
       } catch (err) {
         console.error('Failed to load comments', err);
       } finally {
@@ -118,11 +130,16 @@ export default function Reader() {
         setLocalComments((prev) => [
           ...prev,
           ...page.map((c: any) => ({
+            _id: c._id,
+            authorId: c.authorId,
             author: c.authorName,
             avatar: c.authorAvatar,
             message: c.message,
             time: c.createdAt,
             likes: c.likesCount || 0,
+            dislikes: c.dislikesCount || 0,
+            likedBy: c.likedBy || [],
+            dislikedBy: c.dislikedBy || [],
           })),
         ]);
         setCommentsHasMore(page.length === 8);
@@ -134,6 +151,55 @@ export default function Reader() {
       console.error('Failed to load more comments', err);
     } finally {
       setCommentsLoading(false);
+    }
+  };
+
+  const handleLike = async (_comment: any, index: number) => {
+    const comment = localComments[index];
+    if (!comment?._id || !user?.id || user.isGuest) return;
+    const already = comment.likedBy?.includes(user.id);
+    setLocalComments((prev) => prev.map((c, i) => i === index ? {
+      ...c,
+      likes: already ? (c.likes || 1) - 1 : (c.likes || 0) + 1,
+      likedBy: already ? (c.likedBy || []).filter((id: string) => id !== user.id) : [...(c.likedBy || []), user.id],
+      dislikedBy: (c.dislikedBy || []).filter((id: string) => id !== user.id),
+      dislikes: (c.dislikedBy || []).includes(user.id) ? (c.dislikes || 1) - 1 : (c.dislikes || 0),
+    } : c));
+    try {
+      await convex.mutation(api.interactions.toggleLikeComment, { commentId: comment._id, userId: user.id });
+    } catch (err) {
+      console.error('Failed to like comment', err);
+    }
+  };
+
+  const handleDislike = async (_comment: any, index: number) => {
+    const comment = localComments[index];
+    if (!comment?._id || !user?.id || user.isGuest) return;
+    const already = comment.dislikedBy?.includes(user.id);
+    setLocalComments((prev) => prev.map((c, i) => i === index ? {
+      ...c,
+      dislikes: already ? (c.dislikes || 1) - 1 : (c.dislikes || 0) + 1,
+      dislikedBy: already ? (c.dislikedBy || []).filter((id: string) => id !== user.id) : [...(c.dislikedBy || []), user.id],
+      likedBy: (c.likedBy || []).filter((id: string) => id !== user.id),
+      likes: (c.likedBy || []).includes(user.id) ? (c.likes || 1) - 1 : (c.likes || 0),
+    } : c));
+    try {
+      await convex.mutation(api.interactions.toggleDislikeComment, { commentId: comment._id, userId: user.id });
+    } catch (err) {
+      console.error('Failed to dislike comment', err);
+    }
+  };
+
+  const handleDelete = async (_comment: any, index: number) => {
+    const comment = localComments[index];
+    if (!comment?._id || !user?.id || user.isGuest) return;
+    try {
+      await convex.mutation(api.interactions.deleteComment, { commentId: comment._id, userId: user.id });
+      setLocalComments((prev) => prev.filter((_, i) => i !== index));
+      setCommentCount((c) => Math.max(0, c - 1));
+    } catch (err) {
+      console.error('Failed to delete comment', err);
+      alert('Could not delete comment. Only the author can delete.');
     }
   };
 
@@ -440,6 +506,7 @@ export default function Reader() {
             totalCount={commentCount}
             loading={commentsLoading}
             hasMore={commentsHasMore}
+            currentUserId={user?.id}
             currentUserAvatar={user?.avatar}
             currentUserName={user?.name}
             commentDraft={commentDraft}
@@ -448,9 +515,10 @@ export default function Reader() {
               ev.preventDefault();
               const msg = commentDraft.trim();
               if (!msg) return;
-              const newC = { author: user?.name || 'Guest', avatar: user?.avatar, message: msg, time: new Date().toISOString(), likes: 0 };
+              const newC = { author: user?.name || 'Guest', avatar: user?.avatar, message: msg, time: new Date().toISOString(), likes: 0, dislikes: 0, likedBy: [], dislikedBy: [] };
               setLocalComments((c) => [newC, ...c]);
               setCommentDraft('');
+              setCommentCount((c) => c + 1);
               try {
                 if (convex && user && !user.isGuest) {
                   void convex.mutation(api.interactions.createComment, {
@@ -467,6 +535,9 @@ export default function Reader() {
               }
             }}
             onLoadMore={loadMoreComments}
+            onLike={handleLike}
+            onDislike={handleDislike}
+            onDelete={handleDelete}
             disabled={!user || user.isGuest}
           />
 

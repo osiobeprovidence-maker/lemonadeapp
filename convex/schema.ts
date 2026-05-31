@@ -259,6 +259,8 @@ export default defineSchema({
     message: v.string(),
     likesCount: v.number(),
     likedBy: v.array(v.string()),
+    dislikesCount: v.number(),
+    dislikedBy: v.array(v.string()),
     createdAt: v.string(),
     updatedAt: v.optional(v.string()),
   })

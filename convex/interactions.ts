@@ -129,6 +129,8 @@ export const createComment = mutation({
       message: args.message,
       likesCount: 0,
       likedBy: [],
+      dislikesCount: 0,
+      dislikedBy: [],
       createdAt: now(),
     };
     return await ctx.db.insert("comments", comment);
@@ -200,7 +202,65 @@ export const toggleLikeComment = mutation({
     const already = (comment.likedBy || []).includes(args.userId);
     const likedBy = already ? comment.likedBy.filter((u: string) => u !== args.userId) : [...(comment.likedBy || []), args.userId];
     const likesCount = likedBy.length;
-    await ctx.db.patch(comment._id, { likedBy, likesCount, updatedAt: now() });
-    return { likesCount };
+    // Remove from dislikedBy if present
+    const dislikedBy = (comment.dislikedBy || []).filter((u: string) => u !== args.userId);
+    const dislikesCount = dislikedBy.length;
+    await ctx.db.patch(comment._id, { likedBy, likesCount, dislikedBy, dislikesCount, updatedAt: now() });
+    return { likesCount, dislikesCount };
+  },
+});
+
+export const toggleDislikeComment = mutation({
+  args: { commentId: v.string(), userId: v.string() },
+  handler: async (ctx, args) => {
+    const comments = await ctx.db.query("comments").collect();
+    const comment = comments.find(c => c._id === args.commentId as any);
+    if (!comment) return null;
+    const already = (comment.dislikedBy || []).includes(args.userId);
+    const dislikedBy = already ? comment.dislikedBy.filter((u: string) => u !== args.userId) : [...(comment.dislikedBy || []), args.userId];
+    const dislikesCount = dislikedBy.length;
+    // Remove from likedBy if present
+    const likedBy = (comment.likedBy || []).filter((u: string) => u !== args.userId);
+    const likesCount = likedBy.length;
+    await ctx.db.patch(comment._id, { dislikedBy, dislikesCount, likedBy, likesCount, updatedAt: now() });
+    return { likesCount, dislikesCount };
+  },
+});
+
+export const deleteComment = mutation({
+  args: { commentId: v.string(), userId: v.string() },
+  handler: async (ctx, args) => {
+    const comments = await ctx.db.query("comments").collect();
+    const comment = comments.find(c => c._id === args.commentId as any);
+    if (!comment) return null;
+    // Allow delete if user is the author
+    if (comment.authorId !== args.userId) {
+      // Or check if user is admin
+      const user = await ctx.db.query("users").withIndex("by_id", (q) => q.eq("_id", args.userId as any)).unique();
+      if (!user || user.role !== "admin") {
+        throw new Error("Not authorized to delete this comment");
+      }
+    }
+    // Delete all replies first
+    const replies = await ctx.db.query("comments").withIndex("by_parentCommentId", (q) => q.eq("parentCommentId", args.commentId)).collect();
+    for (const reply of replies) {
+      await ctx.db.delete(reply._id);
+    }
+    await ctx.db.delete(comment._id);
+    return { success: true };
+  },
+});
+
+export const getCommentCount = query({
+  args: { storyId: v.string(), chapterId: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    let rows;
+    if (args.chapterId) {
+      rows = await ctx.db.query("comments").withIndex("by_story_chapter", (q) => q.eq("storyId", args.storyId).eq("chapterId", args.chapterId)).collect();
+    } else {
+      rows = await ctx.db.query("comments").withIndex("by_story", (q) => q.eq("storyId", args.storyId)).collect();
+    }
+    // Only count root comments (not replies)
+    return rows.filter((r: any) => !r.parentCommentId).length;
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart,
@@ -8,17 +8,22 @@ import {
   ChevronDown,
   ThumbsDown,
   Loader,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export type CommentItem = {
   _id?: string;
   parentCommentId?: string | null;
+  authorId?: string;
   author?: string;
   avatar?: string;
   message: string;
   time?: string;
   likes?: number;
+  dislikes?: number;
+  likedBy?: string[];
+  dislikedBy?: string[];
 };
 
 export interface CommentsSectionProps {
@@ -28,6 +33,7 @@ export interface CommentsSectionProps {
   totalCount?: number;
   loading?: boolean;
   hasMore?: boolean;
+  currentUserId?: string;
   currentUserAvatar?: string;
   currentUserName?: string;
   commentDraft: string;
@@ -36,6 +42,7 @@ export interface CommentsSectionProps {
   onLoadMore?: () => void;
   onLike?: (comment: CommentItem, index: number) => void;
   onDislike?: (comment: CommentItem, index: number) => void;
+  onDelete?: (comment: CommentItem, index: number) => void;
   repliesByComment?: Record<string, CommentItem[]>;
   onToggleReplyBox?: (commentId: string) => void;
   openReplyBox?: Record<string, boolean>;
@@ -59,6 +66,294 @@ function timeAgo(iso?: string) {
   return `${days}d`;
 }
 
+function useLongPress(
+  onLongPress: () => void,
+  onClick?: () => void,
+  ms = 600
+) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPress = useRef(false);
+
+  const start = useCallback(() => {
+    isLongPress.current = false;
+    timerRef.current = setTimeout(() => {
+      isLongPress.current = true;
+      onLongPress();
+    }, ms);
+  }, [onLongPress, ms]);
+
+  const clear = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const end = useCallback(() => {
+    clear();
+    if (!isLongPress.current) {
+      onClick?.();
+    }
+  }, [clear, onClick]);
+
+  return {
+    onMouseDown: start,
+    onMouseUp: end,
+    onMouseLeave: clear,
+    onTouchStart: start,
+    onTouchEnd: end,
+  };
+}
+
+interface CommentRowProps {
+  comment: CommentItem;
+  index: number;
+  currentUserId?: string;
+  replies: CommentItem[];
+  isReplyOpen: boolean;
+  replyDraft: string;
+  onToggleReplyBox: () => void;
+  onReplyDraftChange: (value: string) => void;
+  onSubmitReply: () => void;
+  onLike: () => void;
+  onDislike: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}
+
+function CommentRow({
+  comment,
+  index,
+  currentUserId,
+  replies,
+  isReplyOpen,
+  replyDraft,
+  onToggleReplyBox,
+  onReplyDraftChange,
+  onSubmitReply,
+  onLike,
+  onDislike,
+  onDelete,
+  deleting,
+}: CommentRowProps) {
+  const commentId = comment._id || `local-${index}`;
+  const isLiked = comment._id && comment.likedBy ? comment.likedBy.includes(currentUserId || '') : false;
+  const isDisliked = comment._id && comment.dislikedBy ? comment.dislikedBy.includes(currentUserId || '') : false;
+  const canDelete = !!(comment._id && currentUserId && comment.authorId === currentUserId);
+
+  const longPressProps = useLongPress(
+    () => {
+      if (canDelete) onDelete();
+    },
+    undefined,
+    700
+  );
+
+  return (
+    <div
+      key={commentId}
+      className={cn(
+        'py-3 transition-opacity duration-200',
+        deleting && 'opacity-30'
+      )}
+      {...(canDelete ? longPressProps : {})}
+    >
+      <div className="flex gap-3">
+        {/* Avatar */}
+        <img
+          src={
+            comment.avatar ||
+            `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
+              comment.author || 'U'
+            )}`
+          }
+          alt={comment.author || 'User'}
+          className="h-10 w-10 rounded-full object-cover bg-white/5 shrink-0"
+          referrerPolicy="no-referrer"
+        />
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              {/* Name + Time + Delete */}
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-sm font-bold text-white truncate">
+                  {comment.author || 'Anonymous'}
+                </span>
+                <span className="text-[11px] text-white/30 shrink-0">
+                  {timeAgo(comment.time)}
+                </span>
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={onDelete}
+                    className="ml-auto text-white/20 hover:text-red-400 transition-colors p-1"
+                    title="Delete comment"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
+              </div>
+
+              {/* Comment Text */}
+              <p className="text-sm leading-relaxed text-white/80 break-words">
+                {comment.message}
+              </p>
+
+              {/* Actions Row */}
+              <div className="flex items-center gap-4 mt-2">
+                <button
+                  type="button"
+                  onClick={onToggleReplyBox}
+                  className="text-[11px] font-bold text-white/40 hover:text-lemon-muted transition-colors"
+                >
+                  Reply
+                </button>
+                {replies.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={onToggleReplyBox}
+                    className="text-[11px] font-bold text-lemon-muted flex items-center gap-1"
+                  >
+                    {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+                    <ChevronDown
+                      size={12}
+                      className={cn(
+                        'transition-transform',
+                        isReplyOpen ? 'rotate-180' : ''
+                      )}
+                    />
+                  </button>
+                )}
+                {canDelete && (
+                  <span className="text-[10px] text-white/20">
+                    Hold to delete
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Like / Dislike Column */}
+            <div className="flex flex-col items-center gap-0.5 shrink-0 pt-1">
+              <button
+                type="button"
+                onClick={onLike}
+                className={cn(
+                  'p-1.5 rounded-full transition-colors',
+                  isLiked
+                    ? 'text-lemon-muted'
+                    : 'text-white/30 hover:text-white/60'
+                )}
+              >
+                <Heart
+                  size={18}
+                  className={cn(isLiked && 'fill-current')}
+                />
+              </button>
+              <span
+                className={cn(
+                  'text-[11px] font-bold leading-none',
+                  isLiked ? 'text-lemon-muted' : 'text-white/30'
+                )}
+              >
+                {(comment.likes || 0).toLocaleString()}
+              </span>
+              <button
+                type="button"
+                onClick={onDislike}
+                className={cn(
+                  'p-1.5 rounded-full transition-colors mt-0.5',
+                  isDisliked
+                    ? 'text-red-400'
+                    : 'text-white/30 hover:text-white/60'
+                )}
+              >
+                <ThumbsDown size={16} className={cn(isDisliked && 'fill-current')} />
+              </button>
+              <span
+                className={cn(
+                  'text-[11px] font-bold leading-none',
+                  isDisliked ? 'text-red-400' : 'text-white/30'
+                )}
+              >
+                {(comment.dislikes || 0).toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          {/* Reply Input */}
+          <AnimatePresence>
+            {isReplyOpen && comment._id && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/8 bg-[#141414] p-2">
+                  <input
+                    value={replyDraft}
+                    onChange={(e) => onReplyDraftChange(e.target.value)}
+                    placeholder={`Reply to ${comment.author || 'Anonymous'}...`}
+                    className="min-w-0 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-white/25"
+                  />
+                  <button
+                    type="button"
+                    onClick={onSubmitReply}
+                    disabled={!replyDraft?.trim()}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lemon-muted text-black disabled:opacity-40"
+                  >
+                    <Send size={14} />
+                  </button>
+                </div>
+
+                {/* Replies List */}
+                {replies.length > 0 && (
+                  <div className="mt-2 space-y-2 pl-2 border-l-2 border-white/5">
+                    {replies.map((reply, ri) => (
+                      <div
+                        key={reply._id || `reply-${ri}`}
+                        className="flex gap-2 py-2"
+                      >
+                        <img
+                          src={
+                            reply.avatar ||
+                            `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
+                              reply.author || 'U'
+                            )}`
+                          }
+                          alt=""
+                          className="h-7 w-7 rounded-full object-cover bg-white/5 shrink-0"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-white">
+                              {reply.author || 'Anonymous'}
+                            </span>
+                            <span className="text-[10px] text-white/30">
+                              {timeAgo(reply.time)}
+                            </span>
+                          </div>
+                          <p className="text-xs leading-relaxed text-white/70 mt-0.5">
+                            {reply.message}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CommentsSection({
   open,
   onClose,
@@ -66,6 +361,7 @@ export default function CommentsSection({
   totalCount,
   loading,
   hasMore,
+  currentUserId,
   currentUserAvatar,
   currentUserName,
   commentDraft,
@@ -74,6 +370,7 @@ export default function CommentsSection({
   onLoadMore,
   onLike,
   onDislike,
+  onDelete,
   repliesByComment = {},
   onToggleReplyBox,
   openReplyBox = {},
@@ -85,48 +382,16 @@ export default function CommentsSection({
 }: CommentsSectionProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [likedSet, setLikedSet] = useState<Set<string>>(new Set());
-  const [dislikedSet, setDislikedSet] = useState<Set<string>>(new Set());
-
-  const handleLike = (comment: CommentItem, index: number) => {
-    if (!comment._id) return;
-    setLikedSet((prev) => {
-      const next = new Set(prev);
-      if (next.has(comment._id!)) {
-        next.delete(comment._id!);
-      } else {
-        next.add(comment._id!);
-        setDislikedSet((d) => {
-          const nd = new Set(d);
-          nd.delete(comment._id!);
-          return nd;
-        });
-      }
-      return next;
-    });
-    onLike?.(comment, index);
-  };
-
-  const handleDislike = (comment: CommentItem, index: number) => {
-    if (!comment._id) return;
-    setDislikedSet((prev) => {
-      const next = new Set(prev);
-      if (next.has(comment._id!)) {
-        next.delete(comment._id!);
-      } else {
-        next.add(comment._id!);
-        setLikedSet((d) => {
-          const nd = new Set(d);
-          nd.delete(comment._id!);
-          return nd;
-        });
-      }
-      return next;
-    });
-    onDislike?.(comment, index);
-  };
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const count = totalCount ?? comments.length;
+
+  const handleDelete = (comment: CommentItem, index: number) => {
+    if (!comment._id) return;
+    setDeletingId(comment._id);
+    onDelete?.(comment, index);
+    setTimeout(() => setDeletingId(null), 300);
+  };
 
   const renderHeader = () => (
     <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-white/5">
@@ -171,189 +436,28 @@ export default function CommentsSection({
 
       {comments.map((comment, index) => {
         const commentId = comment._id || `local-${index}`;
-        const isLiked = comment._id ? likedSet.has(comment._id) : false;
-        const isDisliked = comment._id ? dislikedSet.has(comment._id) : false;
         const replies = comment._id ? repliesByComment[comment._id] || [] : [];
         const isReplyOpen = comment._id ? openReplyBox[comment._id] : false;
+        const isDeleting = deletingId === comment._id;
 
         return (
-          <div key={commentId} className="py-3">
-            <div className="flex gap-3">
-              {/* Avatar */}
-              <img
-                src={
-                  comment.avatar ||
-                  `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
-                    comment.author || 'U'
-                  )}`
-                }
-                alt={comment.author || 'User'}
-                className="h-10 w-10 rounded-full object-cover bg-white/5 shrink-0"
-                referrerPolicy="no-referrer"
-              />
-
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    {/* Name + Time */}
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-bold text-white truncate">
-                        {comment.author || 'Anonymous'}
-                      </span>
-                      <span className="text-[11px] text-white/30 shrink-0">
-                        {timeAgo(comment.time)}
-                      </span>
-                    </div>
-
-                    {/* Comment Text */}
-                    <p className="text-sm leading-relaxed text-white/80 break-words">
-                      {comment.message}
-                    </p>
-
-                    {/* Actions Row */}
-                    <div className="flex items-center gap-4 mt-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          comment._id && onToggleReplyBox?.(comment._id)
-                        }
-                        className="text-[11px] font-bold text-white/40 hover:text-lemon-muted transition-colors"
-                      >
-                        Reply
-                      </button>
-                      {replies.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            comment._id && onToggleReplyBox?.(comment._id)
-                          }
-                          className="text-[11px] font-bold text-lemon-muted flex items-center gap-1"
-                        >
-                          {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-                          <ChevronDown
-                            size={12}
-                            className={cn(
-                              'transition-transform',
-                              isReplyOpen ? 'rotate-180' : ''
-                            )}
-                          />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Like / Dislike Column */}
-                  <div className="flex flex-col items-center gap-1 shrink-0 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleLike(comment, index)}
-                      className={cn(
-                        'p-1.5 rounded-full transition-colors',
-                        isLiked
-                          ? 'text-lemon-muted'
-                          : 'text-white/30 hover:text-white/60'
-                      )}
-                    >
-                      <Heart
-                        size={18}
-                        className={cn(isLiked && 'fill-current')}
-                      />
-                    </button>
-                    <span
-                      className={cn(
-                        'text-[11px] font-bold leading-none',
-                        isLiked ? 'text-lemon-muted' : 'text-white/30'
-                      )}
-                    >
-                      {((comment.likes || 0) + (isLiked ? 1 : 0)).toLocaleString()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleDislike(comment, index)}
-                      className={cn(
-                        'p-1.5 rounded-full transition-colors',
-                        isDisliked
-                          ? 'text-red-400'
-                          : 'text-white/30 hover:text-white/60'
-                      )}
-                    >
-                      <ThumbsDown size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Reply Input */}
-                <AnimatePresence>
-                  {isReplyOpen && comment._id && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-3 flex items-center gap-2 rounded-xl border border-white/8 bg-[#141414] p-2">
-                        <input
-                          value={replyDrafts[comment._id] || ''}
-                          onChange={(e) =>
-                            onReplyDraftChange?.(comment._id!, e.target.value)
-                          }
-                          placeholder={`Reply to ${comment.author || 'Anonymous'}...`}
-                          className="min-w-0 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-white/25"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => onSubmitReply?.(comment._id!)}
-                          disabled={!replyDrafts[comment._id]?.trim()}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lemon-muted text-black disabled:opacity-40"
-                        >
-                          <Send size={14} />
-                        </button>
-                      </div>
-
-                      {/* Replies List */}
-                      {replies.length > 0 && (
-                        <div className="mt-2 space-y-2 pl-2 border-l-2 border-white/5">
-                          {replies.map((reply, ri) => (
-                            <div
-                              key={reply._id || `reply-${ri}`}
-                              className="flex gap-2 py-2"
-                            >
-                              <img
-                                src={
-                                  reply.avatar ||
-                                  `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
-                                    reply.author || 'U'
-                                  )}`
-                                }
-                                alt=""
-                                className="h-7 w-7 rounded-full object-cover bg-white/5 shrink-0"
-                                referrerPolicy="no-referrer"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-bold text-white">
-                                    {reply.author || 'Anonymous'}
-                                  </span>
-                                  <span className="text-[10px] text-white/30">
-                                    {timeAgo(reply.time)}
-                                  </span>
-                                </div>
-                                <p className="text-xs leading-relaxed text-white/70 mt-0.5">
-                                  {reply.message}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          </div>
+          <React.Fragment key={commentId}>
+            <CommentRow
+              comment={comment}
+              index={index}
+              currentUserId={currentUserId}
+              replies={replies}
+              isReplyOpen={isReplyOpen}
+              replyDraft={comment._id ? replyDrafts[comment._id] || '' : ''}
+              onToggleReplyBox={() => comment._id && onToggleReplyBox?.(comment._id)}
+              onReplyDraftChange={(value) => comment._id && onReplyDraftChange?.(comment._id, value)}
+              onSubmitReply={() => comment._id && onSubmitReply?.(comment._id)}
+              onLike={() => comment._id && onLike?.(comment, index)}
+              onDislike={() => comment._id && onDislike?.(comment, index)}
+              onDelete={() => handleDelete(comment, index)}
+              deleting={isDeleting}
+            />
+          </React.Fragment>
         );
       })}
 

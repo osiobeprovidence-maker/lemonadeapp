@@ -44,7 +44,6 @@ export default function StoryDetail() {
   const [activeTab, setActiveTab] = useState<(typeof tabLabels)[number]>('chapters');
   const [commentDraft, setCommentDraft] = useState('');
   const [localComments, setLocalComments] = useState<StoryComment[]>([]);
-  const [likedComments, setLikedComments] = useState<Record<string, boolean>>({});
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsHasMore, setCommentsHasMore] = useState(false);
   const [commentsCursor, setCommentsCursor] = useState<string | undefined>(undefined);
@@ -94,7 +93,18 @@ export default function StoryDetail() {
           setCommentsLoading(true);
           const page = await convex.query(api.interactions.listCommentsPaged, { storyId: story.id, limit: 8 });
           if (Array.isArray(page)) {
-            setLocalComments(page.map((c: any) => ({ _id: c._id, author: c.authorName, avatar: c.authorAvatar, message: c.message, time: c.createdAt, likes: c.likesCount || 0 })));
+            setLocalComments(page.map((c: any) => ({
+              _id: c._id,
+              authorId: c.authorId,
+              author: c.authorName,
+              avatar: c.authorAvatar,
+              message: c.message,
+              time: c.createdAt,
+              likes: c.likesCount || 0,
+              dislikes: c.dislikesCount || 0,
+              likedBy: c.likedBy || [],
+              dislikedBy: c.dislikedBy || [],
+            })));
             setCommentsHasMore((page as any).length === 8);
             if ((page as any).length > 0) setCommentsCursor(page[page.length - 1].createdAt);
           }
@@ -119,7 +129,19 @@ export default function StoryDetail() {
       if (Array.isArray(page)) {
         setRepliesByComment((prev) => ({
           ...prev,
-          [commentId]: page.map((c: any) => ({ _id: c._id, parentCommentId: c.parentCommentId ?? null, author: c.authorName, avatar: c.authorAvatar, message: c.message, time: c.createdAt, likes: c.likesCount || 0 }))
+          [commentId]: page.map((c: any) => ({
+            _id: c._id,
+            authorId: c.authorId,
+            parentCommentId: c.parentCommentId ?? null,
+            author: c.authorName,
+            avatar: c.authorAvatar,
+            message: c.message,
+            time: c.createdAt,
+            likes: c.likesCount || 0,
+            dislikes: c.dislikesCount || 0,
+            likedBy: c.likedBy || [],
+            dislikedBy: c.dislikedBy || [],
+          }))
         }));
       }
     } catch (err) {
@@ -133,7 +155,19 @@ export default function StoryDetail() {
       setCommentsLoading(true);
       const page = await convex.query(api.interactions.listCommentsPaged, { storyId: story.id, limit: 8, before: commentsCursor });
       if (Array.isArray(page) && page.length > 0) {
-        setLocalComments((prev) => [...prev, ...page.map((c: any) => ({ _id: c._id, parentCommentId: c.parentCommentId ?? null, author: c.authorName, avatar: c.authorAvatar, message: c.message, time: c.createdAt, likes: c.likesCount || 0 }))]);
+        setLocalComments((prev) => [...prev, ...page.map((c: any) => ({
+          _id: c._id,
+          authorId: c.authorId,
+          parentCommentId: c.parentCommentId ?? null,
+          author: c.authorName,
+          avatar: c.authorAvatar,
+          message: c.message,
+          time: c.createdAt,
+          likes: c.likesCount || 0,
+          dislikes: c.dislikesCount || 0,
+          likedBy: c.likedBy || [],
+          dislikedBy: c.dislikedBy || [],
+        }))]);
         setCommentsHasMore(page.length === 8);
         setCommentsCursor(page[page.length - 1].createdAt);
       } else {
@@ -269,11 +303,15 @@ export default function StoryDetail() {
 
     const newLocal = {
       _id: `local-${Math.random().toString(36).substr(2, 9)}`,
+      authorId: user?.id,
       author: user?.name || 'Guest Reader',
       avatar: user?.avatar,
       message,
       time: new Date().toISOString(),
       likes: 0,
+      dislikes: 0,
+      likedBy: [] as string[],
+      dislikedBy: [] as string[],
     };
     setLocalComments((comments) => [newLocal, ...comments]);
     setCommentDraft('');
@@ -296,21 +334,51 @@ export default function StoryDetail() {
     }
   };
 
-  const toggleLike = (index: number) => {
-    setLocalComments((current) => current.map((c, i) => i === index ? { ...c, likes: (c.likes || 0) + 1 } : c));
-    setLikedComments((prev) => ({ ...prev, [String(index)]: true }));
-
-    // Persist like to backend if comment has been persisted (best-effort)
+  const handleLike = async (index: number) => {
+    const comment = localComments[index];
+    if (!comment?._id || !user?.id || user.isGuest) return;
+    const already = comment.likedBy?.includes(user.id);
+    setLocalComments((current) => current.map((c, i) => i === index ? {
+      ...c,
+      likes: already ? (c.likes || 1) - 1 : (c.likes || 0) + 1,
+      likedBy: already ? (c.likedBy || []).filter((id: string) => id !== user.id) : [...(c.likedBy || []), user.id],
+      dislikedBy: (c.dislikedBy || []).filter((id: string) => id !== user.id),
+      dislikes: (c.dislikedBy || []).includes(user.id) ? (c.dislikes || 1) - 1 : (c.dislikes || 0),
+    } : c));
     try {
-      const comment = localComments[index];
-      if (convex && comment && comment._id && user && !user.isGuest) {
-        void convex.mutation(api.interactions.toggleLikeComment, {
-          commentId: comment._id,
-          userId: user.id,
-        });
-      }
+      await convex.mutation(api.interactions.toggleLikeComment, { commentId: comment._id, userId: user.id });
     } catch (err) {
-      console.error('Failed to persist like', err);
+      console.error('Failed to like comment', err);
+    }
+  };
+
+  const handleDislike = async (index: number) => {
+    const comment = localComments[index];
+    if (!comment?._id || !user?.id || user.isGuest) return;
+    const already = comment.dislikedBy?.includes(user.id);
+    setLocalComments((current) => current.map((c, i) => i === index ? {
+      ...c,
+      dislikes: already ? (c.dislikes || 1) - 1 : (c.dislikes || 0) + 1,
+      dislikedBy: already ? (c.dislikedBy || []).filter((id: string) => id !== user.id) : [...(c.dislikedBy || []), user.id],
+      likedBy: (c.likedBy || []).filter((id: string) => id !== user.id),
+      likes: (c.likedBy || []).includes(user.id) ? (c.likes || 1) - 1 : (c.likes || 0),
+    } : c));
+    try {
+      await convex.mutation(api.interactions.toggleDislikeComment, { commentId: comment._id, userId: user.id });
+    } catch (err) {
+      console.error('Failed to dislike comment', err);
+    }
+  };
+
+  const handleDelete = async (index: number) => {
+    const comment = localComments[index];
+    if (!comment?._id || !user?.id || user.isGuest) return;
+    try {
+      await convex.mutation(api.interactions.deleteComment, { commentId: comment._id, userId: user.id });
+      setLocalComments((prev) => prev.filter((_, i) => i !== index));
+    } catch (err) {
+      console.error('Failed to delete comment', err);
+      alert('Could not delete comment. Only the author can delete.');
     }
   };
 
@@ -506,13 +574,16 @@ export default function StoryDetail() {
                 comments={localComments}
                 loading={commentsLoading}
                 hasMore={commentsHasMore}
+                currentUserId={user?.id}
                 currentUserAvatar={user?.avatar}
                 currentUserName={user?.name}
                 commentDraft={commentDraft}
                 onCommentDraftChange={setCommentDraft}
                 onSubmitComment={submitComment}
                 onLoadMore={loadMoreComments}
-                onLike={(_comment, index) => toggleLike(index)}
+                onLike={(_comment, index) => handleLike(index)}
+                onDislike={(_comment, index) => handleDislike(index)}
+                onDelete={(_comment, index) => handleDelete(index)}
                 repliesByComment={repliesByComment}
                 onToggleReplyBox={toggleReplyBox}
                 openReplyBox={openReplyBox}
