@@ -354,6 +354,18 @@ export const toggleFollow = mutation({
       updatedAt: now(),
     });
 
+    const creator = await ctx.db
+      .query("creators")
+      .withIndex("by_username", (q) => q.eq("username", args.creatorUsername))
+      .unique();
+
+    if (creator) {
+      await ctx.db.patch(creator._id, {
+        followers: Math.max(0, creator.followers + (isFollowed ? -1 : 1)),
+        updatedAt: now(),
+      });
+    }
+
     return { isFollowed: !isFollowed };
   },
 });

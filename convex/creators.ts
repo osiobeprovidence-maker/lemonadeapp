@@ -11,6 +11,29 @@ export const list = query({
   },
 });
 
+export const adminList = query({
+  args: {},
+  handler: async (ctx) => {
+    const [creators, stories] = await Promise.all([
+      ctx.db.query("creators").take(200),
+      ctx.db.query("stories").take(2000),
+    ]);
+
+    const storyCounts = new Map<string, number>();
+    for (const story of stories) {
+      const key = story.creatorUsername || story.creatorId;
+      if (key) {
+        storyCounts.set(key, (storyCounts.get(key) || 0) + 1);
+      }
+    }
+
+    return creators.map((c) => ({
+      ...c,
+      totalStories: storyCounts.get(c.username) || storyCounts.get(c._id) || 0,
+    }));
+  },
+});
+
 export const getByUsername = query({
   args: { username: v.string() },
   handler: async (ctx, args) => {

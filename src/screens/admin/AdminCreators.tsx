@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -17,26 +17,42 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { api } from '../../../convex/_generated/api';
+import { convex } from '../../lib/convex';
 import { cn } from '../../lib/utils';
 
 export default function AdminCreators() {
-  const { creators, updateUserStatus } = useApp();
+  const { updateUserStatus } = useApp();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'active' | 'suspended' | 'featured'>('all');
+  const [creatorList, setCreatorList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const creatorList = Object.values(creators) as any[];
+  useEffect(() => {
+    if (!convex) return;
+    const load = async () => {
+      try {
+        const data = await convex.query(api.creators.adminList, {});
+        setCreatorList(data as any[]);
+      } catch (err) {
+        console.error('Failed to load admin creator list', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const filteredCreators = creatorList.filter(c => {
     const matchesSearch = 
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.username.toLowerCase().includes(searchTerm.toLowerCase());
+      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.username?.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (!matchesSearch) return false;
     if (filter === 'all') return true;
     if (filter === 'active') return !c.isSuspended;
     if (filter === 'suspended') return c.isSuspended;
-    // Assuming we might have a featured flag in future
     return true;
   });
 
@@ -76,6 +92,10 @@ export default function AdminCreators() {
         </div>
       </div>
 
+      {loading ? (
+        <div className="p-16 text-center text-white/30 font-black uppercase tracking-widest text-xs">Loading creators...</div>
+      ) : (
+      <>
       <div className="hidden lg:block bg-ink-deep border border-white/5 rounded-[2.5rem] overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -234,6 +254,8 @@ export default function AdminCreators() {
           </div>
         ))}
       </div>
+    </>
+    )}
     </div>
   );
 }
