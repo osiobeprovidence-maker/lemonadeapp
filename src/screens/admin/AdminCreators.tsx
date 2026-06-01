@@ -30,7 +30,10 @@ export default function AdminCreators() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!convex) return;
+    if (!convex) {
+      setLoading(false);
+      return;
+    }
     const load = async () => {
       try {
         const data = await convex.query(api.creators.adminList, {});
@@ -46,8 +49,8 @@ export default function AdminCreators() {
 
   const filteredCreators = creatorList.filter(c => {
     const matchesSearch = 
-      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.username?.toLowerCase().includes(searchTerm.toLowerCase());
+      (c.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.username ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     
     if (!matchesSearch) return false;
     if (filter === 'all') return true;
