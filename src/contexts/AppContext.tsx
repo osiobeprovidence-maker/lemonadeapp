@@ -388,6 +388,7 @@ const appUserFromFirebase = (firebaseUser: FirebaseUser, convexUser?: any): AppU
 };
 
 const creatorFromDoc = (doc: any): Creator => ({
+  ...(doc.profile || {}),
   id: doc.externalId || doc._id,
   name: doc.name,
   username: doc.username,
@@ -401,7 +402,6 @@ const creatorFromDoc = (doc: any): Creator => ({
   dropsomethingUrl: doc.dropsomethingUrl,
   supportEnabled: doc.supportEnabled,
   profile: doc.profile,
-  ...(doc.profile || {}),
 });
 
 const storyFromDoc = (doc: any, creator: Creator): Story => ({

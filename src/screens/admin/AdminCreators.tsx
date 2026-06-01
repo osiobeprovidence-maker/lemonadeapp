@@ -104,9 +104,9 @@ export default function AdminCreators() {
                   </div>
                 </td>
                 <td className="p-6">
-                   <span className="text-[10px] font-black uppercase tracking-widest text-white/40 px-2 py-1 bg-white/5 rounded border border-white/5">
-                     {c.category}
-                   </span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40 px-2 py-1 bg-white/5 rounded border border-white/5">
+                      {Array.isArray(c.category) ? c.category.join(', ') : c.category}
+                    </span>
                 </td>
                 <td className="p-6">
                    <div className="flex items-center gap-2 text-white/60">
@@ -115,18 +115,18 @@ export default function AdminCreators() {
                    </div>
                 </td>
                 <td className="p-6">
-                   <div className="flex items-center gap-2 text-white/60">
-                      <Box size={14} />
-                      <span className="text-sm font-bold">12</span>
-                   </div>
-                </td>
-                <td className="p-6">
-                   {c.dropSomethingUrl ? (
-                     <div className="inline-flex items-center gap-2 px-2 py-1 bg-lemon-muted/10 rounded-lg">
-                        <div className="w-1.5 h-1.5 rounded-full bg-lemon-muted animate-pulse" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.1em] text-lemon-muted">Connected</span>
-                     </div>
-                   ) : (
+                    <div className="flex items-center gap-2 text-white/60">
+                       <Box size={14} />
+                       <span className="text-sm font-bold">{c.totalStories ?? 0}</span>
+                    </div>
+                 </td>
+                 <td className="p-6">
+                    {c.dropsomethingUrl ? (
+                      <div className="inline-flex items-center gap-2 px-2 py-1 bg-lemon-muted/10 rounded-lg">
+                         <div className="w-1.5 h-1.5 rounded-full bg-lemon-muted animate-pulse" />
+                         <span className="text-[9px] font-black uppercase tracking-[0.1em] text-lemon-muted">Connected</span>
+                      </div>
+                    ) : (
                      <span className="text-[9px] font-black uppercase tracking-[0.1em] text-white/10">Disabled</span>
                    )}
                 </td>
@@ -194,9 +194,9 @@ export default function AdminCreators() {
                     <p className="text-xs text-white/30 font-medium">@{c.username}</p>
                  </div>
               </div>
-              <div className="px-2 py-1 bg-white/5 rounded text-[10px] font-black uppercase tracking-widest text-white/30">
-                 {c.category}
-              </div>
+               <div className="px-2 py-1 bg-white/5 rounded text-[10px] font-black uppercase tracking-widest text-white/30">
+                  {Array.isArray(c.category) ? c.category.join(', ') : c.category}
+               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
@@ -205,15 +205,15 @@ export default function AdminCreators() {
                   <p className="text-xs font-black text-white">{c.followers > 1000 ? (c.followers / 1000).toFixed(1) + 'k' : c.followers}</p>
                </div>
                <div className="p-3 bg-white/5 rounded-2xl flex flex-col items-center">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-1">Stories</p>
-                  <p className="text-xs font-black text-white">12</p>
+                   <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-1">Stories</p>
+                   <p className="text-xs font-black text-white">{c.totalStories ?? 0}</p>
                </div>
                <div className="p-3 bg-white/5 rounded-2xl flex flex-col items-center overflow-hidden">
                   <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-1 whitespace-nowrap">Support</p>
-                  <div className={cn(
-                    "w-2 h-2 rounded-full mt-1",
-                    c.dropSomethingUrl ? "bg-lemon-muted shadow-lg shadow-lemon-muted/50" : "bg-white/10"
-                  )} />
+                   <div className={cn(
+                     "w-2 h-2 rounded-full mt-1",
+                     c.dropsomethingUrl ? "bg-lemon-muted shadow-lg shadow-lemon-muted/50" : "bg-white/10"
+                   )} />
                </div>
             </div>
 
