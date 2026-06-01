@@ -54,7 +54,7 @@ export default function CreatorDashboard() {
         const summary = await convex.query(api.ads.creatorSummary, {
           creatorUsername: user.username,
         });
-        setAdSummary(summary);
+        if (summary) setAdSummary(summary);
       } catch (error) {
         console.error('Failed to load creator ad analytics', error);
       }
@@ -100,8 +100,8 @@ export default function CreatorDashboard() {
       { label: "Followers", value: followers.toLocaleString(), icon: UserPlus, color: "text-green-400" },
       { label: "Creator Wallet", value: formatNaira(creatorEarnings), icon: DollarSign, color: "text-lemon-muted" },
       { label: "Active Stories", value: activeStories.toString(), icon: BookOpen, color: "text-purple-400" },
-      { label: "Ad Earnings", value: formatNaira(adSummary.creatorRevenueNaira), icon: TrendingUp, color: "text-emerald-400" },
-      { label: "Ad RPM", value: `NGN ${Math.round(adSummary.rpm).toLocaleString()}`, icon: Activity, color: "text-orange-400" },
+      { label: "Ad Earnings", value: formatNaira(adSummary?.creatorRevenueNaira ?? 0), icon: TrendingUp, color: "text-emerald-400" },
+      { label: "Ad RPM", value: `NGN ${Math.round(adSummary?.rpm ?? 0).toLocaleString()}`, icon: Activity, color: "text-orange-400" },
     ];
   }, [adSummary.creatorRevenueNaira, adSummary.rpm, creatorEarnings, myStories, user]);
 
@@ -196,12 +196,12 @@ export default function CreatorDashboard() {
                <div className="rounded-2xl bg-lemon-muted px-3 py-2 text-xs font-black text-black">70/30 split</div>
              </div>
              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-               {[
-                 ['Impressions', adSummary.impressions.toLocaleString()],
-                 ['Completed', adSummary.completedViews.toLocaleString()],
-                 ['Completion', `${adSummary.completionRate.toFixed(1)}%`],
-                 ['CTR', `${adSummary.ctr.toFixed(1)}%`],
-               ].map(([label, value]) => (
+                {[
+                  ['Impressions', (adSummary?.impressions ?? 0).toLocaleString()],
+                  ['Completed', (adSummary?.completedViews ?? 0).toLocaleString()],
+                  ['Completion', `${(adSummary?.completionRate ?? 0).toFixed(1)}%`],
+                  ['CTR', `${(adSummary?.ctr ?? 0).toFixed(1)}%`],
+                ].map(([label, value]) => (
                  <div key={label} className="rounded-2xl border border-white/5 bg-black/30 p-4">
                    <p className="text-[10px] font-black uppercase tracking-widest text-white/35">{label}</p>
                    <p className="mt-2 font-display text-2xl font-black">{value}</p>

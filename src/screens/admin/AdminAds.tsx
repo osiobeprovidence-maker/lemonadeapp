@@ -283,16 +283,16 @@ export default function AdminAds() {
                       {/* Campaign Metrics */}
                       <div className="mt-3 flex flex-wrap gap-4">
                         <span className="text-[11px] text-white/40">
-                          <strong className="text-white/70">{ad.metrics.impressions.toLocaleString()}</strong> impressions
+                          <strong className="text-white/70">{(ad.metrics?.impressions ?? 0).toLocaleString()}</strong> impressions
                         </span>
                         <span className="text-[11px] text-white/40">
-                          <strong className="text-white/70">{ad.metrics.completedViews.toLocaleString()}</strong> completed
+                          <strong className="text-white/70">{(ad.metrics?.completedViews ?? 0).toLocaleString()}</strong> completed
                         </span>
                         <span className="text-[11px] text-white/40">
-                          <strong className="text-white/70">{ad.metrics.clicks.toLocaleString()}</strong> clicks
+                          <strong className="text-white/70">{(ad.metrics?.clicks ?? 0).toLocaleString()}</strong> clicks
                         </span>
                         <span className="text-[11px] text-white/40">
-                          <strong className="text-lemon-muted">{formatNaira(ad.metrics.revenueNaira)}</strong> revenue
+                          <strong className="text-lemon-muted">{formatNaira(ad.metrics?.revenueNaira ?? 0)}</strong> revenue
                         </span>
                       </div>
                     </div>

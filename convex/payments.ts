@@ -4,7 +4,7 @@ import { mutation, query } from "./_generated/server";
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("walletTransactions").order("desc").collect();
+    return await ctx.db.query("walletTransactions").order("desc").take(500);
   },
 });
 
@@ -36,7 +36,7 @@ export const creatorPayoutSummary = query({
       .unique();
 
     const payoutAccount = creator?.profile?.payoutAccount || null;
-    const transactions = await ctx.db.query("walletTransactions").collect();
+    const transactions = await ctx.db.query("walletTransactions").take(1000);
     const creatorSupportTransactions = transactions.filter((transaction) => (
       transaction.type === "creator_support" &&
       transaction.status === "success" &&

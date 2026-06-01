@@ -80,7 +80,7 @@ export const overview = query({
       ctx.db.query("contentReports").collect(),
       ctx.db.query("creators").collect(),
       ctx.db.query("walletTransactions").collect(),
-      ctx.db.query("adminActivity").order("desc").collect(),
+      ctx.db.query("adminActivity").order("desc").take(8),
     ]);
 
     const revenueNaira = transactions.reduce(
