@@ -132,7 +132,7 @@ export const update = mutation({
       .query("stories")
       .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
       .unique();
-    if (!story) return null;
+    if (!story) throw new Error("Story not found. It may have been deleted.");
 
     const { externalId, ...updates } = args;
     await ctx.db.patch(story._id, {

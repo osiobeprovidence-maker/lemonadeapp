@@ -24,10 +24,10 @@ export const getByUsername = query({
 export const upsert = mutation({
   args: {
     userId: v.optional(v.string()),
-    name: v.string(),
+    name: v.optional(v.string()),
     username: v.string(),
-    avatar: v.string(),
-    bio: v.string(),
+    avatar: v.optional(v.string()),
+    bio: v.optional(v.string()),
     category: v.union(
       v.array(v.string()),
       v.literal("Artist"),
@@ -47,6 +47,9 @@ export const upsert = mutation({
     const timestamp = now();
     const creator = {
       ...args,
+      name: args.name ?? args.username,
+      avatar: args.avatar || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(args.username)}`,
+      bio: args.bio ?? "",
       category: normalizeCategory(args.category),
     };
 

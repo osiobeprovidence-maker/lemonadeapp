@@ -27,6 +27,7 @@ type DraftStory = {
     chapterText?: string;
     attachments?: StoryAttachment[];
     monetization?: string;
+    chapters?: Array<{ title?: string; text?: string; attachments?: StoryAttachment[] }>;
   };
 };
 
@@ -144,6 +145,14 @@ export default function UploadFlow() {
     setCoverPreview(draft.coverImage || '');
     setBannerPreview(draft.bannerImage || '');
     setExistingAttachments(draft.media?.attachments || []);
+    setChapters(
+      (draft.media?.chapters || []).map((ch: any) => ({
+        title: ch.title || '',
+        text: ch.text || '',
+        files: [],
+        attachments: ch.attachments || [],
+      })),
+    );
     setUploadError(null);
     setStep(1);
   };
