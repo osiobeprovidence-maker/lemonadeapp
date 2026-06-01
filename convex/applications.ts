@@ -67,6 +67,19 @@ export const getById = query({
   },
 });
 
+export const getLatestForUser = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const application = await ctx.db
+      .query("creatorApplications")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .first();
+    if (!application) return null;
+    return await enrichApplication(ctx, application);
+  },
+});
+
 export const submit = mutation({
   args: {
     userId: v.string(),
@@ -102,17 +115,77 @@ export const submit = mutation({
       }
     }
 
-    if (user) {
-      await ctx.db.patch(user._id, {
-        creatorAccessStatus: "pending",
-        updatedAt: now(),
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const timestamp = now();
+
+    await ctx.db.patch(user._id, {
+      creatorAccessStatus: "approved",
+      role: "creator",
+      updatedAt: timestamp,
+    });
+
+    const existingCreator = await ctx.db
+      .query("creators")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .unique();
+
+    const creatorProfile: {
+      userId: string;
+      name: string;
+      username: string;
+      avatar: string;
+      bio: string;
+      category: string[] | "Artist" | "Writer" | "Studio";
+      location: string;
+      dropsomethingUrl?: string;
+      supportEnabled: boolean;
+      profile: Record<string, unknown>;
+      updatedAt: string;
+    } = {
+      userId: user._id,
+      name: application.creatorName || user.name,
+      username: user.username,
+      avatar: user.avatar || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.name)}`,
+      bio: application.bio,
+      category: application.category,
+      location: application.location,
+      dropsomethingUrl: application.dropsomethingUrl,
+      supportEnabled: true,
+      profile: {
+        portfolioLink: application.portfolioLink,
+        socialLinks: application.socialLinks,
+        studioMode: application.studioMode || "solo",
+        studioName: application.studioName,
+        storyIntent: application.storyIntent,
+        mainGenre: application.mainGenre,
+        hasStoryReady: application.hasStoryReady,
+        whyLemonade: application.whyLemonade,
+      },
+      updatedAt: timestamp,
+    };
+
+    if (existingCreator) {
+      await ctx.db.patch(existingCreator._id, creatorProfile);
+    } else {
+      await ctx.db.insert("creators", {
+        ...creatorProfile,
+        followers: 0,
+        totalReads: 0,
+        totalStories: 0,
+        createdAt: timestamp,
       });
     }
 
     return await ctx.db.insert("creatorApplications", {
       ...application,
-      status: "pending",
-      submittedAt: now(),
+      userId: user._id,
+      status: "approved",
+      submittedAt: timestamp,
+      reviewedAt: timestamp,
+      reviewedBy: "system:auto",
     });
   },
 });

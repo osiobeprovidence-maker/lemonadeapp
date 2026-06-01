@@ -26,6 +26,7 @@ export default function StudioAccessGuard({ children }: StudioAccessGuardProps) 
     case 'approved':
       return <>{children}</>;
     case 'pending':
+    case 'needs_info':
     case 'rejected':
       return <Navigate to="/creator-application/status" replace />;
     case 'none':

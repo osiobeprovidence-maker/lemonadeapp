@@ -1,8 +1,27 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 
 const now = () => new Date().toISOString();
 const normalizeCategory = (category: string | string[]) => Array.isArray(category) ? category : [category];
+
+const findCreatorForUpsert = async (
+  ctx: MutationCtx,
+  args: { userId?: string; username: string },
+) => {
+  if (args.userId) {
+    const byUserId = await ctx.db
+      .query("creators")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId as string))
+      .first();
+    if (byUserId) return byUserId;
+  }
+
+  return await ctx.db
+    .query("creators")
+    .withIndex("by_username", (q) => q.eq("username", args.username))
+    .first();
+};
 
 export const list = query({
   args: {},
@@ -37,10 +56,15 @@ export const adminList = query({
 export const getByUsername = query({
   args: { username: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const matches = await ctx.db
       .query("creators")
       .withIndex("by_username", (q) => q.eq("username", args.username))
-      .unique();
+      .take(2);
+    if (matches.length === 0) return null;
+    if (matches.length > 1) {
+      throw new Error("Creator username is not unique.");
+    }
+    return matches[0];
   },
 });
 
@@ -63,12 +87,10 @@ export const upsert = mutation({
     profile: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("creators")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
-      .unique();
+    const existing = await findCreatorForUpsert(ctx, args);
     const timestamp = now();
     const creator = {
+      ...(args.userId ? { userId: args.userId } : {}),
       username: args.username,
       name: args.name ?? args.username,
       avatar: args.avatar || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(args.username)}`,

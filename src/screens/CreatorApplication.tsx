@@ -74,7 +74,7 @@ export default function CreatorApplication() {
     return <Navigate to="/auth?mode=signup&intent=studio" replace />;
   }
 
-  if (user.creatorAccessStatus !== 'none') {
+  if (user.creatorAccessStatus === 'pending' || user.creatorAccessStatus === 'approved') {
     return <Navigate to="/creator-application/status" replace />;
   }
 

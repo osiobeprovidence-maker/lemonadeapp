@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 
 const now = () => new Date().toISOString();
 const USERNAME_CHANGE_INTERVAL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -12,6 +13,30 @@ const assertValidUsername = (username: string) => {
   }
 };
 
+const allocateUniqueUsername = async (ctx: MutationCtx, desired: string) => {
+  const base = normalizeUsername(desired);
+  assertValidUsername(base);
+
+  const existing = await ctx.db
+    .query("users")
+    .withIndex("by_username", (q) => q.eq("username", base))
+    .first();
+  if (!existing) return base;
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const suffix = Math.floor(1000 + Math.random() * 9000).toString();
+    const trimmedBase = base.slice(0, Math.max(0, 24 - (suffix.length + 1)));
+    const candidate = `${trimmedBase}_${suffix}`;
+    const owner = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", candidate))
+      .first();
+    if (!owner) return candidate;
+  }
+
+  throw new Error("Unable to allocate a unique username. Try again.");
+};
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -22,10 +47,16 @@ export const list = query({
 export const getByUsername = query({
   args: { username: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const username = normalizeUsername(args.username);
+    const matches = await ctx.db
       .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
-      .unique();
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .take(2);
+    if (matches.length === 0) return null;
+    if (matches.length > 1) {
+      throw new Error("Username is not unique.");
+    }
+    return matches[0];
   },
 });
 
@@ -55,18 +86,20 @@ export const upsertFromAuth = mutation({
 
     const timestamp = now();
     if (existing) {
+      const nextUsername = existing.username
+        ? existing.username
+        : await allocateUniqueUsername(ctx, args.username);
       await ctx.db.patch(existing._id, {
         ...(args.email ? { email: args.email } : {}),
         name: existing.name || args.name,
-        username: existing.username || normalizeUsername(args.username),
+        username: nextUsername,
         ...(args.avatar ? { avatar: args.avatar } : {}),
         updatedAt: timestamp,
       });
       return existing._id;
     }
 
-    const username = normalizeUsername(args.username);
-    assertValidUsername(username);
+    const username = await allocateUniqueUsername(ctx, args.username);
 
     return await ctx.db.insert("users", {
       firebaseUid: args.firebaseUid,
@@ -100,10 +133,15 @@ export const updateRole = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
+    const username = normalizeUsername(args.username);
+    const matches = await ctx.db
       .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
-      .unique();
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .take(2);
+    if (matches.length > 1) {
+      throw new Error("Username is not unique.");
+    }
+    const user = matches[0] ?? null;
     if (!user) return null;
     await ctx.db.patch(user._id, { role: args.role, updatedAt: now() });
     return user._id;
@@ -116,10 +154,15 @@ export const setStatus = mutation({
     status: v.union(v.literal("active"), v.literal("suspended")),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
+    const username = normalizeUsername(args.username);
+    const matches = await ctx.db
       .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
-      .unique();
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .take(2);
+    if (matches.length > 1) {
+      throw new Error("Username is not unique.");
+    }
+    const user = matches[0] ?? null;
     if (!user) return null;
     await ctx.db.patch(user._id, { status: args.status, updatedAt: now() });
     return user._id;

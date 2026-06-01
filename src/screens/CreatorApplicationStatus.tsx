@@ -3,17 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { Button } from '../components/ui/Button';
 import { Clock, CheckCircle, AlertCircle, ArrowLeft, PenTool, LayoutDashboard } from 'lucide-react';
-import { cn } from '../lib/utils';
 
 export default function CreatorApplicationStatus() {
   const navigate = useNavigate();
-  const { user } = useApp();
+  const { user, applications } = useApp();
 
   if (!user) {
     return null;
   }
 
   const status = user?.creatorAccessStatus || 'none';
+
+  const latestApplication = applications.reduce<any | null>((current, next) => {
+    if (!next || next.userId !== user.id) return current;
+    if (!current) return next;
+    return next.submittedAt > current.submittedAt ? next : current;
+  }, null);
+
+  const adminFeedback =
+    latestApplication?.adminFeedback || user?.pendingAction?.payload?.feedback || '';
 
   const renderContent = () => {
     switch (status) {
@@ -63,6 +71,7 @@ export default function CreatorApplicationStatus() {
           </div>
         );
 
+      case 'needs_info':
       case 'rejected':
         return (
           <div className="flex flex-col items-center text-center py-12">
@@ -74,10 +83,10 @@ export default function CreatorApplicationStatus() {
               Our team reviewed your application and has some feedback before we can approve your access.
             </p>
 
-            {user?.pendingAction?.payload?.feedback && (
+            {adminFeedback && (
               <div className="w-full max-w-sm p-6 bg-red-500/5 border border-red-500/10 rounded-2xl mb-8 text-left">
                 <p className="text-xs font-black uppercase tracking-widest text-red-400 mb-2">Admin Feedback</p>
-                <p className="text-sm text-white/80 italic">"{user.pendingAction.payload.feedback}"</p>
+                <p className="text-sm text-white/80 italic">"{adminFeedback}"</p>
               </div>
             )}
             

@@ -14,6 +14,8 @@ type StoryAttachment = {
   url: string;
 };
 
+const INLINE_TEXT_LIMIT = 180_000;
+
 type DraftStory = {
   externalId?: string;
   title: string;
@@ -186,6 +188,19 @@ export default function UploadFlow() {
     };
   };
 
+  const uploadLargeText = async (text: string, name: string) => {
+    if (!user || text.length <= INLINE_TEXT_LIMIT) {
+      return { text, attachment: null as StoryAttachment | null };
+    }
+
+    const file = new File([text], name, { type: 'text/plain' });
+    const attachment = await uploadStoryFile(file, user.id);
+    return {
+      text: text.slice(0, INLINE_TEXT_LIMIT),
+      attachment,
+    };
+  };
+
   const saveStory = async (status: 'draft' | 'published') => {
     if (!user || user.isGuest) {
       navigate('/auth');
@@ -205,13 +220,36 @@ export default function UploadFlow() {
     try {
       const externalId = storyExternalId || `story_${Date.now()}`;
       const assets = await uploadAssets();
+      const topLevelText = await uploadLargeText(
+        formData.chapterText,
+        `${externalId}-chapter-1.txt`,
+      );
+      if (topLevelText.attachment) {
+        assets.attachments.push(topLevelText.attachment);
+      }
+
+      const normalizedChapters = [];
+      for (const [index, chapter] of (assets.chapters || []).entries()) {
+        const chapterText = await uploadLargeText(
+          chapter.text || '',
+          `${externalId}-chapter-${index + 1}.txt`,
+        );
+        normalizedChapters.push({
+          ...chapter,
+          text: chapterText.text,
+          attachments: [
+            ...(chapter.attachments || []),
+            ...(chapterText.attachment ? [chapterText.attachment] : []),
+          ],
+        });
+      }
 
       if (status === 'published' && (!assets.coverImage || !assets.bannerImage)) {
         throw new Error('Please upload both a cover image and a banner image before publishing.');
       }
       if (status === 'published') {
-        const hasTopLevelContent = formData.chapterText.trim() || assets.attachments.length > 0;
-        const hasChapters = (assets.chapters && assets.chapters.length > 0) || chapters.length > 0;
+        const hasTopLevelContent = topLevelText.text.trim() || assets.attachments.length > 0;
+        const hasChapters = normalizedChapters.length > 0 || chapters.length > 0;
         if (!hasTopLevelContent && !hasChapters) {
           throw new Error('Add story text, chapters, or upload at least one PDF/image/file before publishing.');
         }
@@ -243,17 +281,17 @@ export default function UploadFlow() {
         ),
         status,
         media: {
-          chapterText: formData.chapterText,
+          chapterText: topLevelText.text,
           attachments: assets.attachments,
           monetization: formData.monetization,
-          reviewStatus: status === 'published' ? 'pending_review' : 'draft',
+          reviewStatus: status === 'published' ? 'approved' : 'draft',
           publishedInstantly: status === 'published',
         },
       };
 
       // attach chapters if any
-      if (assets.chapters && assets.chapters.length > 0) {
-        storyPayload.media.chapters = assets.chapters;
+      if (normalizedChapters.length > 0) {
+        storyPayload.media.chapters = normalizedChapters;
       } else if (chapters.length > 0) {
         // If user added chapters but uploadAssets didn't return (shouldn't happen), attach local chapter metadata without uploaded urls
         storyPayload.media.chapters = chapters.map(ch => ({ title: ch.title, text: ch.text, attachments: [] }));
@@ -300,7 +338,7 @@ export default function UploadFlow() {
           </button>
           <div>
             <h1 className="font-display font-black text-2xl">Publish New Story</h1>
-            <p className="text-sm text-white/40 font-bold mt-1">Publish instantly. Admin review happens after it goes live.</p>
+            <p className="text-sm text-white/40 font-bold mt-1">Publish instantly. Your content is approved automatically.</p>
           </div>
         </div>
         <Button variant="glass" onClick={() => saveStory('draft')} disabled={isUploading}>

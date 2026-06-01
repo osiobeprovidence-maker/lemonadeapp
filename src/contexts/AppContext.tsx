@@ -568,6 +568,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           })
           .filter(Boolean) as Story[];
 
+        const firebaseUid = auth.currentUser?.uid;
+        if (firebaseUid) {
+          const currentDoc = userDocs.find((doc: any) => doc.firebaseUid === firebaseUid);
+          if (currentDoc) {
+            setUser((prev) => prev && !prev.isGuest ? {
+              ...prev,
+              role: currentDoc.role,
+              creatorAccessStatus: currentDoc.creatorAccessStatus,
+            } : prev);
+          }
+        }
+
         setLiveCreators(liveCreators);
         setLiveStories(liveStories);
         setApplications(applicationDocs.map(applicationFromDoc));
@@ -1281,7 +1293,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
 
         setApplications(prev => [newApp, ...prev]);
-        setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
+        setUser(prev => prev ? { ...prev, creatorAccessStatus: 'approved', role: 'creator' } : null);
       } catch (error) {
         console.error('Failed to submit application to Convex', error);
         // fallback to local-only behavior
@@ -1290,10 +1302,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           id: Math.random().toString(36).substr(2, 9),
           userId: user.id,
           submittedAt: new Date().toISOString(),
-          status: 'pending'
+          status: 'approved'
         };
         setApplications(prev => [newApp, ...prev]);
-        setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
+        setUser(prev => prev ? { ...prev, creatorAccessStatus: 'approved', role: 'creator' } : null);
       }
     } else {
       const newApp: CreatorApplication = {
@@ -1301,16 +1313,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: Math.random().toString(36).substr(2, 9),
         userId: user.id,
         submittedAt: new Date().toISOString(),
-        status: 'pending'
+        status: 'approved'
       };
       setApplications(prev => [newApp, ...prev]);
-      setUser(prev => prev ? { ...prev, creatorAccessStatus: 'pending' } : null);
+      setUser(prev => prev ? { ...prev, creatorAccessStatus: 'approved', role: 'creator' } : null);
     }
 
     addNotification({
       type: 'update',
       title: 'Application Submitted',
-      message: 'Your creator application is now under review.',
+      message: 'Your creator account is now active. You can start publishing in Creator Studio.',
     });
   };
 
