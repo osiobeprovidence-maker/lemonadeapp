@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -17,35 +17,41 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { api } from '../../../convex/_generated/api';
-import { convex } from '../../lib/convex';
 import { cn } from '../../lib/utils';
 
 export default function AdminCreators() {
-  const { updateUserStatus } = useApp();
+  const { creators, stories, allUsers, updateUserStatus, contentLoading } = useApp();
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<'all' | 'active' | 'suspended' | 'featured'>('all');
-  const [creatorList, setCreatorList] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [filter, setFilter] = React.useState<'all' | 'active' | 'suspended' | 'featured'>('all');
 
-  useEffect(() => {
-    if (!convex) {
-      setLoading(false);
-      return;
-    }
-    const load = async () => {
-      try {
-        const data = await convex.query(api.creators.adminList, {});
-        setCreatorList(data as any[]);
-      } catch (err) {
-        console.error('Failed to load admin creator list', err);
-      } finally {
-        setLoading(false);
+  const followerCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const u of allUsers) {
+      for (const username of u.followedCreators || []) {
+        counts.set(username, (counts.get(username) || 0) + 1);
       }
-    };
-    load();
-  }, []);
+    }
+    return counts;
+  }, [allUsers]);
+
+  const storyCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of stories) {
+      const key = (s as any).creatorUsername || (s as any).creator?.username;
+      if (key) counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return counts;
+  }, [stories]);
+
+  const creatorList = useMemo(() =>
+    Object.values(creators).map((c: any) => ({
+      ...c,
+      followers: followerCounts.get(c.username) || 0,
+      totalStories: storyCounts.get(c.username) || 0,
+    })),
+    [creators, followerCounts, storyCounts],
+  );
 
   const filteredCreators = creatorList.filter(c => {
     const matchesSearch = 
@@ -95,7 +101,7 @@ export default function AdminCreators() {
         </div>
       </div>
 
-      {loading ? (
+      {contentLoading ? (
         <div className="p-16 text-center text-white/30 font-black uppercase tracking-widest text-xs">Loading creators...</div>
       ) : (
       <>
