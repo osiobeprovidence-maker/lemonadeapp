@@ -299,6 +299,26 @@ export const adminSummary = query({
       platformRevenueNaira: 0,
     });
 
+    // Build per-campaign metrics
+    const adMetrics: Record<string, { impressions: number; completedViews: number; skips: number; clicks: number; revenueNaira: number }> = {};
+    for (const event of events) {
+      const adId = event.adId;
+      if (!adMetrics[adId]) {
+        adMetrics[adId] = { impressions: 0, completedViews: 0, skips: 0, clicks: 0, revenueNaira: 0 };
+      }
+      const m = adMetrics[adId];
+      if (event.eventType === "impression") m.impressions++;
+      if (event.eventType === "completed") m.completedViews++;
+      if (event.eventType === "skip") m.skips++;
+      if (event.eventType === "click") m.clicks++;
+      m.revenueNaira += event.revenueNaira;
+    }
+
+    const inventory = ads.map((ad) => ({
+      ...ad,
+      metrics: adMetrics[ad._id] || { impressions: 0, completedViews: 0, skips: 0, clicks: 0, revenueNaira: 0 },
+    }));
+
     return {
       ...totals,
       ctr: totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0,
@@ -306,8 +326,68 @@ export const adminSummary = query({
       activeAds: ads.filter((ad) => ad.status === "approved").length,
       pendingApprovals: ads.filter((ad) => ad.status === "pending").length,
       advertisers: advertisers.length,
-      inventory: ads,
+      inventory,
     };
+  },
+});
+
+export const deleteCampaign = mutation({
+  args: { adId: v.id("adCampaigns") },
+  handler: async (ctx, args) => {
+    const ad = await ctx.db.get(args.adId);
+    if (!ad) throw new Error("Campaign not found");
+
+    // Delete all associated events
+    const events = await ctx.db.query("adEvents").collect();
+    for (const event of events) {
+      if (event.adId === args.adId) {
+        await ctx.db.delete(event._id);
+      }
+    }
+
+    await ctx.db.delete(args.adId);
+    return { success: true };
+  },
+});
+
+export const editCampaign = mutation({
+  args: {
+    adId: v.id("adCampaigns"),
+    title: v.optional(v.string()),
+    type: v.optional(v.union(v.literal("video"), v.literal("image"), v.literal("banner"))),
+    placement: v.optional(placementValidator),
+    mediaUrl: v.optional(v.string()),
+    clickUrl: v.optional(v.string()),
+    brandName: v.optional(v.string()),
+    headline: v.optional(v.string()),
+    description: v.optional(v.string()),
+    cpmNaira: v.optional(v.number()),
+    targetGenres: v.optional(v.array(v.string())),
+    priority: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const ad = await ctx.db.get(args.adId);
+    if (!ad) throw new Error("Campaign not found");
+
+    const updates: Record<string, any> = {};
+    if (args.title !== undefined) updates.title = args.title;
+    if (args.type !== undefined) updates.type = args.type;
+    if (args.placement !== undefined) updates.placement = args.placement;
+    if (args.mediaUrl !== undefined) updates.mediaUrl = args.mediaUrl;
+    if (args.clickUrl !== undefined) updates.clickUrl = args.clickUrl;
+    if (args.brandName !== undefined) updates.brandName = args.brandName;
+    if (args.headline !== undefined) updates.headline = args.headline;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.cpmNaira !== undefined) updates.cpmNaira = args.cpmNaira;
+    if (args.targetGenres !== undefined) updates.targetGenres = args.targetGenres;
+    if (args.priority !== undefined) updates.priority = args.priority;
+
+    if (Object.keys(updates).length > 0) {
+      updates.updatedAt = now();
+      await ctx.db.patch(args.adId, updates);
+    }
+
+    return args.adId;
   },
 });
 

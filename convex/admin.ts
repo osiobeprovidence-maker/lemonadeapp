@@ -27,6 +27,20 @@ const successfulRevenueAmount = (transaction: any) => {
   return 0;
 };
 
+const transactionDisplayAmount = (transaction: any) => {
+  if (transaction.type === "wallet_topup") {
+    return Number(transaction.metadata?.nairaAmount || transaction.amount || 0);
+  }
+  return Number(transaction.amount || 0);
+};
+
+const paymentTypeLabel = (type: string) => {
+  if (type === "wallet_topup") return "wallet";
+  if (type === "chapter_unlock") return "unlock";
+  if (type === "creator_support") return "support";
+  return type;
+};
+
 const monthKey = (timestamp: string) =>
   new Date(timestamp).toISOString().slice(0, 7);
 const shortMonth = (key: string) => {
@@ -358,6 +372,191 @@ export const premium = query({
         premiumCancelAtPeriodEnd: user.premiumCancelAtPeriodEnd,
       })),
     };
+  },
+});
+
+export const payments = query({
+  args: {},
+  handler: async (ctx) => {
+    const [transactions, users] = await Promise.all([
+      ctx.db.query("walletTransactions").order("desc").take(500),
+      ctx.db.query("users").take(500),
+    ]);
+
+    const usersById = new Map(users.map((user) => [user._id, user]));
+    const usersByUsername = new Map(users.map((user) => [user.username, user]));
+    const usersByExternalId = new Map(
+      users
+        .filter((user) => user.externalId)
+        .map((user) => [user.externalId, user]),
+    );
+    const premiumUsers = users.filter(
+      (user) => user.premiumStatus === "premium",
+    );
+
+    const rows = transactions.map((transaction) => {
+      const metadata = transaction.metadata || {};
+      const user =
+        usersById.get(transaction.userId as any) ||
+        usersByUsername.get(transaction.userId) ||
+        usersByUsername.get(metadata.username) ||
+        usersByUsername.get(metadata.supporterUsername) ||
+        usersByExternalId.get(transaction.userId);
+
+      return {
+        id: transaction._id,
+        userId: user?._id || transaction.userId,
+        username:
+          user?.username ||
+          metadata.username ||
+          metadata.supporterUsername ||
+          metadata.creatorUsername ||
+          "unknown",
+        email: user?.email || null,
+        type: paymentTypeLabel(transaction.type),
+        rawType: transaction.type,
+        amount: transactionDisplayAmount(transaction),
+        currency: transaction.currency,
+        status: transaction.status,
+        date: transaction.createdAt,
+        reference: transaction.reference,
+        provider: transaction.provider || null,
+      };
+    });
+
+    return {
+      stats: {
+        totalRevenue: transactions.reduce(
+          (total, transaction) => total + successfulRevenueAmount(transaction),
+          0,
+        ),
+        walletVolume: transactions
+          .filter(
+            (transaction) =>
+              transaction.type === "wallet_topup" &&
+              transaction.status === "success",
+          )
+          .reduce(
+            (total, transaction) => total + transactionDisplayAmount(transaction),
+            0,
+          ),
+        activePremium: premiumUsers.length,
+        pendingPayout: transactions
+          .filter(
+            (transaction) =>
+              transaction.type === "creator_support" &&
+              transaction.status === "success",
+          )
+          .reduce(
+            (total, transaction) => total + Number(transaction.amount || 0),
+            0,
+          ),
+      },
+      transactions: rows,
+    };
+  },
+});
+
+export const paymentDetail = query({
+  args: { paymentId: v.string() },
+  handler: async (ctx, args) => {
+    const transactionId = ctx.db.normalizeId(
+      "walletTransactions",
+      args.paymentId,
+    );
+    const transaction = transactionId
+      ? await ctx.db.get(transactionId)
+      : await ctx.db
+        .query("walletTransactions")
+        .withIndex("by_reference", (q) => q.eq("reference", args.paymentId))
+        .unique();
+
+    if (!transaction) return null;
+
+    const normalizedUserId = ctx.db.normalizeId("users", transaction.userId);
+    const user = normalizedUserId
+      ? await ctx.db.get(normalizedUserId)
+      : await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", transaction.userId))
+        .unique();
+
+    const userTransactions = await ctx.db
+      .query("walletTransactions")
+      .withIndex("by_userId", (q) => q.eq("userId", transaction.userId))
+      .order("desc")
+      .take(10);
+
+    return {
+      id: transaction._id,
+      userId: user?._id || transaction.userId,
+      username:
+        user?.username ||
+        transaction.metadata?.username ||
+        transaction.metadata?.supporterUsername ||
+        transaction.userId,
+      email: user?.email || null,
+      avatar: user?.avatar || null,
+      type: paymentTypeLabel(transaction.type),
+      rawType: transaction.type,
+      amount: transactionDisplayAmount(transaction),
+      grantedAmount: Number(transaction.amount || 0),
+      currency: transaction.currency,
+      status: transaction.status,
+      date: transaction.createdAt,
+      reference: transaction.reference,
+      provider: transaction.provider || null,
+      providerPayload: transaction.providerPayload || null,
+      metadata: transaction.metadata || null,
+      totalSpend: userTransactions
+        .filter((item) => item.status === "success")
+        .reduce((total, item) => total + transactionDisplayAmount(item), 0),
+      history: userTransactions
+        .filter((item) => item._id !== transaction._id)
+        .map((item) => ({
+          id: item._id,
+          type: paymentTypeLabel(item.type),
+          amount: transactionDisplayAmount(item),
+          status: item.status,
+          date: item.createdAt,
+          reference: item.reference,
+        })),
+    };
+  },
+});
+
+export const updatePaymentStatus = mutation({
+  args: {
+    paymentId: v.id("walletTransactions"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("success"),
+      v.literal("failed"),
+      v.literal("refunded"),
+    ),
+    adminEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const transaction = await ctx.db.get(args.paymentId);
+    if (!transaction) throw new Error("Payment not found.");
+
+    await ctx.db.patch(args.paymentId, {
+      status: args.status,
+      metadata: {
+        ...(transaction.metadata || {}),
+        reviewedBy: args.adminEmail || null,
+        reviewedAt: now(),
+      },
+    });
+
+    await ctx.db.insert("adminActivity", {
+      action: `Marked payment ${transaction.reference} as ${args.status}`,
+      adminEmail: args.adminEmail || "system",
+      timestamp: now(),
+      metadata: { paymentId: args.paymentId, reference: transaction.reference },
+    });
+
+    return args.paymentId;
   },
 });
 
