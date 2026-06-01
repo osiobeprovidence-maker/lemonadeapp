@@ -83,20 +83,28 @@ export const create = mutation({
       throw new Error("A story with this ID already exists. Use update instead.");
     }
 
-    // Filter out empty strings for optional string fields
     const cleanCoverImage = args.coverImage && args.coverImage.trim() ? args.coverImage : undefined;
     const cleanBannerImage = args.bannerImage && args.bannerImage.trim() ? args.bannerImage : undefined;
 
     return await ctx.db.insert("stories", {
-      ...args,
-      coverImage: cleanCoverImage,
-      bannerImage: cleanBannerImage,
+      creatorId: args.creatorId,
+      creatorUsername: args.creatorUsername,
+      title: args.title,
+      genre: args.genre,
+      format: args.format,
+      synopsis: args.synopsis,
+      tags: args.tags,
+      isOriginal: args.isOriginal,
       rating: 0,
       views: 0,
       saves: 0,
       episodes: args.episodes ?? 0,
       isFeatured: false,
       status: args.status ?? "draft",
+      ...(args.externalId ? { externalId: args.externalId } : {}),
+      ...(cleanCoverImage ? { coverImage: cleanCoverImage } : {}),
+      ...(cleanBannerImage ? { bannerImage: cleanBannerImage } : {}),
+      ...(args.media ? { media: args.media } : {}),
       createdAt: timestamp,
       updatedAt: timestamp,
     });

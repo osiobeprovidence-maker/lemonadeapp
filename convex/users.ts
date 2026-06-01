@@ -56,10 +56,10 @@ export const upsertFromAuth = mutation({
     const timestamp = now();
     if (existing) {
       await ctx.db.patch(existing._id, {
-        email: args.email,
+        ...(args.email ? { email: args.email } : {}),
         name: existing.name || args.name,
         username: existing.username || normalizeUsername(args.username),
-        avatar: existing.avatar || args.avatar,
+        ...(args.avatar ? { avatar: args.avatar } : {}),
         updatedAt: timestamp,
       });
       return existing._id;
@@ -70,10 +70,10 @@ export const upsertFromAuth = mutation({
 
     return await ctx.db.insert("users", {
       firebaseUid: args.firebaseUid,
-      email: args.email,
+      ...(args.email ? { email: args.email } : {}),
       name: args.name,
       username,
-      avatar: args.avatar,
+      ...(args.avatar ? { avatar: args.avatar } : {}),
       role: "reader",
       creatorAccessStatus: "none",
       premiumStatus: "free",

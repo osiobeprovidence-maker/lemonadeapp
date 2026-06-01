@@ -69,11 +69,15 @@ export const upsert = mutation({
       .unique();
     const timestamp = now();
     const creator = {
-      ...args,
+      username: args.username,
       name: args.name ?? args.username,
       avatar: args.avatar || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(args.username)}`,
       bio: args.bio ?? "",
       category: normalizeCategory(args.category),
+      supportEnabled: args.supportEnabled,
+      ...(args.location ? { location: args.location } : {}),
+      ...(args.dropsomethingUrl ? { dropsomethingUrl: args.dropsomethingUrl } : {}),
+      ...(args.profile ? { profile: args.profile } : {}),
     };
 
     if (existing) {
