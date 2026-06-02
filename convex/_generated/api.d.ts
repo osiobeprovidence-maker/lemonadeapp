@@ -19,6 +19,7 @@ import type * as interactions from "../interactions.js";
 import type * as migrate from "../migrate.js";
 import type * as payments from "../payments.js";
 import type * as paystack from "../paystack.js";
+import type * as ratings from "../ratings.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as stories from "../stories.js";
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   migrate: typeof migrate;
   payments: typeof payments;
   paystack: typeof paystack;
+  ratings: typeof ratings;
   seed: typeof seed;
   settings: typeof settings;
   stories: typeof stories;

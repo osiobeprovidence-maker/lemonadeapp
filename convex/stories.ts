@@ -1,7 +1,48 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 
 const now = () => new Date().toISOString();
+
+const ensureCreatorProfile = async (
+  ctx: MutationCtx,
+  args: { creatorId: string; creatorUsername: string },
+) => {
+  const byUserId = await ctx.db
+    .query("creators")
+    .withIndex("by_userId", (q) => q.eq("userId", args.creatorId))
+    .first();
+  const creator = byUserId ?? await ctx.db
+    .query("creators")
+    .withIndex("by_username", (q) => q.eq("username", args.creatorUsername))
+    .first();
+
+  const timestamp = now();
+  if (creator) {
+    await ctx.db.patch(creator._id, {
+      userId: creator.userId ?? args.creatorId,
+      username: args.creatorUsername,
+      totalStories: (creator.totalStories ?? 0) + 1,
+      updatedAt: timestamp,
+    });
+    return creator._id;
+  }
+
+  return await ctx.db.insert("creators", {
+    userId: args.creatorId,
+    username: args.creatorUsername,
+    name: args.creatorUsername,
+    avatar: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(args.creatorUsername)}`,
+    followers: 0,
+    bio: "Creator on Lemonade.",
+    category: ["Original"],
+    totalReads: 0,
+    totalStories: 1,
+    supportEnabled: true,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+};
 
 export const listPublished = query({
   args: {},
@@ -83,6 +124,15 @@ export const create = mutation({
       throw new Error("A story with this ID already exists. Use update instead.");
     }
 
+    try {
+      await ensureCreatorProfile(ctx, {
+        creatorId: args.creatorId,
+        creatorUsername: args.creatorUsername,
+      });
+    } catch (error) {
+      console.error("Failed to ensure creator profile before story create", error);
+    }
+
     const cleanCoverImage = args.coverImage && args.coverImage.trim() ? args.coverImage : undefined;
     const cleanBannerImage = args.bannerImage && args.bannerImage.trim() ? args.bannerImage : undefined;
 
@@ -96,6 +146,8 @@ export const create = mutation({
       tags: args.tags,
       isOriginal: args.isOriginal,
       rating: 0,
+      ratingCount: 0,
+      ratingSum: 0,
       views: 0,
       saves: 0,
       episodes: args.episodes ?? 0,

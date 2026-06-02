@@ -7,6 +7,7 @@ import { useParams, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
 import { useApp } from '../contexts/AppContext';
+import { shareLink } from '../lib/share';
 
 export default function CreatorProfile() {
   const { username } = useParams();
@@ -85,7 +86,25 @@ export default function CreatorProfile() {
           </div>
 
           <div className="flex gap-2 w-full">
-            <Button variant="glass" size="icon" className="flex-1"><Share2 size={18} /></Button>
+            <Button
+              variant="glass"
+              size="icon"
+              className="flex-1"
+              onClick={async () => {
+                const url = `${window.location.origin}/creator/${creator.username}`;
+                try {
+                  const res = await shareLink({
+                    title: `${creator.name} on Lemonade`,
+                    url,
+                  });
+                  if (res.method !== 'native') alert('Link copied!');
+                } catch {
+                  alert('Unable to share.');
+                }
+              }}
+            >
+              <Share2 size={18} />
+            </Button>
             <Button variant="glass" size="icon" className="flex-1"><MoreHorizontal size={18} /></Button>
           </div>
         </div>

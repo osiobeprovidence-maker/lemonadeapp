@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import SettingsDetailLayout from '../../components/SettingsDetailLayout';
 import { User, Camera, Mail, AtSign, FileText, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { useCurrentUser, useUpdateUserProfile } from '../../hooks/useConvex';
-import { uploadProfilePicture, compressImage } from '../../lib/imageUpload';
+import { uploadBannerImage, uploadProfilePicture, compressImage } from '../../lib/imageUpload';
 import { useApp } from '../../contexts/AppContext';
 
 export default function SettingsAccountProfile() {
@@ -15,16 +15,19 @@ export default function SettingsAccountProfile() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     name: '',
     username: '',
     bio: '',
     email: '',
-    avatar: ''
+    avatar: '',
+    banner: '',
   });
 
   useEffect(() => {
@@ -34,10 +37,44 @@ export default function SettingsAccountProfile() {
         username: user.username || '',
         bio: user.bio || '',
         email: user.email || '',
-        avatar: user.avatar || ''
+        avatar: user.avatar || '',
+        banner: user.banner || '',
       });
     }
-  }, [user?.id, user?.name, user?.username, user?.bio, user?.email, user?.avatar]);
+  }, [user?.id, user?.name, user?.username, user?.bio, user?.email, user?.avatar, user?.banner]);
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!firebaseUid) {
+      setError('Please sign in again before changing your profile banner.');
+      return;
+    }
+
+    try {
+      setError(null);
+      setIsUploadingBanner(true);
+      const compressedFile = await compressImage(file, 0.86);
+      const downloadURL = await uploadBannerImage(compressedFile, firebaseUid);
+      await updateProfile({
+        firebaseUid,
+        banner: downloadURL,
+      });
+      setFormData(prev => ({ ...prev, banner: downloadURL }));
+      updateLocalUser({ banner: downloadURL });
+      setSuccess('Profile banner updated successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to upload profile banner';
+      setError(errorMessage);
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsUploadingBanner(false);
+      if (bannerInputRef.current) {
+        bannerInputRef.current.value = '';
+      }
+    }
+  };
 
   // Handle profile picture upload
   const handlePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,6 +187,48 @@ export default function SettingsAccountProfile() {
       )}
 
       {/* Profile Picture Section */}
+      <div className="mb-10">
+        <p className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4 mb-3">Profile Banner</p>
+        <div
+          className="relative h-40 w-full overflow-hidden rounded-[28px] border border-white/10 bg-white/5 cursor-pointer"
+          onClick={() => !isUploadingBanner && bannerInputRef.current?.click()}
+        >
+          {formData.banner ? (
+            <img
+              src={formData.banner}
+              alt="Banner"
+              className="absolute inset-0 h-full w-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-black to-emerald-900/30" />
+          )}
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            {isUploadingBanner ? (
+              <div className="flex items-center gap-2 text-sm font-bold text-white/80">
+                <Loader size={18} className="animate-spin" />
+                Uploading...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm font-bold text-white/80">
+                <Camera size={18} />
+                Change banner
+              </div>
+            )}
+          </div>
+        </div>
+        <input
+          ref={bannerInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleBannerUpload}
+          disabled={isUploadingBanner}
+          className="hidden"
+          aria-label="Upload profile banner"
+        />
+      </div>
+
       <div className="flex flex-col items-center mb-10">
         <div 
           className="relative group cursor-pointer"

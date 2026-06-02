@@ -14,12 +14,14 @@ import {
   MoreVertical,
   X,
   CheckCircle2,
+  Star,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../lib/utils";
 import { Button } from "../components/ui/Button";
 import { useApp } from "../contexts/AppContext";
 import { convex } from "../lib/convex";
+import { shareLink } from "../lib/share";
 import { api } from "../../convex/_generated/api";
 import AdPrerollModal from "../components/ads/AdPrerollModal";
 import { useAdGate } from "../hooks/useAdGate";
@@ -80,6 +82,8 @@ export default function Reader() {
   const [isReporting, setIsReporting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [rewardBanner, setRewardBanner] = useState<string | null>(null);
+  const [ratingOpen, setRatingOpen] = useState(false);
+  const [userRating, setUserRating] = useState<number>(0);
 
   const isNovel = story.format === "Novel";
   const isPremiumReader =
@@ -272,6 +276,45 @@ export default function Reader() {
     }
   };
 
+  const handleShare = async () => {
+    const url = `${window.location.origin}/read/${story.id}/${chapterNum || "1"}`;
+    try {
+      const res = await shareLink({
+        title: `${story.title} — Chapter ${chapterNum || "1"}`,
+        text: `Check out this chapter from ${story.title} on Lemonade!`,
+        url,
+      });
+      if (res.method !== "native") {
+        // Show a brief toast notification
+        const toast = document.createElement("div");
+        toast.className =
+          "fixed bottom-24 left-1/2 -translate-x-1/2 bg-lemon-muted text-black px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200]";
+        toast.textContent = "Link copied to clipboard!";
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+      }
+    } catch {
+      alert("Unable to share.");
+    }
+  };
+
+  const handleRate = async (rating: number) => {
+    if (!user?.id || user.isGuest) return;
+    setUserRating(rating);
+    setRatingOpen(false);
+    try {
+      if (convex) {
+        await convex.mutation(api.interactions.rateStory, {
+          storyId: story.id,
+          userId: user.id,
+          rating,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to rate story", err);
+    }
+  };
+
   // Engagement instrumentation: track scroll and time spent
   useEngagement({
     storyId: id,
@@ -460,9 +503,18 @@ export default function Reader() {
             {showMoreMenu && (
               <div className="absolute top-[calc(100%+8px)] right-4 p-2 bg-ink-deep border border-white/10 rounded-2xl shadow-2xl w-56 flex flex-col">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setShowMoreMenu(false);
-                    alert("Link copied!");
+                    const url = `${window.location.origin}/read/${story.id}/${chapterNum || "1"}`;
+                    try {
+                      const res = await shareLink({
+                        title: `${story.title} — Chapter ${chapterNum || "1"}`,
+                        url,
+                      });
+                      if (res.method !== "native") alert("Link copied!");
+                    } catch {
+                      alert("Unable to share.");
+                    }
                   }}
                   className="flex items-center gap-3 p-4 hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-bold"
                 >
@@ -722,7 +774,13 @@ export default function Reader() {
                 )}
                 onClick={(e) => {
                   e.stopPropagation();
-                  alert("Added to your library!");
+                  if (user && !user.isGuest) {
+                    if (user.savedStories.includes(story.id)) {
+                      // Unsave logic would go here
+                    } else {
+                      // Save logic would go here
+                    }
+                  }
                 }}
               >
                 <Bookmark
@@ -742,6 +800,31 @@ export default function Reader() {
               >
                 <MessageCircle size={18} /> {commentCount}
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 text-white/60 hover:text-lemon-muted transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShare();
+                }}
+              >
+                <Share size={18} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-11 w-11 transition-colors",
+                  userRating > 0 ? "text-lemon-muted" : "text-white/60 hover:text-lemon-muted",
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRatingOpen(!ratingOpen);
+                }}
+              >
+                <Star size={18} className={userRating > 0 ? "fill-current" : ""} />
+              </Button>
               <div className="w-[1px] h-6 bg-white/10" />
               <Button
                 variant="primary"
@@ -755,6 +838,58 @@ export default function Reader() {
                 Next
               </Button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Rating Modal */}
+      <AnimatePresence>
+        {ratingOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setRatingOpen(false)}
+            className="fixed inset-0 z-[100] flex items-center justify-center px-6"
+          >
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-ink-deep border border-white/10 rounded-3xl shadow-2xl p-8 max-w-sm w-full"
+            >
+              <div className="text-center">
+                <h3 className="font-display font-black text-2xl mb-2">Rate this story</h3>
+                <p className="text-white/50 text-sm mb-6">How are you enjoying {story.title}?</p>
+                
+                <div className="flex justify-center gap-3 mb-6">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => handleRate(star)}
+                      className="transition-transform hover:scale-110 active:scale-95"
+                    >
+                      <Star
+                        size={40}
+                        className={
+                          star <= userRating
+                            ? "fill-lemon-muted text-lemon-muted"
+                            : "text-white/30 hover:text-white/50"
+                        }
+                      />
+                    </button>
+                  ))}
+                </div>
+                
+                {userRating > 0 && (
+                  <p className="text-lemon-muted font-bold text-sm">
+                    You rated this {userRating}/5 stars
+                  </p>
+                )}
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

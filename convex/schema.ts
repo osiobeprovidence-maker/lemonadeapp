@@ -100,6 +100,8 @@ export default defineSchema({
     genre: v.string(),
     format: v.string(),
     rating: v.number(),
+    ratingCount: v.optional(v.number()),
+    ratingSum: v.optional(v.number()),
     views: v.number(),
     saves: v.number(),
     episodes: v.number(),
@@ -123,6 +125,16 @@ export default defineSchema({
     .index("by_creatorUsername", ["creatorUsername"])
     .index("by_status", ["status"])
     .index("by_featured", ["isFeatured"]),
+
+  storyRatings: defineTable({
+    storyId: v.string(),
+    userId: v.string(),
+    rating: v.number(),
+    ...timestampFields,
+  })
+    .index("by_storyId", ["storyId"])
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_storyId", ["userId", "storyId"]),
 
   creatorApplications: defineTable({
     userId: v.string(),

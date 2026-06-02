@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, Coffee, Eye, Heart, Lock, MessageCircle, Play, Star } from 'lucide-react';
+import { ArrowRight, Check, Coffee, Eye, Heart, Lock, MessageCircle, Play, Star, Share2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { FormatBadge, GenreBadge, LockedContentCTA, SupportStatusBadge } from '../components/ui/Cards';
 import CommentsSection from '../components/ui/CommentsSection';
@@ -11,6 +11,7 @@ import { cn } from '../lib/utils';
 import { useCurrentUser, useIncrementStoryView, useSaveStory, useStoryById, useUnlockChapter } from '../hooks/useConvex';
 import { convex } from '../lib/convex';
 import { api } from '../../convex/_generated/api';
+import { shareLink } from '../lib/share';
 
 type ChapterItem = {
   chapterId: string;
@@ -50,6 +51,9 @@ export default function StoryDetail() {
   const [repliesByComment, setRepliesByComment] = useState<Record<string, StoryComment[]>>({});
   const [openReplyBox, setOpenReplyBox] = useState<Record<string, boolean>>({});
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [ratingOpen, setRatingOpen] = useState(false);
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const [ratingSaving, setRatingSaving] = useState(false);
 
   const chapters = useMemo<ChapterItem[]>(() => {
     if (!story) return [];
@@ -116,6 +120,32 @@ export default function StoryDetail() {
       }
     })();
   }, [story?.id]);
+
+  useEffect(() => {
+    if (!convex || !story?.id || !user?.id || user.isGuest) {
+      setUserRating(null);
+      return;
+    }
+
+    let active = true;
+    const load = async () => {
+      try {
+        const rating = await convex.query(api.ratings.getUserRating, {
+          storyId: story.id,
+          userId: user.id,
+        });
+        if (!active) return;
+        setUserRating(typeof rating === 'number' ? rating : null);
+      } catch {
+        if (!active) return;
+        setUserRating(null);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, [story?.id, user?.id, user?.isGuest]);
 
   const fetchReplies = async (commentId: string) => {
     if (!story?.id || !commentId) return;
@@ -382,6 +412,45 @@ export default function StoryDetail() {
     }
   };
 
+  const handleShare = async () => {
+    const url = `${window.location.origin}/story/${story.id}`;
+    try {
+      const res = await shareLink({
+        title: `${story.title} on Lemonade`,
+        text: `Check out ${story.title} by ${story.creator?.name} on Lemonade!`,
+        url,
+      });
+      if (res.method !== "native") {
+        const toast = document.createElement("div");
+        toast.className =
+          "fixed bottom-24 left-1/2 -translate-x-1/2 bg-lemon-muted text-black px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200]";
+        toast.textContent = "Link copied to clipboard!";
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+      }
+    } catch {
+      alert("Unable to share.");
+    }
+  };
+
+  const submitRating = async (value: number) => {
+    if (!convex || !story?.id || !user?.id || user.isGuest) return;
+    try {
+      setRatingSaving(true);
+      await convex.mutation(api.ratings.rateStory, {
+        storyId: story.id,
+        userId: user.id,
+        rating: value,
+      });
+      setUserRating(value);
+      setRatingOpen(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Unable to submit rating.');
+    } finally {
+      setRatingSaving(false);
+    }
+  };
+
   return (
     <div className="relative isolate min-h-screen overflow-x-hidden bg-[#0A0A0A] text-white">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[520px] overflow-hidden">
@@ -445,6 +514,20 @@ export default function StoryDetail() {
                 {isSaved ? 'Saved' : 'Save'}
               </Button>
             </SensitiveActionWrapper>
+            <SensitiveActionWrapper intent="rate story" payload={{ storyId: story.id }} onClick={() => setRatingOpen(true)}>
+              <Button size="sm" variant="glass" className="gap-1.5 rounded-xl border-white/10 bg-[#1A1A1A] px-4">
+                <Star size={14} className={userRating ? 'fill-current text-lemon-muted' : ''} />
+                {userRating ? `${userRating}/5` : 'Rate'}
+              </Button>
+            </SensitiveActionWrapper>
+            <button
+              type="button"
+              onClick={handleShare}
+              className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-[#1A1A1A] px-4 text-[11px] font-bold text-white/75 hover:text-lemon-muted transition-colors"
+            >
+              <Share2 size={14} />
+              Share
+            </button>
             <button
               type="button"
               onClick={() => setActiveTab('comments')}
@@ -597,6 +680,48 @@ export default function StoryDetail() {
           </div>
         </section>
       </main>
+
+      {ratingOpen && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center px-6">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => !ratingSaving && setRatingOpen(false)}
+          />
+          <div className="relative w-full max-w-sm rounded-3xl border border-white/10 bg-[#0A0A0A] p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/35">Rate story</p>
+                <h3 className="mt-1 font-display text-xl font-black">{story.title}</h3>
+              </div>
+              <button
+                type="button"
+                className="h-9 w-9 rounded-full bg-white/5 text-white/60 hover:bg-white/10"
+                onClick={() => !ratingSaving && setRatingOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-5 flex items-center justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  disabled={ratingSaving}
+                  onClick={() => submitRating(value)}
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-[#141414] text-white/70 hover:text-lemon-muted hover:border-lemon-muted/30 disabled:opacity-50"
+                >
+                  <Star size={20} className={userRating && value <= userRating ? 'fill-current text-lemon-muted' : ''} />
+                </button>
+              ))}
+            </div>
+
+            <p className="mt-4 text-center text-xs font-semibold text-white/45">
+              {userRating ? `Your rating: ${userRating}/5` : 'Tap a star to rate.'}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
