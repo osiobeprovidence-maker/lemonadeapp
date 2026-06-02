@@ -1,21 +1,21 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
 const now = () => new Date().toISOString();
 
-const getStoryDoc = async (ctx: any, storyId: string) => {
+const getStoryDoc = async (ctx: MutationCtx, storyId: string) => {
   const byExternalId = await ctx.db
     .query("stories")
-    .withIndex("by_externalId", (q: any) => q.eq("externalId", storyId))
-    .unique();
+    .withIndex("by_externalId", (q) => q.eq("externalId", storyId))
+    .first();
   if (byExternalId) return byExternalId;
 
   try {
     const byId = await ctx.db.get(storyId as Id<"stories">);
     if (byId) return byId;
-  } catch {
-    return null;
+  } catch (err) {
+    console.error("getStoryDoc: invalid storyId format", storyId, err);
   }
 
   return null;
@@ -23,20 +23,20 @@ const getStoryDoc = async (ctx: any, storyId: string) => {
 
 export const getUserRating = query({
   args: { storyId: v.string(), userId: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const rating = await ctx.db
       .query("storyRatings")
       .withIndex("by_userId_and_storyId", (q) =>
         q.eq("userId", args.userId).eq("storyId", args.storyId),
       )
-      .unique();
+      .first();
     return rating?.rating ?? null;
   },
 });
 
 export const rateStory = mutation({
   args: { storyId: v.string(), userId: v.string(), rating: v.number() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const ratingValue = Math.round(args.rating);
     if (ratingValue < 1 || ratingValue > 5) {
       throw new Error("Rating must be between 1 and 5.");
@@ -52,11 +52,11 @@ export const rateStory = mutation({
       .withIndex("by_userId_and_storyId", (q) =>
         q.eq("userId", args.userId).eq("storyId", args.storyId),
       )
-      .unique();
+      .first();
 
     const prevRating = existing?.rating ?? null;
-    const currentCount = typeof (story as any).ratingCount === "number" ? (story as any).ratingCount : 0;
-    const currentSum = typeof (story as any).ratingSum === "number" ? (story as any).ratingSum : 0;
+    const currentCount = typeof story.ratingCount === "number" ? story.ratingCount : 0;
+    const currentSum = typeof story.ratingSum === "number" ? story.ratingSum : 0;
 
     let nextCount = currentCount;
     let nextSum = currentSum;
@@ -74,7 +74,7 @@ export const rateStory = mutation({
     } else {
       nextCount = currentCount;
       nextSum = currentSum - prevRating + ratingValue;
-      await ctx.db.patch(existing!._id, {
+      await ctx.db.patch(existing._id, {
         rating: ratingValue,
         updatedAt: now(),
       });
