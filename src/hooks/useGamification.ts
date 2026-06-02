@@ -9,10 +9,12 @@ export function useGamification() {
   const [streak, setStreak] = useState<any>(null);
   const [currencies, setCurrencies] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!convex || !auth.currentUser) return;
     setLoading(true);
+    setError(null);
     try {
       const rewardHub = await convex.query(api.gamification.getRewardHub, {
         firebaseUid: auth.currentUser.uid,
@@ -28,8 +30,12 @@ export function useGamification() {
       setInventory(inv || null);
       setStreak(s);
       setCurrencies(c);
-    } catch (error) {
-      console.error("Failed to load gamification data", error);
+    } catch (err) {
+      console.error("Failed to load gamification data", err);
+      setError(err instanceof Error ? err.message : "Failed to load rewards data");
+      setHub(null);
+      setStreak(null);
+      setCurrencies(null);
     } finally {
       setLoading(false);
     }
@@ -100,6 +106,7 @@ export function useGamification() {
     hub,
     inventory,
     loading,
+    error,
     streak,
     currencies,
     marketplace: hub?.marketplace || [],
