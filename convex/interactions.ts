@@ -324,21 +324,36 @@ export const createComment = mutation({
         normalizeMessage(comment.message) === normalizedMessage,
     );
 
-    const comment = {
+    const comment: {
+      storyId: string;
+      authorId: string;
+      authorName: string;
+      message: string;
+      likesCount: number;
+      likedBy: string[];
+      dislikesCount: number;
+      dislikedBy: string[];
+      createdAt: string;
+      chapterId?: string;
+      parentCommentId?: string;
+      authorAvatar?: string;
+    } = {
       storyId: args.storyId,
-      chapterId: args.chapterId ?? null,
-      parentCommentId: args.parentCommentId ?? null,
       authorId: args.authorId,
       authorName: args.authorName,
-      authorAvatar: args.authorAvatar ?? null,
       message: args.message,
       likesCount: 0,
       likedBy: [],
       dislikesCount: 0,
       dislikedBy: [],
       createdAt: now(),
-      updatedAt: undefined,
     };
+
+    // Only set optional string fields when they are actual strings —
+    // Convex rejects null/undefined for v.optional(v.string()) fields.
+    if (args.chapterId) comment.chapterId = args.chapterId;
+    if (args.parentCommentId) comment.parentCommentId = args.parentCommentId;
+    if (args.authorAvatar) comment.authorAvatar = args.authorAvatar;
 
     const commentId = await ctx.db.insert("comments", comment);
 

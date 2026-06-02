@@ -4,18 +4,19 @@ import type { Id } from "./_generated/dataModel";
 
 const now = () => new Date().toISOString();
 
-const getStoryDoc = async (ctx: MutationCtx, storyId: string) => {
+const getStoryDoc = async (ctx: MutationCtx | QueryCtx, storyId: string) => {
   const byExternalId = await ctx.db
     .query("stories")
     .withIndex("by_externalId", (q) => q.eq("externalId", storyId))
     .first();
   if (byExternalId) return byExternalId;
 
+  // Fall back to document _id lookup
   try {
     const byId = await ctx.db.get(storyId as Id<"stories">);
     if (byId) return byId;
-  } catch (err) {
-    console.error("getStoryDoc: invalid storyId format", storyId, err);
+  } catch {
+    // storyId is not a valid document ID format — ignore
   }
 
   return null;
@@ -55,8 +56,10 @@ export const rateStory = mutation({
       .first();
 
     const prevRating = existing?.rating ?? null;
-    const currentCount = typeof story.ratingCount === "number" ? story.ratingCount : 0;
-    const currentSum = typeof story.ratingSum === "number" ? story.ratingSum : 0;
+    const currentCount =
+      typeof story.ratingCount === "number" ? story.ratingCount : 0;
+    const currentSum =
+      typeof story.ratingSum === "number" ? story.ratingSum : 0;
 
     let nextCount = currentCount;
     let nextSum = currentSum;
@@ -80,7 +83,8 @@ export const rateStory = mutation({
       });
     }
 
-    const average = nextCount > 0 ? Number((nextSum / nextCount).toFixed(1)) : 0;
+    const average =
+      nextCount > 0 ? Number((nextSum / nextCount).toFixed(1)) : 0;
     await ctx.db.patch(story._id, {
       rating: average,
       ratingCount: nextCount,
@@ -91,4 +95,3 @@ export const rateStory = mutation({
     return { rating: average, ratingCount: nextCount };
   },
 });
-
