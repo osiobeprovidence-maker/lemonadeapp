@@ -304,7 +304,7 @@ export default function Reader() {
     setRatingOpen(false);
     try {
       if (convex) {
-        await convex.mutation(api.interactions.rateStory, {
+        await convex.mutation(api.ratings.rateStory, {
           storyId: story.id,
           userId: user.id,
           rating,
