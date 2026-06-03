@@ -325,8 +325,14 @@ export default function Rewards() {
               <section className="rounded-3xl border border-white/5 bg-ink-deep p-6">
                 <h3 className="font-black mb-4">Your Balance</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {Object.entries(currencies).map(
-                    ([key, value]: [string, any]) => (
+                  {Object.entries(currencies)
+                    .filter(
+                      ([key]) =>
+                        !["_id", "_creationTime", "userId", "updatedat", "creationtime", "id", "userid"].includes(
+                          key.toLowerCase(),
+                        ),
+                    )
+                    .map(([key, value]: [string, any]) => (
                       <div
                         key={key}
                         className="p-4 rounded-xl bg-white/5 border border-white/5 text-center"
@@ -340,8 +346,7 @@ export default function Rewards() {
                             : String(value)}
                         </p>
                       </div>
-                    ),
-                  )}
+                    ))}
                 </div>
               </section>
             )}
