@@ -1592,3 +1592,26 @@ export const getUserCurrencies = query({
     return currencies || { userId: user._id, lemonCoins: 0, goldenInk: 0 };
   },
 });
+
+export const resetAllGamificationData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const tables = [
+      "userCurrencies",
+      "userStreaks",
+      "spinResults",
+      "engagementEvents",
+      "xpEvents",
+      "userAchievements",
+    ];
+
+    for (const table of tables) {
+      const docs = await ctx.db.query(table).take(1000);
+      for (const doc of docs) {
+        await ctx.db.delete(doc._id);
+      }
+    }
+
+    return { success: true, tablesCleared: tables };
+  },
+});
