@@ -8,7 +8,7 @@ import { compressImage, uploadBannerImage } from '../../lib/imageUpload';
 import { cn } from '../../lib/utils';
 
 const CATEGORIES = ["Manga Artist", "Writer", "Illustrator", "Studio", "Animator"];
-const GENRES = ["Action", "Romance", "Horror", "Sci-Fi & Cyberpunk", "African Fantasy", "Drama", "Mystery"];
+const GENRES = ["Action", "Adventure", "Fantasy", "Romance", "Drama", "Comedy", "Sci-Fi", "Horror", "Mystery", "Thriller", "Slice of Life", "Historical", "Supernatural", "Sports", "School Life", "Psychological"];
 
 export default function SettingsCreator() {
   const navigate = useNavigate();

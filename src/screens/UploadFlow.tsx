@@ -409,11 +409,21 @@ export default function UploadFlow() {
                 <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-2 block">Genre</label>
                 <select value={formData.genre} onChange={(e) => setFormData({ ...formData, genre: e.target.value })} className="w-full h-14 bg-black border border-white/10 rounded-xl px-4 text-white outline-none appearance-none font-medium">
                   <option>Action</option>
-                  <option>African Fantasy</option>
-                  <option>Sci-Fi & Cyberpunk</option>
+                  <option>Adventure</option>
+                  <option>Fantasy</option>
                   <option>Romance</option>
                   <option>Drama</option>
+                  <option>Comedy</option>
+                  <option>Sci-Fi</option>
+                  <option>Horror</option>
                   <option>Mystery</option>
+                  <option>Thriller</option>
+                  <option>Slice of Life</option>
+                  <option>Historical</option>
+                  <option>Supernatural</option>
+                  <option>Sports</option>
+                  <option>School Life</option>
+                  <option>Psychological</option>
                 </select>
               </div>
             </div>

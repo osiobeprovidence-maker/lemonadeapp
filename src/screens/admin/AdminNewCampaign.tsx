@@ -9,7 +9,7 @@ import { formatFileSize, uploadStoryFile } from '../../lib/imageUpload';
 type CampaignType = 'video' | 'image' | 'banner';
 type CampaignPlacement = 'chapter_preroll' | 'movie_preroll' | 'novel_midroll' | 'sponsored_banner';
 
-const genreOptions = ['Action', 'African Fantasy', 'Sci-Fi & Cyberpunk', 'Romance', 'Drama', 'Mystery'];
+const genreOptions = ['Action', 'Adventure', 'Fantasy', 'Romance', 'Drama', 'Comedy', 'Sci-Fi', 'Horror', 'Mystery', 'Thriller', 'Slice of Life', 'Historical', 'Supernatural'];
 
 const typeOptions: Array<{ value: CampaignType; label: string; icon: React.ElementType; helper: string }> = [
   { value: 'video', label: 'Video', icon: MonitorPlay, helper: 'Best for pre-roll and movie playback.' },
@@ -44,7 +44,7 @@ export default function AdminNewCampaign() {
     mediaUrl: defaultCreative,
     clickUrl: '',
     cpmNaira: 1800,
-    targetGenres: ['Action', 'Sci-Fi & Cyberpunk'] as string[],
+    targetGenres: ['Action', 'Sci-Fi'] as string[],
   });
 
   const estimatedCreatorShare = useMemo(() => Math.round((form.cpmNaira || 0) * 0.7), [form.cpmNaira]);

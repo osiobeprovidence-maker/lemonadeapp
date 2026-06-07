@@ -97,20 +97,47 @@ export default defineSchema({
     creatorId: v.string(),
     creatorUsername: v.string(),
     title: v.string(),
+    alternativeTitles: v.optional(v.array(v.string())),
     genre: v.string(),
-    format: v.string(),
+    genres: v.optional(v.array(v.string())),
+    tags: v.array(v.string()),
+    contentType: v.optional(
+      v.union(
+        v.literal("manga"),
+        v.literal("manhwa"),
+        v.literal("manhua"),
+        v.literal("webtoon"),
+        v.literal("comic"),
+        v.literal("novel"),
+        v.literal("light_novel"),
+      ),
+    ),
+    format: v.optional(v.string()),
     rating: v.number(),
     ratingCount: v.optional(v.number()),
     ratingSum: v.optional(v.number()),
     views: v.number(),
     saves: v.number(),
+    followers: v.optional(v.number()),
     episodes: v.number(),
     synopsis: v.string(),
+    description: v.optional(v.string()),
     coverImage: v.optional(v.string()),
     bannerImage: v.optional(v.string()),
-    tags: v.array(v.string()),
+    author: v.optional(v.string()),
+    artist: v.optional(v.string()),
+    releaseYear: v.optional(v.number()),
+    language: v.optional(v.string()),
     isOriginal: v.boolean(),
     isFeatured: v.boolean(),
+    publicationStatus: v.optional(
+      v.union(
+        v.literal("ongoing"),
+        v.literal("completed"),
+        v.literal("hiatus"),
+        v.literal("cancelled"),
+      ),
+    ),
     status: v.union(
       v.literal("draft"),
       v.literal("published"),
@@ -118,13 +145,20 @@ export default defineSchema({
       v.literal("archived"),
     ),
     media: v.optional(v.any()),
+    weeklyViews: v.optional(v.number()),
+    lastChapterAt: v.optional(v.string()),
     ...timestampFields,
   })
     .index("by_externalId", ["externalId"])
     .index("by_creatorId", ["creatorId"])
     .index("by_creatorUsername", ["creatorUsername"])
     .index("by_status", ["status"])
-    .index("by_featured", ["isFeatured"]),
+    .index("by_featured", ["isFeatured"])
+    .index("by_contentType", ["contentType"])
+    .index("by_genre", ["genre"])
+    .index("by_publicationStatus", ["publicationStatus"])
+    .index("by_views", ["views"])
+    .index("by_rating", ["rating"]),
 
   storyRatings: defineTable({
     storyId: v.string(),
@@ -551,7 +585,7 @@ export default defineSchema({
   contentRequests: defineTable({
     userId: v.string(),
     title: v.string(),
-    type: v.union(v.literal("manga"), v.literal("manhwa"), v.literal("webtoon"), v.literal("novel"), v.literal("comic"), v.literal("other")),
+    type: v.union(v.literal("manga"), v.literal("manhwa"), v.literal("manhua"), v.literal("webtoon"), v.literal("novel"), v.literal("light_novel"), v.literal("comic"), v.literal("other")),
     description: v.optional(v.string()),
     sourceUrl: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("approved"), v.literal("in_progress"), v.literal("added"), v.literal("rejected")),

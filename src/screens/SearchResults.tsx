@@ -9,7 +9,41 @@ import { useAuth } from '../contexts/AppContext';
 import { convex } from '../lib/convex';
 import { api } from '../../convex/_generated/api';
 
-const CONTENT_TYPES = ['manga', 'manhwa', 'webtoon', 'novel', 'comic', 'other'] as const;
+const CONTENT_TYPES = ['manga', 'manhwa', 'manhua', 'webtoon', 'novel', 'light_novel', 'comic', 'other'] as const;
+
+// Levenshtein distance for fuzzy matching
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + (a[i - 1] !== b[j - 1] ? 1 : 0)
+      );
+    }
+  }
+  return dp[m][n];
+}
+
+function fuzzyMatch(query: string, target: string): boolean {
+  const q = query.toLowerCase().trim();
+  const t = target.toLowerCase();
+  if (!q) return true;
+  if (t.includes(q)) return true;
+  const words = q.split(/\s+/);
+  return words.some((word) => {
+    if (t.includes(word)) return true;
+    const tWords = t.split(/\s+/);
+    const maxDist = word.length <= 3 ? 1 : word.length <= 6 ? 2 : 3;
+    return tWords.some((tw) => levenshtein(word, tw) <= maxDist);
+  });
+}
 
 function RequestContentModal({ query, onClose }: { query: string; onClose: () => void }) {
   const { user } = useAuth();
@@ -214,11 +248,20 @@ export default function SearchResults() {
   const sorts = ['Trending', 'Newest', 'Most Read', 'Highest Rated'];
 
   const filtered = useMemo(() => {
-    const results = stories.filter(s => 
-      !query || s.title.toLowerCase().includes(query.toLowerCase()) || 
-      s.creator.name.toLowerCase().includes(query.toLowerCase()) ||
-      s.genre.toLowerCase().includes(query.toLowerCase())
-    );
+    let results = stories;
+    
+    if (query) {
+      results = stories.filter(s => {
+        const titleMatch = fuzzyMatch(query, s.title);
+        const authorMatch = s.author ? fuzzyMatch(query, s.author) : false;
+        const creatorMatch = fuzzyMatch(query, s.creator.name);
+        const genreMatch = fuzzyMatch(query, s.genre) ||
+          (s.genres && s.genres.some(g => fuzzyMatch(query, g))) ||
+          (s.tags && s.tags.some(t => fuzzyMatch(query, t)));
+        const altMatch = s.alternativeTitles?.some(alt => fuzzyMatch(query, alt));
+        return titleMatch || authorMatch || creatorMatch || genreMatch || altMatch;
+      });
+    }
 
     switch (activeSort) {
       case 'Newest':

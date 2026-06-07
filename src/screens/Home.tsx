@@ -1,15 +1,17 @@
 import React, { useMemo } from "react";
-import { Link } from "react-router-dom";
-import { Bookmark, ChevronRight, Play, Search } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Bookmark, ChevronRight, Play, Search, Flame, Clock, Star, BookOpen, Sparkles, TrendingUp } from "lucide-react";
 import { StoryCard, FormatBadge, GenreBadge } from "../components/ui/Cards";
 import { Button } from "../components/ui/Button";
 import { useStories, useTrendingStories } from "../hooks/useConvex";
 import { useApp } from "../contexts/AppContext";
+import { ALL_CONTENT_TYPES } from "../data/types";
 
 export default function Home() {
   const { user } = useApp();
   const stories = useStories();
   const trendingStories = useTrendingStories();
+  const navigate = useNavigate();
 
   const allStories = useMemo(() => stories || [], [stories]);
   const featured = allStories[0];
@@ -17,27 +19,54 @@ export default function Home() {
   const sections = useMemo(() => {
     const trending =
       trendingStories?.length > 0
-        ? trendingStories.slice(0, 6)
-        : allStories.slice(1, 7);
+        ? trendingStories.slice(0, 10)
+        : [...allStories].sort((a, b) => (b.weeklyViews || b.views || 0) - (a.weeklyViews || a.views || 0)).slice(0, 10);
+
+    const now = Date.now();
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+    const newReleases = [...allStories]
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 10);
+
+    const popularThisWeek = [...allStories]
+      .sort((a, b) => (b.weeklyViews || 0) - (a.weeklyViews || 0))
+      .slice(0, 10);
+
+    const originals = allStories.filter((s) => s.isOriginal).slice(0, 10);
+
+    const recentlyUpdated = [...allStories]
+      .sort((a, b) => {
+        const aDate = new Date(a.lastChapterAt || a.updatedAt || 0).getTime();
+        const bDate = new Date(b.lastChapterAt || b.updatedAt || 0).getTime();
+        return bDate - aDate;
+      })
+      .slice(0, 10);
+
+    const topWebtoons = allStories
+      .filter((s) => s.contentType === "Webtoon" || s.format === "Webtoon")
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
+      .slice(0, 10);
+
+    const topNovels = allStories
+      .filter((s) => s.contentType === "Novel" || s.contentType === "Light Novel" || s.format === "Novel" || s.format === "Light Novel")
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
+      .slice(0, 10);
+
+    const topManga = allStories
+      .filter((s) => s.contentType === "Manga" || s.format === "Manga")
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
+      .slice(0, 10);
 
     return [
-      { title: "Trending Now", stories: trending },
-      {
-        title: "OWUUU Originals",
-        stories: allStories.filter((story) => story.isOriginal),
-      },
-      {
-        title: "African Fantasy",
-        stories: allStories.filter(
-          (story) => story.genre === "African Fantasy",
-        ),
-      },
-      {
-        title: "Sci-Fi & Cyberpunk",
-        stories: allStories.filter(
-          (story) => story.genre === "Sci-Fi & Cyberpunk",
-        ),
-      },
+      { title: "Trending Now", stories: trending, icon: Flame, link: "/explore?sort=trending" },
+      { title: "New Releases", stories: newReleases, icon: Sparkles, link: "/explore?sort=newest" },
+      { title: "Popular This Week", stories: popularThisWeek, icon: TrendingUp, link: "/explore?sort=trending" },
+      { title: "OWUUU Originals", stories: originals, icon: Star, link: "/explore?originals=true" },
+      { title: "Top Manga", stories: topManga, icon: BookOpen, link: "/type/manga" },
+      { title: "Top Webtoons", stories: topWebtoons, icon: BookOpen, link: "/type/webtoon" },
+      { title: "Top Novels", stories: topNovels, icon: BookOpen, link: "/type/novel" },
+      { title: "Recently Updated", stories: recentlyUpdated, icon: Clock, link: "/explore?sort=recently_updated" },
     ].filter((section) => section.stories.length > 0);
   }, [allStories, trendingStories]);
 
@@ -75,6 +104,7 @@ export default function Home() {
 
   return (
     <div className="w-full min-h-full overflow-x-hidden bg-[#0A0A0A] pb-8">
+      {/* Hero Banner */}
       <section className="relative min-h-[66svh] max-h-[75svh] md:min-h-[72vh] overflow-hidden">
         <img
           src={featured.bannerImage}
@@ -88,8 +118,13 @@ export default function Home() {
         <div className="relative z-10 flex min-h-[66svh] max-h-[75svh] flex-col justify-end px-4 pb-5 pt-8 md:min-h-[72vh] md:px-8 md:pb-10">
           <div className="max-w-xl">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <FormatBadge format={featured.format} />
-              <GenreBadge genre={featured.genre} />
+              <FormatBadge format={featured.format || featured.contentType || "Manga"} />
+              <GenreBadge genre={featured.genre as any} />
+              {featured.publicationStatus && (
+                <div className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 text-white/70 border border-white/10">
+                  {featured.publicationStatus}
+                </div>
+              )}
             </div>
             <h1 className="font-display text-[34px] leading-[0.95] sm:text-5xl md:text-6xl font-black text-white max-w-[13ch]">
               {featured.title}
@@ -120,12 +155,27 @@ export default function Home() {
                 <Search size={18} />
               </Link>
             </div>
-            {/* Rewards (streak & spin) moved to /rewards page */}
           </div>
         </div>
       </section>
 
-      <div className="flex flex-col gap-8 pt-5">
+      {/* Content Type Quick Links */}
+      <div className="px-4 pt-5 pb-2">
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+          {ALL_CONTENT_TYPES.map((type) => (
+            <Link
+              key={type}
+              to={`/type/${type.toLowerCase().replace(" ", "-")}`}
+              className="shrink-0 px-4 py-2 bg-ink-deep border border-white/10 rounded-full text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              {type}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-8 pt-3">
+        {/* Continue Reading */}
         {continueReadingStory && (
           <section className="px-4">
             <div className="mb-3 flex items-center justify-between">
@@ -173,28 +223,38 @@ export default function Home() {
           </section>
         )}
 
-        {sections.map((section) => (
-          <section key={section.title} className="px-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="font-display text-xl font-black leading-none">
-                {section.title}
-              </h2>
-              <button className="shrink-0 text-[11px] font-black uppercase tracking-wider text-lemon-muted/85">
-                See all
-              </button>
-            </div>
-            <div className="-mx-4 flex snap-x snap-proximity gap-3 overflow-x-auto px-4 pb-1 hide-scrollbar scroll-smooth" style={{ WebkitOverflowScrolling: 'touch', willChange: 'scroll-position' }}>
-              {section.stories.map((story) => (
-                <div
-                  key={story.id}
-                  className="w-[132px] shrink-0 snap-start sm:w-[170px] md:w-[190px]"
-                >
-                  <StoryCard story={story} />
+        {/* Story Sections (Carousels) */}
+        {sections.map((section) => {
+          const SectionIcon = section.icon;
+          return (
+            <section key={section.title} className="px-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <SectionIcon size={18} className="text-lemon-muted" />
+                  <h2 className="font-display text-xl font-black leading-none">
+                    {section.title}
+                  </h2>
                 </div>
-              ))}
-            </div>
-          </section>
-        ))}
+                <Link
+                  to={section.link || "/explore"}
+                  className="shrink-0 text-[11px] font-black uppercase tracking-wider text-lemon-muted/85 hover:text-lemon-muted transition-colors"
+                >
+                  See all
+                </Link>
+              </div>
+              <div className="-mx-4 flex snap-x snap-proximity gap-3 overflow-x-auto px-4 pb-1 hide-scrollbar scroll-smooth" style={{ WebkitOverflowScrolling: 'touch', willChange: 'scroll-position' }}>
+                {section.stories.map((story) => (
+                  <div
+                    key={story.id}
+                    className="w-[132px] shrink-0 snap-start sm:w-[170px] md:w-[190px]"
+                  >
+                    <StoryCard story={story} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

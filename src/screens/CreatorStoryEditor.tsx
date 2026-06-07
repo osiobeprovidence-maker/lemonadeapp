@@ -411,11 +411,21 @@ export default function CreatorStoryEditor() {
                     className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
                   >
                     <option>Action</option>
-                    <option>African Fantasy</option>
-                    <option>Sci-Fi & Cyberpunk</option>
+                    <option>Adventure</option>
+                    <option>Fantasy</option>
                     <option>Romance</option>
                     <option>Drama</option>
+                    <option>Comedy</option>
+                    <option>Sci-Fi</option>
+                    <option>Horror</option>
                     <option>Mystery</option>
+                    <option>Thriller</option>
+                    <option>Slice of Life</option>
+                    <option>Historical</option>
+                    <option>Supernatural</option>
+                    <option>Sports</option>
+                    <option>School Life</option>
+                    <option>Psychological</option>
                   </select>
                 </div>
               </div>

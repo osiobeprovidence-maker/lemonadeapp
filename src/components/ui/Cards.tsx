@@ -119,14 +119,23 @@ export function ReaderProfileCard({ reader }: { reader: Reader }) {
 }
 
 export function GenreBadge({ genre, className }: { genre: Genre, className?: string }) {
-  const colorMap: Record<Genre, string> = {
+  const colorMap: Record<string, string> = {
     "Action": "bg-[#CC5500]",
+    "Adventure": "bg-[#8B5E3C]",
+    "Fantasy": "bg-[#046307]",
     "Romance": "bg-[#D08C99]",
-    "Horror": "bg-[#8A0303]",
-    "Sci-Fi & Cyberpunk": "bg-[#8A2BE2]",
-    "African Fantasy": "bg-[#046307]",
     "Drama": "bg-[#6E8E9B]",
-    "Mystery": "bg-[#1f2937]"
+    "Comedy": "bg-[#FFD700]",
+    "Sci-Fi": "bg-[#8A2BE2]",
+    "Horror": "bg-[#8A0303]",
+    "Mystery": "bg-[#1f2937]",
+    "Thriller": "bg-[#4B0082]",
+    "Slice of Life": "bg-[#87CEEB]",
+    "Historical": "bg-[#8B4513]",
+    "Supernatural": "bg-[#6A0DAD]",
+    "Sports": "bg-[#228B22]",
+    "School Life": "bg-[#FF69B4]",
+    "Psychological": "bg-[#2F4F4F]",
   };
 
   return (

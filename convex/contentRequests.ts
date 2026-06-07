@@ -10,8 +10,10 @@ export const createRequest = mutation({
     type: v.union(
       v.literal("manga"),
       v.literal("manhwa"),
+      v.literal("manhua"),
       v.literal("webtoon"),
       v.literal("novel"),
+      v.literal("light_novel"),
       v.literal("comic"),
       v.literal("other"),
     ),

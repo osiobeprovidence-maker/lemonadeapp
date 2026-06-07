@@ -76,6 +76,8 @@ import Privacy from './screens/legal/Privacy';
 import CreatorApplication from './screens/CreatorApplication';
 import CreatorApplicationStatus from './screens/CreatorApplicationStatus';
 import StudioAccessGuard from './components/StudioAccessGuard';
+import GenrePage from './screens/GenrePage';
+import TypePage from './screens/TypePage';
 
 import NavigationLayout from './components/NavigationLayout';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
@@ -96,6 +98,11 @@ function AnimatedRoutes() {
         <Route element={<NavigationLayout />}>
           <Route path="/home" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/genre/:genre" element={<GenrePage />} />
+          <Route path="/type/:type" element={<TypePage />} />
+          <Route path="/manga" element={<TypePage />} />
+          <Route path="/webtoon" element={<TypePage />} />
+          <Route path="/novel" element={<TypePage />} />
           <Route path="/library" element={<Library />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/notifications" element={<Notifications />} />
