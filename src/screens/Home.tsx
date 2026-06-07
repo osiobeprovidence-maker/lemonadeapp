@@ -183,7 +183,7 @@ export default function Home() {
                 See all
               </button>
             </div>
-            <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 hide-scrollbar">
+            <div className="-mx-4 flex snap-x snap-proximity gap-3 overflow-x-auto px-4 pb-1 hide-scrollbar scroll-smooth" style={{ WebkitOverflowScrolling: 'touch', willChange: 'scroll-position' }}>
               {section.stories.map((story) => (
                 <div
                   key={story.id}

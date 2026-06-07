@@ -280,7 +280,7 @@ export default function NavigationLayout() {
         {/* Main Content Area */}
         <main 
           className={cn(
-            "flex-1 min-w-0 w-full relative overflow-y-auto overflow-x-hidden hide-scrollbar",
+            "flex-1 min-w-0 w-full relative overflow-y-auto overflow-x-hidden hide-scrollbar scroll-smooth",
             !shouldHideNav ? "pb-[calc(22px+env(safe-area-inset-bottom))] lg:pb-0" : ""
           )}
         >

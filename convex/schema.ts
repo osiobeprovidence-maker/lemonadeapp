@@ -547,4 +547,19 @@ export default defineSchema({
     resolvedAt: v.optional(v.string()),
     reviewedBy: v.optional(v.string()),
   }).index("by_user", ["userId"]),
+
+  contentRequests: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    type: v.union(v.literal("manga"), v.literal("manhwa"), v.literal("webtoon"), v.literal("novel"), v.literal("comic"), v.literal("other")),
+    description: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("in_progress"), v.literal("added"), v.literal("rejected")),
+    votes: v.number(),
+    votedBy: v.array(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  }).index("by_status", ["status"])
+    .index("by_votes", ["votes"])
+    .index("by_user", ["userId"]),
 });
