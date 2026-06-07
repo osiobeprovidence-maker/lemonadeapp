@@ -321,30 +321,7 @@ export default function Rewards() {
               </section>
             </section>
 
-            {currencies && (
-              <section className="rounded-3xl border border-white/5 bg-ink-deep p-6">
-                <h3 className="font-black mb-4">Your Balance</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {Object.entries(currencies).map(
-                    ([key, value]: [string, any]) => (
-                      <div
-                        key={key}
-                        className="p-4 rounded-xl bg-white/5 border border-white/5 text-center"
-                      >
-                        <p className="text-xs text-white/40 uppercase tracking-wider font-bold">
-                          {key.replace(/_/g, " ")}
-                        </p>
-                        <p className="mt-1 font-display font-bold text-xl">
-                          {typeof value === "number"
-                            ? value.toLocaleString()
-                            : String(value)}
-                        </p>
-                      </div>
-                    ),
-                  )}
-                </div>
-              </section>
-            )}
+
           </>
         )}
       </div>

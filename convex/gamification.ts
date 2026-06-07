@@ -132,8 +132,6 @@ function sameUtcDay(a: Date, b: Date) {
 }
 
 function isYesterdayUTC(previous: Date, current: Date) {
-  // robust day-difference using UTC day starts to avoid edge cases
-  const msPerDay = 24 * 60 * 60 * 1000;
   const prevDay = Date.UTC(
     previous.getUTCFullYear(),
     previous.getUTCMonth(),
@@ -144,8 +142,7 @@ function isYesterdayUTC(previous: Date, current: Date) {
     current.getUTCMonth(),
     current.getUTCDate(),
   );
-  const diff = Math.round((currDay - prevDay) / msPerDay);
-  return diff === 1;
+  return currDay - prevDay === 24 * 60 * 60 * 1000;
 }
 
 function normalizeComment(message: string) {
@@ -1596,25 +1593,25 @@ export const getUserCurrencies = query({
   },
 });
 
-export const resetAllCoinBalances = mutation({
+export const resetAllGamificationData = mutation({
   args: {},
   handler: async (ctx) => {
-    const entries = await ctx.db.query("userCurrencies").take(1000);
-    let count = 0;
-    for (const entry of entries) {
-      const prev = Number(entry.lemonCoins || 0);
-      if (prev === 0) continue;
-      await ctx.db.patch(entry._id, { lemonCoins: 0, updatedAt: now() });
-      await ctx.db.insert("xpEvents", {
-        userId: entry.userId,
-        amount: -prev,
-        reason: "admin_reset_coins",
-        source: "admin_reset",
-        timestamp: now(),
-        metadata: { previousBalance: prev, currency: "lemonCoins" },
-      });
-      count += 1;
+    const tables = [
+      "userCurrencies",
+      "userStreaks",
+      "spinResults",
+      "engagementEvents",
+      "xpEvents",
+      "userAchievements",
+    ];
+
+    for (const table of tables) {
+      const docs = await ctx.db.query(table).take(1000);
+      for (const doc of docs) {
+        await ctx.db.delete(doc._id);
+      }
     }
-    return { success: true, resetCount: count };
+
+    return { success: true, tablesCleared: tables };
   },
 });
