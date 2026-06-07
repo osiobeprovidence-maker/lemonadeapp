@@ -492,6 +492,50 @@ export default defineSchema({
     updatedAt: v.string(),
   }).index("by_rewardId", ["rewardId"]),
 
+  subscriptions: defineTable({
+    creatorId: v.optional(v.string()),
+    userId: v.optional(v.string()),
+    plan: v.optional(v.string()),
+    amount: v.number(),
+    billingCycle: v.union(v.literal("monthly"), v.literal("yearly")),
+    status: v.union(
+      v.literal("trial"),
+      v.literal("active"),
+      v.literal("past_due"),
+      v.literal("cancelled"),
+      v.literal("suspended")
+    ),
+    trialStart: v.optional(v.string()),
+    trialEnd: v.optional(v.string()),
+    nextBillingDate: v.optional(v.string()),
+    paystackCustomerId: v.optional(v.string()),
+    paystackAuthorizationCode: v.optional(v.string()),
+    paymentMethodConnected: v.boolean(),
+    metadata: v.optional(v.any()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_creatorId", ["creatorId"])
+    .index("by_userId", ["userId"])
+    .index("by_status", ["status"]),
+
+  payments: defineTable({
+    creatorId: v.optional(v.string()),
+    userId: v.optional(v.string()),
+    subscriptionId: v.optional(v.string()),
+    amount: v.number(),
+    currency: v.string(),
+    status: v.union(v.literal("pending"), v.literal("success"), v.literal("failed")),
+    transactionReference: v.optional(v.string()),
+    provider: v.optional(v.string()),
+    providerPayload: v.optional(v.any()),
+    paymentDate: v.string(),
+    metadata: v.optional(v.any()),
+  })
+    .index("by_creatorId", ["creatorId"])
+    .index("by_subscriptionId", ["subscriptionId"])
+    .index("by_status", ["status"]),
+
   fraudEvents: defineTable({
     userId: v.optional(v.string()),
     type: v.string(),

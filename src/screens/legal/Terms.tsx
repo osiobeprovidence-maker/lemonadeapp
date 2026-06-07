@@ -23,12 +23,12 @@ export default function Terms() {
       <div className="space-y-8 text-white/80 font-medium leading-relaxed">
         <section>
           <h2 className="text-xl font-display font-black uppercase italic mb-4 text-white">1. Acceptance of Terms</h2>
-          <p>By accessing or using Lemonade, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the platform.</p>
+          <p>By accessing or using OWUUU, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the platform.</p>
         </section>
 
         <section>
           <h2 className="text-xl font-display font-black uppercase italic mb-4 text-white">2. Content Ownership</h2>
-          <p>Creators retain all copyright ownership of their original works published on Lemonade. By publishing content, you grant Lemonade a non-exclusive, worldwide, royalty-free license to host, display, and distribute your content to other users via the platform.</p>
+          <p>Creators retain all copyright ownership of their original works published on OWUUU. By publishing content, you grant OWUUU a non-exclusive, worldwide, royalty-free license to host, display, and distribute your content to other users via the platform.</p>
         </section>
 
         <section>
@@ -38,7 +38,7 @@ export default function Terms() {
 
         <section>
           <h2 className="text-xl font-display font-black uppercase italic mb-4 text-white">4. Monetization & Payments</h2>
-          <p>Lemonade offers a digital currency (Lemons) and premium subscriptions. All purchases are final and non-refundable unless required by law or as stated in our separate refund policy.</p>
+          <p>OWUUU offers a digital currency (Lemons) and premium subscriptions. All purchases are final and non-refundable unless required by law or as stated in our separate refund policy.</p>
         </section>
 
         <section>

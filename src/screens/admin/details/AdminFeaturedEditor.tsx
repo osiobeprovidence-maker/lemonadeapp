@@ -26,7 +26,7 @@ const FEATURED_SECTIONS = [
   { id: "hero", label: "Hero Featured Story", icon: Star },
   { id: "trending", label: "Trending Now", icon: TrendingUp },
   { id: "new_drops", label: "New Drops", icon: Clock },
-  { id: "originals", label: "Lemonade Originals", icon: BadgeCheck },
+  { id: "originals", label: "OWUUU Originals", icon: BadgeCheck },
   { id: "creators", label: "Featured Creators", icon: BadgeCheck },
 ];
 

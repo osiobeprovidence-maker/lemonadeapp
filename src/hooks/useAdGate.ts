@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../convex/_generated/api';
 import { convex } from '../lib/convex';
-import type { LemonadeAd } from '../components/ads/AdPrerollModal';
+import type { OwuuuAd } from '../components/ads/AdPrerollModal';
 
 type AdGateArgs = {
   enabled: boolean;
@@ -14,8 +14,8 @@ type AdGateArgs = {
   isPremium: boolean;
 };
 
-const RECENT_ADS_KEY = 'lemonade_recent_ads';
-const LAST_AD_KEY = 'lemonade_last_ad_at';
+const RECENT_ADS_KEY = 'owuuu_recent_ads';
+const LAST_AD_KEY = 'owuuu_last_ad_at';
 
 const readRecentAds = () => {
   try {
@@ -50,7 +50,7 @@ export function useAdGate({
   chapterNumber,
   isPremium,
 }: AdGateArgs) {
-  const [ad, setAd] = useState<LemonadeAd | null>(null);
+  const [ad, setAd] = useState<OwuuuAd | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState(5);
   const [isAdOpen, setIsAdOpen] = useState(false);
   const [isContentUnlocked, setIsContentUnlocked] = useState(!enabled || isPremium);
@@ -111,7 +111,7 @@ export function useAdGate({
         if (cancelled) return;
 
         if (decision?.shouldShow && decision.ad) {
-          setAd(decision.ad as LemonadeAd);
+          setAd(decision.ad as OwuuuAd);
           setCountdownSeconds(decision.countdownSeconds || 5);
           setIsAdOpen(true);
           setIsContentUnlocked(false);

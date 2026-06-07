@@ -95,7 +95,7 @@ export default function SettingsAccountPrivacy() {
             <h4 className="text-lg font-display font-black uppercase italic tracking-tight text-blue-400">Security Note</h4>
          </div>
          <p className="text-sm font-bold text-white/60 leading-relaxed italic">
-            Lemonade takes your privacy seriously. We never share your personal data or reading habits with third-party advertisers. All data is encrypted and handled according to our Privacy Policy.
+            OWUUU takes your privacy seriously. We never share your personal data or reading habits with third-party advertisers. All data is encrypted and handled according to our Privacy Policy.
          </p>
       </div>
     </SettingsDetailLayout>

@@ -161,7 +161,7 @@ export default function Auth() {
               {mode === 'role' ? (
                 <>
                   <div>
-                    <h1 className="font-display text-3xl md:text-5xl font-black mb-2">Welcome to Lemonade.</h1>
+                    <h1 className="font-display text-3xl md:text-5xl font-black mb-2">Welcome to OWUUU.</h1>
                     <p className="text-white/60 text-sm md:text-base leading-relaxed">How do you want to use the platform?</p>
                   </div>
                   <div className="grid gap-4 mt-6">
@@ -286,7 +286,7 @@ export default function Auth() {
 
                   <div className="mt-6 text-center text-sm text-white/50">
                     {mode === 'signin' ? (
-                      <p>New to Lemonade? <button onClick={() => setMode('signup')} className="text-lemon-muted font-medium hover:underline">Sign up</button></p>
+                      <p>New to OWUUU? <button onClick={() => setMode('signup')} className="text-lemon-muted font-medium hover:underline">Sign up</button></p>
                     ) : (
                        <p>Already have an account? <button onClick={() => setMode('signin')} className="text-lemon-muted font-medium hover:underline">Sign in</button></p>
                     )}

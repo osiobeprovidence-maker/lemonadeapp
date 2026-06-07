@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ExternalLink, Play, ShieldCheck, Timer, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 
-export type LemonadeAd = {
+export type OwuuuAd = {
   _id: string;
   title: string;
   type: 'video' | 'image' | 'banner';
@@ -15,7 +15,7 @@ export type LemonadeAd = {
 };
 
 interface AdPrerollModalProps {
-  ad: LemonadeAd | null;
+  ad: OwuuuAd | null;
   countdownSeconds?: number;
   open: boolean;
   onComplete: (watchTimeMs: number) => void;

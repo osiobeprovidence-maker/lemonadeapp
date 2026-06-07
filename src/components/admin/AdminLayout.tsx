@@ -100,10 +100,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div className="p-8">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-lemon-muted rounded-xl flex items-center justify-center">
-              <span className="text-black font-black text-xl">L</span>
+              <span className="text-black font-black text-xl">O</span>
             </div>
             <div>
-              <h1 className="font-display font-black text-xl tracking-tight leading-none">LEMONADE</h1>
+              <h1 className="font-display font-black text-xl tracking-tight leading-none">OWUUU</h1>
               <p className="text-[10px] font-black uppercase tracking-widest text-lemon-muted mt-1">Admin Panel</p>
             </div>
           </div>
@@ -165,9 +165,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-ink-deep border-b border-white/5 flex items-center justify-between px-6 z-50">
         <div className="flex items-center gap-2">
            <div className="w-8 h-8 bg-lemon-muted rounded-lg flex items-center justify-center">
-             <span className="text-black font-black text-sm">L</span>
+             <span className="text-black font-black text-sm">O</span>
            </div>
-           <h1 className="font-display font-black text-base tracking-tight">LEMONADE ADMIN</h1>
+           <h1 className="font-display font-black text-base tracking-tight">OWUUU ADMIN</h1>
         </div>
         <button 
           onClick={() => setIsMobileMenuOpen(true)}

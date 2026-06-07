@@ -36,7 +36,7 @@ export default function SettingsAppearance() {
   return (
     <SettingsDetailLayout 
       title="Appearance" 
-      description="Customize how Lemonade looks on your device."
+      description="Customize how OWUUU looks on your device."
       onSave={handleSave}
       isLoading={isLoading}
     >

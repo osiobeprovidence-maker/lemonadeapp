@@ -1,5 +1,5 @@
-const CACHE_NAME = 'lemonade-pwa-v2';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/lemonade-icon.svg'];
+const CACHE_NAME = 'owuuu-pwa-v1';
+const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/owuuu-icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));

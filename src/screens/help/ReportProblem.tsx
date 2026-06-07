@@ -104,7 +104,7 @@ export default function ReportProblem() {
               <CheckCircle size={48} />
             </div>
             <h2 className="text-3xl font-display font-black tracking-tight uppercase italic mb-4">Report Received</h2>
-            <p className="text-white/40 font-bold max-w-sm mb-12">We've logged the problem and our engineering team will look into it. Thanks for helping us improve Lemonade!</p>
+            <p className="text-white/40 font-bold max-w-sm mb-12">We've logged the problem and our engineering team will look into it. Thanks for helping us improve OWUUU!</p>
             <button 
               onClick={() => navigate('/home')}
               className="px-12 h-16 bg-white/5 border border-white/10 rounded-2xl font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all"

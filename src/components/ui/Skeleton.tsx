@@ -70,7 +70,7 @@ export function AppSkeleton() {
         </div>
         <div className="space-y-2 text-center">
           <h1 className="font-display font-black text-2xl tracking-tighter text-white/50">
-            LEMONADE<span className="text-lemon-muted/50">.</span>
+            OWUUU
           </h1>
           <p className="text-xs font-medium tracking-widest uppercase text-white/30">
             Loading your stories...

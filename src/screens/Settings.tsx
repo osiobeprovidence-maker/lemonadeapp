@@ -106,7 +106,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
     description: 'Terms and privacy rules',
     icon: ShieldCheck,
     items: [
-      { label: 'Terms', description: 'Read Lemonade terms of service', path: '/terms' },
+      { label: 'Terms', description: 'Read OWUUU terms of service', path: '/terms' },
       { label: 'Privacy Policy', description: 'Review how your data is handled', path: '/privacy' },
     ],
   },

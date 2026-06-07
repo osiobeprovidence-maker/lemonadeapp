@@ -97,7 +97,7 @@ export default function NavigationLayout() {
       {!shouldHideNav && (
         <aside id="desktop-sidebar" className="hidden lg:flex flex-col w-64 border-r border-ink-deep bg-black-core p-6 z-20">
           <Link to="/home" id="sidebar-logo" className="mb-10 font-display font-black text-2xl tracking-tighter text-lemon-muted">
-            LEMONADE<span className="text-white">.</span>
+            OWUUU
           </Link>
           
           <nav id="desktop-main-nav" className="flex-1 flex flex-col gap-2">
@@ -166,7 +166,7 @@ export default function NavigationLayout() {
                 <Menu size={20} />
               </button>
               <Link to="/home" id="mobile-logo" className="font-display font-black text-[15px] tracking-tight text-lemon-muted uppercase">
-                LEMONADE
+                OWUUU
               </Link>
               <Link
                 to="/explore"
@@ -199,7 +199,7 @@ export default function NavigationLayout() {
                   >
                     <div className="mb-6 flex items-center justify-between">
                       <Link to="/home" onClick={() => setDrawerOpen(false)} className="font-display text-xl font-black text-lemon-muted">
-                        LEMONADE
+                        OWUUU
                       </Link>
                       <button
                         type="button"

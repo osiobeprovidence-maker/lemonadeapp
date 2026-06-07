@@ -164,7 +164,7 @@ export default function Premium() {
   
   const benefits = [
     { icon: <CheckCircle2 />, title: "Unlock Every Chapter", desc: "Read all premium locked chapters instantly without spending individual coins." },
-    { icon: <Star />, title: "Early Access", desc: "Read chapters of 'Lemonade Originals' a week before everyone else." },
+    { icon: <Star />, title: "Early Access", desc: "Read chapters of 'OWUUU Originals' a week before everyone else." },
     { icon: <Download />, title: "Offline Reading", desc: "Download unlimited chapters to read anywhere, anytime." },
     { icon: <Crown />, title: "Premium Badge", desc: "Show off your premium status with an exclusive badge on your profile." },
     { icon: <Sparkles />, title: "Bonus Credits", desc: "Receive 50 creator support credits every month." },
@@ -198,7 +198,7 @@ export default function Premium() {
 
       <div className="max-w-4xl mx-auto w-full relative z-10 text-center mb-10 md:mb-16 mt-8">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lemon-muted/10 text-lemon-muted text-xs md:text-sm font-bold uppercase tracking-wider mb-6">
-          <Crown size={14} className="md:size-4" /> Lemonade Premium
+          <Crown size={14} className="md:size-4" /> OWUUU Premium
         </div>
         <h1 className="font-display font-black text-3xl md:text-6xl mb-4 md:mb-6 leading-tight">
           Read without <span className="text-lemon-muted text-glow">limits.</span>
@@ -250,7 +250,7 @@ export default function Premium() {
             }`}
           >
             <PremiumPlanCard 
-              name="Lemonade Premium"
+              name="OWUUU Premium"
               price={billing === 'monthly' ? "₦3,500" : "₦35,000"}
               period={billing === 'monthly' ? "/month" : "/year"}
               isPopular={selectedPlan === 'premium'}

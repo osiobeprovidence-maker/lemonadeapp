@@ -1,19 +1,31 @@
 {
-  "name": "Lemonade",
-  "short_name": "Lemonade",
-  "description": "Read, publish, and manage Lemonade stories.",
+  "name": "OWUUU — Read Manga, Webtoons & Novels",
+  "short_name": "OWUUU",
+  "description": "Discover manga, manhwa, webtoons, comics, and novels on OWUUU. Read original stories, support creators, and explore new worlds.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0A0A0A",
-  "theme_color": "#E8C547",
+  "background_color": "#000000",
+  "theme_color": "#F4C430",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/lemonade-icon.svg",
+      "src": "/owuuu-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/owuuu-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/owuuu-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

@@ -281,7 +281,7 @@ export default function Reader() {
     try {
       const res = await shareLink({
         title: `${story.title} — Chapter ${chapterNum || "1"}`,
-        text: `Check out this chapter from ${story.title} on Lemonade!`,
+        text: `Check out this chapter from ${story.title} on OWUUU!`,
         url,
       });
       if (res.method !== "native") {
@@ -569,7 +569,7 @@ export default function Reader() {
                     Report submitted.
                   </h3>
                   <p className="text-white/50 text-sm mb-8">
-                    Thank you for helping us keep Lemonade safe.
+                    Thank you for helping us keep OWUUU safe.
                   </p>
                   <Button
                     fullWidth
@@ -1008,7 +1008,7 @@ function LockedReaderScreen({
           Chapter Locked
         </h2>
         <p className="text-white/60 text-sm md:text-base mb-10 max-w-xs mx-auto leading-relaxed">
-          This is a premium chapter. Unlock it with coins or get a Lemonade
+          This is a premium chapter. Unlock it with coins or get an OWUUU
           Premium subscription to read.
         </p>
 

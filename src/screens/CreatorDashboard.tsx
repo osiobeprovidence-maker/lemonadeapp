@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Activity, ChevronRight, Plus, Eye, UserPlus, DollarSign, Heart, BookOpen, MessageCircle, Coffee, TrendingUp, Loader } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useCurrentUser, useStories } from '../hooks/useConvex';
+import { useCreatorPremium } from '../hooks/useCreatorPremium';
 import { api } from '../../convex/_generated/api';
 import { auth } from '../lib/firebase';
 import { convex } from '../lib/convex';
@@ -29,6 +30,8 @@ export default function CreatorDashboard() {
   });
   const [recentComments, setRecentComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
+
+  const creatorPremium = useCreatorPremium(user?.firebaseUid);
 
   useEffect(() => {
     const loadCreatorWallet = async () => {
@@ -218,6 +221,25 @@ export default function CreatorDashboard() {
 
         {/* Sidebar */}
         <div className="flex flex-col gap-8">
+            {/* Premium Status */}
+            <div className="bg-ink-deep border border-white/5 rounded-3xl p-6">
+              <h3 className="font-semibold text-lg mb-4">Premium Membership</h3>
+              <p className="text-sm mb-2">Status: <strong>{creatorPremium.data?.premiumStatus || user?.premiumStatus || 'free'}</strong></p>
+              {creatorPremium.data?.premiumStatus === 'trial' && (
+                <p className="text-xs text-white/45 mb-3">Trial expires in {creatorPremium.data?.daysRemaining} days</p>
+              )}
+              {creatorPremium.data?.paymentMethodConnected === false && (
+                <p className="text-xs text-amber-300 mb-3">Card not connected — connect to enable publishing</p>
+              )}
+              <div className="flex gap-2">
+                <Link to="/studio/premium">
+                  <Button size="sm">Manage Subscription</Button>
+                </Link>
+                {creatorPremium.data?.premiumStatus === 'free' && (
+                  <Button size="sm" variant="outline" onClick={() => creatorPremium.createTrial()}>Start 3-month Trial</Button>
+                )}
+              </div>
+            </div>
            {/* Creator wallet */}
            <div className="bg-ink-deep border border-white/5 rounded-3xl p-6">
              <h3 className="font-semibold text-lg mb-4">Creator Wallet</h3>

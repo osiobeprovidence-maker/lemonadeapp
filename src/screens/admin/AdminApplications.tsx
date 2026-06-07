@@ -92,7 +92,7 @@ export default function AdminApplications() {
         await convex.mutation(api.applications.review, {
           applicationId: id as any,
           status: 'approved',
-          adminEmail: adminSession?.email || user?.email || 'admin@lemonade.app',
+          adminEmail: adminSession?.email || user?.email || 'admin@owuuu.app',
         });
       } else {
         await approveCreatorApplication(id);
@@ -111,7 +111,7 @@ export default function AdminApplications() {
           await convex.mutation(api.applications.review, {
             applicationId: selectedApp.id as any,
             status: 'rejected',
-            adminEmail: adminSession?.email || user?.email || 'admin@lemonade.app',
+            adminEmail: adminSession?.email || user?.email || 'admin@owuuu.app',
             adminFeedback: rejectionFeedback,
           });
         } else {

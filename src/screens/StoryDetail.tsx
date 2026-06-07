@@ -416,8 +416,8 @@ export default function StoryDetail() {
     const url = `${window.location.origin}/story/${story.id}`;
     try {
       const res = await shareLink({
-        title: `${story.title} on Lemonade`,
-        text: `Check out ${story.title} by ${story.creator?.name} on Lemonade!`,
+        title: `${story.title} on OWUUU`,
+        text: `Check out ${story.title} by ${story.creator?.name} on OWUUU!`,
         url,
       });
       if (res.method !== "native") {

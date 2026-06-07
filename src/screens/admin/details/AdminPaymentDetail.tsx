@@ -130,7 +130,7 @@ export default function AdminPaymentDetail() {
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `lemonade-receipt-${payment.reference}.csv`;
+    link.download = `owuuu-receipt-${payment.reference}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -310,7 +310,7 @@ export default function AdminPaymentDetail() {
                 Mark Refunded
               </button>
               <a
-                href={payment.email ? `mailto:${payment.email}?subject=Lemonade payment ${payment.reference}` : undefined}
+                href={payment.email ? `mailto:${payment.email}?subject=OWUUU payment ${payment.reference}` : undefined}
                 className="block w-full py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs transition-all hover:scale-105 active:scale-95 text-center"
               >
                 Contact User

@@ -9,7 +9,7 @@ const HELP_TOPICS = [
     id: 'getting-started', 
     title: 'Getting Started', 
     icon: BookOpen, 
-    items: ['What is Lemonade?', 'How to read a story', 'Navigating the library'] 
+    items: ['What is OWUUU?', 'How to read a story', 'Navigating the library']
   },
   { 
     id: 'creators', 

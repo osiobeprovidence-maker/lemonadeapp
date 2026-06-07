@@ -48,7 +48,7 @@ export default function AdminLogin() {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-lemon-muted rounded-[2rem] shadow-2xl shadow-lemon-muted/20 rotate-12 mb-6">
             <ShieldCheck size={40} className="text-black -rotate-12" />
           </div>
-          <h1 className="text-4xl font-display font-black tracking-tighter text-white mb-2 uppercase italic">Lemonade Admin</h1>
+          <h1 className="text-4xl font-display font-black tracking-tighter text-white mb-2 uppercase italic">OWUUU Admin</h1>
           <p className="text-white/40 font-bold tracking-widest text-xs uppercase">Secure Infrastructure Access</p>
         </div>
 

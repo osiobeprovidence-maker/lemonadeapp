@@ -31,13 +31,13 @@ const eventTypeValidator = v.union(
 
 const baseAds = [
   {
-    title: "Lemonade Premium",
+    title: "OWUUU Premium",
     type: "banner" as const,
     placement: "chapter_preroll" as const,
-    brandName: "Lemonade",
+    brandName: "OWUUU",
     headline: "Read without interruptions",
     description: "Go Premium for an ad-free cinematic reading experience.",
-    mediaUrl: "/lemonade-icon.svg",
+    mediaUrl: "/owuuu-icon.svg",
     clickUrl: "/premium",
     cpmNaira: 1800,
     targetGenres: ["Action", "Sci-Fi & Cyberpunk", "Romance", "Drama"],
@@ -48,8 +48,8 @@ const baseAds = [
     title: "Creator Spotlight",
     type: "image" as const,
     placement: "chapter_preroll" as const,
-    brandName: "Lemonade Originals",
-    headline: "Discover new African manga worlds",
+    brandName: "OWUUU Originals",
+    headline: "Discover new manga, webtoon, and comic worlds",
     description: "Follow creators, save stories, and support the next breakout series.",
     mediaUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=1200&q=80",
     clickUrl: "/explore",

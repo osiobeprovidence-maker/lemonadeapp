@@ -112,7 +112,7 @@ export default function CreatorApplication() {
         </button>
         <div>
           <h1 className="font-display font-black text-3xl md:text-5xl">Creator Application</h1>
-          <p className="text-white/50 text-sm md:text-base mt-2">Apply to join Lemonade's premium creator network.</p>
+          <p className="text-white/50 text-sm md:text-base mt-2">Apply to join OWUUU's premium creator network.</p>
         </div>
       </div>
 
@@ -348,7 +348,7 @@ export default function CreatorApplication() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-white/40">Why do you want to publish on Lemonade?</label>
+                  <label className="text-xs font-black uppercase tracking-widest text-white/40">Why do you want to publish on OWUUU?</label>
                   <textarea 
                     required
                     value={formData.whyLemonade}
@@ -389,7 +389,7 @@ export default function CreatorApplication() {
                       onChange={(e) => handleInputChange('agreeReview', e.target.checked)}
                       className="w-5 h-5 mt-0.5 rounded border-white/20 accent-lemon-muted"
                     />
-                    <label htmlFor="opt2" className="text-sm text-white/50 leading-relaxed">I agree to Lemonade's content review and approval process.</label>
+                    <label htmlFor="opt2" className="text-sm text-white/50 leading-relaxed">I agree to OWUUU's content review and approval process.</label>
                   </div>
                 </div>
               </div>

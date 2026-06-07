@@ -44,7 +44,7 @@ export default function SettingsLegal() {
         <div className="p-10 bg-white/5 border border-dashed border-white/10 rounded-[48px]">
            <h4 className="font-display font-black text-sm uppercase tracking-widest text-white/40 mb-4">Safety & Reporting</h4>
            <p className="text-sm text-white/50 leading-relaxed mb-6">
-             Lemonade is committed to providing a safe environment for all creators and readers. 
+             OWUUU is committed to providing a safe environment for all creators and readers.
              If you encounter content that violates our guidelines, please report it immediately.
            </p>
            <button onClick={() => navigate('/help/report-problem')} className="text-sm font-black text-lemon-muted hover:underline uppercase tracking-widest">
@@ -57,7 +57,7 @@ export default function SettingsLegal() {
          <div className="inline-block px-4 py-2 rounded-full bg-white/5 border border-white/5 mb-4">
            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">Version 1.0.42 (Beta)</p>
          </div>
-         <p className="text-[10px] font-bold text-white/10 uppercase tracking-widest">© 2026 Lemonade Inc. All rights reserved.</p>
+         <p className="text-[10px] font-bold text-white/10 uppercase tracking-widest">© 2026 OWUUU Inc. All rights reserved.</p>
       </div>
     </SettingsDetailLayout>
   );

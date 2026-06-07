@@ -55,7 +55,7 @@ export default function SettingsReading() {
              'text-black'
            }`}>Chapter 1: The First Sip</h3>
            <p style={{ fontSize: `${fontSize}px`, lineHeight: lineHeight }} className="font-medium italic">
-             Lemonade is best served cold, with a hint of mystery. The shadows lengthened as she entered the room, the scent of fresh ink and citrus filling the air. "I've been waiting for you," he whispered, his voice like the rustle of turning pages...
+             OWUUU is best served cold, with a hint of mystery. The shadows lengthened as she entered the room, the scent of fresh ink and citrus filling the air. "I've been waiting for you," he whispered, his voice like the rustle of turning pages...
            </p>
         </div>
 

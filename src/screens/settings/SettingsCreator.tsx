@@ -376,7 +376,7 @@ export default function SettingsCreator() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Why Lemonade</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-white/30 ml-4">Why OWUUU</label>
                 <textarea
                   value={formData.whyLemonade}
                   onChange={(e) => setFormData({ ...formData, whyLemonade: e.target.value })}
@@ -506,7 +506,7 @@ export default function SettingsCreator() {
                    <h4 className="text-lg font-display font-black uppercase italic tracking-tight text-orange-400">Content Warning</h4>
                 </div>
                 <p className="text-sm font-bold text-white/60 leading-relaxed italic mb-6">
-                   Remember that all content must adhere to the Lemonade Creator Guidelines. Failure to properly tag explicit content or copyright violations may result in account suspension.
+                   Remember that all content must adhere to the OWUUU Creator Guidelines. Failure to properly tag explicit content or copyright violations may result in account suspension.
                 </p>
                 <button className="text-xs font-black uppercase tracking-widest text-white/30 hover:text-white transition-colors underline underline-offset-4">Read Creator Guidelines</button>
              </div>

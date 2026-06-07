@@ -226,7 +226,7 @@ export default function ReaderProfile() {
 
             <div className="w-full bg-ink-deep/50 rounded-3xl p-5 border border-white/5 mb-8">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Lemonade Stats</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/30">OWUUU Stats</span>
                 <Trophy size={16} className="text-lemon-muted" />
               </div>
               <div className="flex flex-col gap-4">
@@ -456,7 +456,7 @@ export default function ReaderProfile() {
                          </div>
                          <div>
                            <h4 className="font-display font-bold text-xl">
-                             {isPremium ? (user?.premiumPlan === 'patron' ? 'Premium + Patron' : 'Lemonade Premium') : 'No active subscription'}
+                             {isPremium ? (user?.premiumPlan === 'patron' ? 'Premium + Patron' : 'OWUUU Premium') : 'No active subscription'}
                            </h4>
                            <p className="text-lemon-muted text-sm font-black uppercase tracking-widest">
                              {isPremium ? `${user?.premiumBillingCycle || 'monthly'} plan` : 'Free account'}

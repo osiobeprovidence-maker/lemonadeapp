@@ -260,7 +260,7 @@ export default function UploadFlow() {
         name: user.name,
         username: user.username,
         avatar: user.avatar,
-        bio: user.bio || 'Creator on Lemonade.',
+        bio: user.bio || 'Creator on OWUUU.',
         category: [formData.genre],
         supportEnabled: true,
       });

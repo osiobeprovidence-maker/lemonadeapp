@@ -34,7 +34,7 @@ const ensureCreatorProfile = async (
     name: args.creatorUsername,
     avatar: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(args.creatorUsername)}`,
     followers: 0,
-    bio: "Creator on Lemonade.",
+    bio: "Creator on OWUUU.",
     category: ["Original"],
     totalReads: 0,
     totalStories: 1,

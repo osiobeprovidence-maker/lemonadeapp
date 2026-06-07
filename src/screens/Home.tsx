@@ -23,7 +23,7 @@ export default function Home() {
     return [
       { title: "Trending Now", stories: trending },
       {
-        title: "Lemonade Originals",
+        title: "OWUUU Originals",
         stories: allStories.filter((story) => story.isOriginal),
       },
       {

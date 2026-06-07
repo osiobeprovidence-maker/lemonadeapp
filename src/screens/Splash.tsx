@@ -44,7 +44,7 @@ export default function Splash() {
           transition={{ delay: 0.5, duration: 0.8 }}
           className="font-display font-black text-5xl md:text-7xl tracking-tighter"
         >
-          LEMONADE<span className="text-lemon-muted">.</span>
+          OWUUU
         </motion.h1>
 
         <motion.p

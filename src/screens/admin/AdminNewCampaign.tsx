@@ -196,10 +196,10 @@ export default function AdminNewCampaign() {
 
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="Campaign title">
-                <input value={form.title} onChange={(event) => setField('title', event.target.value)} placeholder="Lemonade Premium Launch" className="field-input" />
+                <input value={form.title} onChange={(event) => setField('title', event.target.value)} placeholder="OWUUU Premium Launch" className="field-input" />
               </Field>
               <Field label="Brand name">
-                <input value={form.brandName} onChange={(event) => setField('brandName', event.target.value)} placeholder="Lemonade" className="field-input" />
+                <input value={form.brandName} onChange={(event) => setField('brandName', event.target.value)} placeholder="OWUUU" className="field-input" />
               </Field>
               <Field label="Headline" className="md:col-span-2">
                 <input value={form.headline} onChange={(event) => setField('headline', event.target.value)} placeholder="Read without interruptions" className="field-input" />

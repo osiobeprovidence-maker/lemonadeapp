@@ -94,7 +94,7 @@ export default function CreatorProfile() {
                 const url = `${window.location.origin}/creator/${creator.username}`;
                 try {
                   const res = await shareLink({
-                    title: `${creator.name} on Lemonade`,
+                    title: `${creator.name} on OWUUU`,
                     url,
                   });
                   if (res.method !== 'native') alert('Link copied!');

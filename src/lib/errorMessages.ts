@@ -7,7 +7,7 @@ export interface AppErrorMessage {
 const firebaseAuthMessages: Record<string, AppErrorMessage> = {
   'auth/email-already-in-use': {
     title: 'Email already registered',
-    message: 'This email already has a Lemonade account. Sign in instead, or use a different email address.',
+    message: 'This email already has an OWUUU account. Sign in instead, or use a different email address.',
   },
   'auth/invalid-email': {
     title: 'Check the email address',
@@ -27,7 +27,7 @@ const firebaseAuthMessages: Record<string, AppErrorMessage> = {
   },
   'auth/user-not-found': {
     title: 'Account not found',
-    message: 'No Lemonade account exists for that email address.',
+    message: 'No OWUUU account exists for that email address.',
   },
   'auth/wrong-password': {
     title: 'Incorrect password',
@@ -47,7 +47,7 @@ const firebaseAuthMessages: Record<string, AppErrorMessage> = {
   },
   'auth/popup-blocked': {
     title: 'Popup blocked',
-    message: 'Allow popups for Lemonade, then try Google sign-in again.',
+    message: 'Allow popups for OWUUU, then try Google sign-in again.',
   },
 };
 

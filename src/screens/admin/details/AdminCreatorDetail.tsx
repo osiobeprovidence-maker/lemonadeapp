@@ -270,9 +270,9 @@ export default function AdminCreatorDetail() {
               </div>
               <div className="space-y-4">
                  {[
-                   { date: 'Apr 25, 2026', admin: 'superadmin@lemonade.com', action: 'Verified DropSomething Link', note: 'Checked and confirmed valid' },
-                   { date: 'Mar 12, 2026', admin: 'mod_sarah@lemonade.com', action: 'Approved New Story', note: '"Digital Mirage" meets standards' },
-                   { date: 'Jan 10, 2026', admin: 'superadmin@lemonade.com', action: 'Granted Creator Access', note: 'Portfolio review complete' },
+                   { date: 'Apr 25, 2026', admin: 'superadmin@owuuu.com', action: 'Verified DropSomething Link', note: 'Checked and confirmed valid' },
+                   { date: 'Mar 12, 2026', admin: 'mod_sarah@owuuu.com', action: 'Approved New Story', note: '"Digital Mirage" meets standards' },
+                   { date: 'Jan 10, 2026', admin: 'superadmin@owuuu.com', action: 'Granted Creator Access', note: 'Portfolio review complete' },
                  ].map((log, i) => (
                    <div key={i} className="p-5 bg-white/5 rounded-2xl border border-white/5 relative group">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">

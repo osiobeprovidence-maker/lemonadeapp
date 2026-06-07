@@ -16,7 +16,7 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({ error: "Mux credentials are not configured." });
   }
 
-  const origin = req.headers.origin || "https://lemonadeapp.vercel.app";
+  const origin = req.headers.origin || "https://owuuu.com";
   const authHeader = Buffer.from(`${tokenId}:${tokenSecret}`).toString("base64");
 
   const response = await fetch(MUX_UPLOAD_URL, {

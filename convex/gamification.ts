@@ -132,6 +132,8 @@ function sameUtcDay(a: Date, b: Date) {
 }
 
 function isYesterdayUTC(previous: Date, current: Date) {
+  // robust day-difference using UTC day starts to avoid edge cases
+  const msPerDay = 24 * 60 * 60 * 1000;
   const prevDay = Date.UTC(
     previous.getUTCFullYear(),
     previous.getUTCMonth(),
@@ -142,7 +144,8 @@ function isYesterdayUTC(previous: Date, current: Date) {
     current.getUTCMonth(),
     current.getUTCDate(),
   );
-  return currDay - prevDay === 24 * 60 * 60 * 1000;
+  const diff = Math.round((currDay - prevDay) / msPerDay);
+  return diff === 1;
 }
 
 function normalizeComment(message: string) {
@@ -1590,5 +1593,28 @@ export const getUserCurrencies = query({
 
     const currencies = await getCurrencies(ctx, user._id);
     return currencies || { userId: user._id, lemonCoins: 0, goldenInk: 0 };
+  },
+});
+
+export const resetAllCoinBalances = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const entries = await ctx.db.query("userCurrencies").take(1000);
+    let count = 0;
+    for (const entry of entries) {
+      const prev = Number(entry.lemonCoins || 0);
+      if (prev === 0) continue;
+      await ctx.db.patch(entry._id, { lemonCoins: 0, updatedAt: now() });
+      await ctx.db.insert("xpEvents", {
+        userId: entry.userId,
+        amount: -prev,
+        reason: "admin_reset_coins",
+        source: "admin_reset",
+        timestamp: now(),
+        metadata: { previousBalance: prev, currency: "lemonCoins" },
+      });
+      count += 1;
+    }
+    return { success: true, resetCount: count };
   },
 });

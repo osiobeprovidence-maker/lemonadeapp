@@ -103,7 +103,7 @@ export default function AdminApplicationDetail() {
         await convex.mutation(api.applications.review, {
           applicationId: applicationId as any,
           status: 'needs_info',
-          adminEmail: adminSession?.email || user?.email || 'admin@lemonade.app',
+          adminEmail: adminSession?.email || user?.email || 'admin@owuuu.app',
           adminFeedback: feedback.trim(),
         });
       }

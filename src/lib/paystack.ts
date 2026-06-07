@@ -87,7 +87,7 @@ export const verifyPayment = async (reference: string): Promise<any> => {
  * Generate a unique payment reference
  */
 export const generateReference = (): string => {
-  return `lemonade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `owuuu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
 /**
