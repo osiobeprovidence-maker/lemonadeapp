@@ -402,6 +402,8 @@ const creatorFromDoc = (doc: any): Creator => ({
   dropsomethingUrl: doc.dropsomethingUrl,
   supportEnabled: doc.supportEnabled,
   profile: doc.profile,
+  studioMembers: doc.studioMembers,
+  parentStudioId: doc.parentStudioId,
 });
 
 const storyFromDoc = (doc: any, creator: Creator): Story => ({
@@ -409,6 +411,10 @@ const storyFromDoc = (doc: any, creator: Creator): Story => ({
   title: doc.title,
   alternativeTitles: doc.alternativeTitles,
   creator,
+  studioId: doc.studioId,
+  studioName: doc.studioName,
+  displayAs: doc.displayAs,
+  credits: doc.credits,
   genre: doc.genre,
   genres: doc.genres,
   format: doc.format,

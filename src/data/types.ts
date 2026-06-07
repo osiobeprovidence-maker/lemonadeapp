@@ -174,6 +174,20 @@ export interface CollaborationStatus {
   openForStudio: boolean;
 }
 
+export interface StudioMember {
+  userId: string;
+  username: string;
+  name: string;
+  role: string; // e.g. "Artist", "Writer", "Editor", "Founder"
+}
+
+export interface StoryCredit {
+  role: string; // e.g. "Story by", "Art by", "Colorist", "Editor", "Letterer"
+  name: string;
+  userId?: string;
+  username?: string;
+}
+
 export interface Creator {
   id: string;
   name: string;
@@ -200,6 +214,8 @@ export interface Creator {
   achievements?: PortfolioAchievement[];
   collaborationStatus?: CollaborationStatus;
   recentActivity?: CreatorActivity[];
+  studioMembers?: StudioMember[];
+  parentStudioId?: string;
 }
 
 export interface Story {
@@ -207,6 +223,10 @@ export interface Story {
   title: string;
   alternativeTitles?: string[];
   creator: Creator;
+  studioId?: string;
+  studioName?: string;
+  displayAs?: 'personal' | 'studio';
+  credits?: StoryCredit[];
   genre: Genre | string;
   genres?: string[];
   format: ContentType | string;

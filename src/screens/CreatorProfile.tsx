@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { CreatorStatsCard, StoryCard } from '../components/ui/Cards';
 import { Button } from '../components/ui/Button';
 import { FollowButton, SupportButton } from '../components/InteractionButtons';
-import { MapPin, Link as LinkIcon, Calendar, Share2, MoreHorizontal, LayoutGrid, Info, Star, Heart } from 'lucide-react';
+import { MapPin, Link as LinkIcon, Calendar, Share2, MoreHorizontal, LayoutGrid, Info, Star, Heart, Users } from 'lucide-react';
 import { useParams, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { motion } from 'framer-motion';
@@ -56,9 +56,14 @@ export default function CreatorProfile() {
               <h1 className="font-display font-black text-3xl md:text-4xl text-glow">{creator.name}</h1>
             </div>
             <p className="text-white/40 font-medium mb-3">@{creator.username}</p>
-            <div className="inline-flex px-3 py-1 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-white/50 border border-white/5 mb-6">
+            <div className="inline-flex px-3 py-1 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest text-white/50 border border-white/5 mb-2">
               {creator.category}
             </div>
+            {creator.parentStudioId && (
+              <Link to={`/studio/${creator.parentStudioId}`} className="inline-flex items-center gap-1 px-3 py-1 bg-lemon-muted/10 rounded-full text-[10px] font-black uppercase tracking-widest text-lemon-muted border border-lemon-muted/20 mb-2 hover:bg-lemon-muted/20 transition-colors">
+                <Users size={10} /> Member of Studio
+              </Link>
+            )}
             
             <p className="text-white/70 text-sm leading-relaxed mb-8 max-w-xs mx-auto md:mx-0">
               {creator.bio}

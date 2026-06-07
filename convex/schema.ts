@@ -86,6 +86,17 @@ export default defineSchema({
     dropsomethingUrl: v.optional(v.string()),
     supportEnabled: v.boolean(),
     profile: v.optional(v.any()),
+    studioMembers: v.optional(
+      v.array(
+        v.object({
+          userId: v.string(),
+          username: v.string(),
+          name: v.string(),
+          role: v.string(),
+        }),
+      ),
+    ),
+    parentStudioId: v.optional(v.string()),
     ...timestampFields,
   })
     .index("by_externalId", ["externalId"])
@@ -144,6 +155,19 @@ export default defineSchema({
       v.literal("hidden"),
       v.literal("archived"),
     ),
+    studioId: v.optional(v.string()),
+    studioName: v.optional(v.string()),
+    displayAs: v.optional(v.union(v.literal("personal"), v.literal("studio"))),
+    credits: v.optional(
+      v.array(
+        v.object({
+          role: v.string(),
+          name: v.string(),
+          userId: v.optional(v.string()),
+          username: v.optional(v.string()),
+        }),
+      ),
+    ),
     media: v.optional(v.any()),
     weeklyViews: v.optional(v.number()),
     lastChapterAt: v.optional(v.string()),
@@ -158,7 +182,8 @@ export default defineSchema({
     .index("by_genre", ["genre"])
     .index("by_publicationStatus", ["publicationStatus"])
     .index("by_views", ["views"])
-    .index("by_rating", ["rating"]),
+    .index("by_rating", ["rating"])
+    .index("by_studioId", ["studioId"]),
 
   storyRatings: defineTable({
     storyId: v.string(),

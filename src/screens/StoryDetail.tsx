@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, Coffee, Eye, Heart, Lock, MessageCircle, Play, Star, Share2 } from 'lucide-react';
+import { ArrowRight, Check, Coffee, Eye, Heart, Lock, MessageCircle, Play, Star, Share2, Users } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { FormatBadge, GenreBadge, LockedContentCTA, SupportStatusBadge } from '../components/ui/Cards';
 import CommentsSection from '../components/ui/CommentsSection';
@@ -482,10 +482,18 @@ export default function StoryDetail() {
             {story.title}
           </h1>
 
-          <Link to={`/creator/${story.creator.username}`} className="mt-2 flex items-center gap-2 text-xs font-semibold text-white/55 hover:text-lemon-muted">
-            <img src={story.creator.avatar} alt={story.creator.name} className="h-5 w-5 rounded-full object-cover" referrerPolicy="no-referrer" />
-            {story.creator.name}
-          </Link>
+          {story.displayAs === 'studio' && story.studioName ? (
+            <Link to={`/studio/${story.studioId}`} className="mt-2 flex items-center gap-2 text-xs font-semibold text-lemon-muted hover:text-white">
+              <Users size={14} />
+              {story.studioName}
+              <span className="text-white/30">· Studio</span>
+            </Link>
+          ) : (
+            <Link to={`/creator/${story.creator.username}`} className="mt-2 flex items-center gap-2 text-xs font-semibold text-white/55 hover:text-lemon-muted">
+              <img src={story.creator.avatar} alt={story.creator.name} className="h-5 w-5 rounded-full object-cover" referrerPolicy="no-referrer" />
+              {story.creator.name}
+            </Link>
+          )}
         </section>
 
         <section className="mt-6 rounded-3xl border border-white/8 bg-[#141414]/95 p-2 shadow-[0_18px_70px_rgba(0,0,0,0.35)] backdrop-blur">
@@ -540,6 +548,18 @@ export default function StoryDetail() {
         </section>
 
         <section className="mt-6 rounded-3xl border border-white/8 bg-[#141414] p-4 shadow-xl shadow-black/20">
+          {story.displayAs === 'studio' && story.studioName && (
+            <Link to={`/studio/${story.studioId}`} className="mb-4 flex items-center gap-3 rounded-2xl bg-lemon-muted/5 border border-lemon-muted/15 p-3 hover:bg-lemon-muted/10 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-lemon-muted/20 flex items-center justify-center">
+                <Users size={18} className="text-lemon-muted" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-black text-lemon-muted">{story.studioName}</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-white/35">Studio</div>
+              </div>
+              <ArrowRight size={16} className="text-white/30" />
+            </Link>
+          )}
           <div className="flex items-center gap-3">
             <div className="relative shrink-0">
               <img src={story.creator.avatar} alt={story.creator.name} className="h-12 w-12 rounded-2xl object-cover ring-1 ring-white/10" referrerPolicy="no-referrer" />
@@ -550,6 +570,9 @@ export default function StoryDetail() {
               )}
             </div>
             <div className="min-w-0 flex-1">
+              {story.displayAs === 'studio' && story.studioName && (
+                <div className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-0.5">Creator</div>
+              )}
               <div className="flex min-w-0 items-center gap-2">
                 <h2 className="truncate font-display text-base font-black">{story.creator.name}</h2>
                 {user?.supportHistory.some((item) => item.creatorId === story.creator.username) && <SupportStatusBadge status="supported" />}
@@ -639,6 +662,40 @@ export default function StoryDetail() {
             {activeTab === 'about' && (
               <div className="rounded-3xl border border-white/8 bg-[#141414] p-5">
                 <p className="text-sm font-medium leading-7 text-white/76">{story.synopsis}</p>
+
+                {story.displayAs === 'studio' && story.studioName && (
+                  <div className="mt-5 rounded-2xl bg-lemon-muted/5 border border-lemon-muted/10 p-3">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-1">Published by</div>
+                    <Link to={`/studio/${story.studioId}`} className="flex items-center gap-2 text-sm font-black text-lemon-muted hover:text-white">
+                      <Users size={14} />
+                      {story.studioName}
+                    </Link>
+                  </div>
+                )}
+
+                {story.credits && story.credits.length > 0 && (
+                  <div className="mt-5">
+                    <h3 className="mb-3 text-[10px] font-black uppercase tracking-widest text-white/35">Credits</h3>
+                    <div className="flex flex-col gap-2">
+                      {story.credits.map((credit, idx) => (
+                        <div key={idx} className="flex items-center gap-3 rounded-xl bg-[#1A1A1A] p-3">
+                          <div className="w-8 h-8 rounded-lg bg-lemon-muted/10 flex items-center justify-center">
+                            <span className="text-[10px] font-black text-lemon-muted uppercase">{credit.role.slice(0, 2)}</span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-white/35">{credit.role}</div>
+                            {credit.username ? (
+                              <Link to={`/creator/${credit.username}`} className="text-sm font-bold text-white hover:text-lemon-muted">{credit.name}</Link>
+                            ) : (
+                              <div className="text-sm font-bold">{credit.name}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-5">
                   <h3 className="mb-3 text-[10px] font-black uppercase tracking-widest text-white/35">Tags</h3>
                   <div className="flex flex-wrap gap-2">

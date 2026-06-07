@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Check, FileText, Image as ImageIcon, Loader, Save, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Check, FileText, Image as ImageIcon, Loader, Plus, Save, Trash2, Upload, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useApp } from '../contexts/AppContext';
@@ -48,6 +48,12 @@ export default function UploadFlow() {
   const [coverPreview, setCoverPreview] = useState('');
   const [bannerPreview, setBannerPreview] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [displayAs, setDisplayAs] = useState<'personal' | 'studio'>('personal');
+  const [selectedStudioId, setSelectedStudioId] = useState('');
+  const [selectedStudioName, setSelectedStudioName] = useState('');
+  const [studios, setStudios] = useState<Array<{ _id: string; name: string; username: string }>>([]);
+  const [credits, setCredits] = useState<Array<{ role: string; name: string; username: string }>>([]);
+  const [creditForm, setCreditForm] = useState({ role: 'Story by', name: '', username: '' });
   const coverInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const panelInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +86,17 @@ export default function UploadFlow() {
       }
     };
 
+    const loadStudios = async () => {
+      try {
+        const allStudios = await convex.query(api.creators.listStudios, {});
+        setStudios(allStudios.map((s: any) => ({ _id: s._id, name: s.name, username: s.username })));
+      } catch (error) {
+        console.error('Failed to load studios', error);
+      }
+    };
+
     loadDrafts();
+    loadStudios();
   }, [user?.username]);
 
   const selectImage = (
@@ -280,6 +296,10 @@ export default function UploadFlow() {
           assets.chapters?.length || chapters.length || (formData.chapterText.trim() || assets.attachments.length > 0 ? 1 : 0),
         ),
         status,
+        displayAs,
+        ...(displayAs === 'studio' && selectedStudioId ? { studioId: selectedStudioId } : {}),
+        ...(displayAs === 'studio' && selectedStudioName ? { studioName: selectedStudioName } : {}),
+        ...(credits.length > 0 ? { credits: credits.map((c) => ({ role: c.role, name: c.name, ...(c.username ? { username: c.username } : {}) })) } : {}),
         media: {
           chapterText: topLevelText.text,
           attachments: assets.attachments,
@@ -430,6 +450,127 @@ export default function UploadFlow() {
             <div>
               <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-2 block">Synopsis</label>
               <textarea value={formData.synopsis} onChange={(e) => setFormData({ ...formData, synopsis: e.target.value })} placeholder="What is your story about?" rows={4} className="w-full bg-black border border-white/10 rounded-xl p-4 text-white placeholder:text-white/20 focus:border-lemon-muted outline-none resize-none" />
+            </div>
+
+            {/* Publish As */}
+            <div>
+              <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-3 block">
+                <Users size={14} className="inline mr-1.5" /> Publish As
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setDisplayAs('personal'); setSelectedStudioId(''); setSelectedStudioName(''); }}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${displayAs === 'personal' ? 'border-lemon-muted bg-lemon-muted/5' : 'border-white/10 bg-black hover:border-white/25'}`}
+                >
+                  <div className="text-sm font-black mb-1">Personal</div>
+                  <div className="text-[11px] text-white/45">Published under your name</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDisplayAs('studio')}
+                  className={`p-4 rounded-xl border-2 text-left transition-all ${displayAs === 'studio' ? 'border-lemon-muted bg-lemon-muted/5' : 'border-white/10 bg-black hover:border-white/25'}`}
+                >
+                  <div className="text-sm font-black mb-1">Studio</div>
+                  <div className="text-[11px] text-white/45">Published under a studio name</div>
+                </button>
+              </div>
+
+              {displayAs === 'studio' && (
+                <div className="mt-4 space-y-3 animate-fade-in">
+                  <div>
+                    <label className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-1.5 block">Select Studio</label>
+                    <select
+                      value={selectedStudioId}
+                      onChange={(e) => {
+                        const studio = studios.find((s) => s._id === e.target.value);
+                        setSelectedStudioId(e.target.value);
+                        setSelectedStudioName(studio?.name || '');
+                      }}
+                      className="w-full h-12 bg-black border border-white/10 rounded-xl px-4 text-white outline-none appearance-none font-medium"
+                    >
+                      <option value="">Choose a studio…</option>
+                      {studios.map((s) => (
+                        <option key={s._id} value={s._id}>{s.name}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1.5 text-[10px] text-white/30">Don't see your studio? Create one via Creator Application.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Credits */}
+            <div>
+              <label className="text-sm font-semibold text-white/50 uppercase tracking-widest mb-3 block">
+                <Plus size={14} className="inline mr-1.5" /> Credits (optional)
+              </label>
+              <p className="text-[11px] text-white/35 mb-3">Credit others involved — e.g. "Art by", "Colorist", "Editor", "Letterer".</p>
+
+              {credits.length > 0 && (
+                <div className="flex flex-col gap-2 mb-3">
+                  {credits.map((c, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-3 bg-black/30 border border-white/10 rounded-xl">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-black text-lemon-muted uppercase">{c.role}</span>
+                        <span className="mx-1.5 text-white/40">·</span>
+                        <span className="text-sm font-semibold">{c.name}</span>
+                        {c.username && <span className="text-xs text-white/40 ml-1.5">@{c.username}</span>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCredits((prev) => prev.filter((_, i) => i !== idx))}
+                        className="w-8 h-8 rounded-lg bg-red-500/10 text-red-300 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                <select
+                  value={creditForm.role}
+                  onChange={(e) => setCreditForm((f) => ({ ...f, role: e.target.value }))}
+                  className="h-10 bg-black border border-white/10 rounded-xl px-3 text-white text-sm outline-none appearance-none"
+                >
+                  <option>Story by</option>
+                  <option>Art by</option>
+                  <option>Colorist</option>
+                  <option>Editor</option>
+                  <option>Letterer</option>
+                  <option>Background art</option>
+                  <option>Music by</option>
+                  <option>Translated by</option>
+                  <option>Produced by</option>
+                </select>
+                <input
+                  type="text"
+                  value={creditForm.name}
+                  onChange={(e) => setCreditForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Name"
+                  className="h-10 bg-black border border-white/10 rounded-xl px-3 text-white text-sm placeholder:text-white/20 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!creditForm.name.trim()) return;
+                    setCredits((prev) => [...prev, { role: creditForm.role, name: creditForm.name.trim(), username: creditForm.username.trim() }]);
+                    setCreditForm({ role: 'Story by', name: '', username: '' });
+                  }}
+                  className="h-10 px-4 rounded-xl bg-lemon-muted text-black text-xs font-black hover:bg-lemon-muted/80 transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <input
+                type="text"
+                value={creditForm.username}
+                onChange={(e) => setCreditForm((f) => ({ ...f, username: e.target.value }))}
+                placeholder="OWUUU username (optional, for linking to profile)"
+                className="mt-2 w-full h-9 bg-black border border-white/10 rounded-xl px-3 text-white text-xs placeholder:text-white/20 outline-none"
+              />
             </div>
           </div>
         )}

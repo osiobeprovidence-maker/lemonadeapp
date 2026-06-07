@@ -255,7 +255,7 @@ export function StoryCard({ story, className }: { story: Story, className?: stri
       
       <div className="flex flex-col gap-0.5">
         <h3 className="font-display font-semibold text-[15px] sm:text-lg leading-tight group-hover:text-lemon-muted transition-colors line-clamp-2">{story.title}</h3>
-        <p className="text-white/55 font-medium text-xs sm:text-sm truncate">{story.creator.name}</p>
+        <p className="text-white/55 font-medium text-xs sm:text-sm truncate">{story.displayAs === 'studio' && story.studioName ? story.studioName : story.creator.name}</p>
       </div>
     </Link>
   );
@@ -272,7 +272,7 @@ export function HorizontalStoryCard({ story, className }: { story: Story, classN
             <FormatBadge format={story.format} className="text-[8px] px-1.5 py-0" />
          </div>
          <h4 className="font-display font-semibold text-base truncate">{story.title}</h4>
-         <p className="text-sm text-white/50 truncate mb-1">{story.creator.name}</p>
+         <p className="text-sm text-white/50 truncate mb-1">{story.displayAs === 'studio' && story.studioName ? story.studioName : story.creator.name}</p>
          <div className="flex items-center gap-3 text-xs text-white/40">
            <span className="flex items-center gap-1"><Heart size={10} /> {(story.saves / 1000).toFixed(1)}k</span>
            <span>•</span>

@@ -30,6 +30,34 @@ export const list = query({
   },
 });
 
+export const listStudios = query({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("creators").collect();
+    return all.filter((c) => {
+      const cat = Array.isArray(c.category) ? c.category : [c.category];
+      return cat.includes("Studio");
+    });
+  },
+});
+
+export const getByStudioId = query({
+  args: { studioId: v.string() },
+  handler: async (ctx, args) => {
+    const studio = await ctx.db.get(args.studioId as any);
+    if (!studio) return null;
+    return studio;
+  },
+});
+
+export const listByParentStudio = query({
+  args: { parentStudioId: v.string() },
+  handler: async (ctx, args) => {
+    const all = await ctx.db.query("creators").collect();
+    return all.filter((c) => c.parentStudioId === args.parentStudioId);
+  },
+});
+
 export const adminList = query({
   args: {},
   handler: async (ctx) => {
@@ -85,6 +113,17 @@ export const upsert = mutation({
     dropsomethingUrl: v.optional(v.string()),
     supportEnabled: v.boolean(),
     profile: v.optional(v.any()),
+    studioMembers: v.optional(
+      v.array(
+        v.object({
+          userId: v.string(),
+          username: v.string(),
+          name: v.string(),
+          role: v.string(),
+        }),
+      ),
+    ),
+    parentStudioId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await findCreatorForUpsert(ctx, args);
@@ -100,6 +139,8 @@ export const upsert = mutation({
       ...(args.location ? { location: args.location } : {}),
       ...(args.dropsomethingUrl ? { dropsomethingUrl: args.dropsomethingUrl } : {}),
       ...(args.profile ? { profile: args.profile } : {}),
+      ...(args.studioMembers !== undefined ? { studioMembers: args.studioMembers } : {}),
+      ...(args.parentStudioId !== undefined ? { parentStudioId: args.parentStudioId } : {}),
     };
 
     if (existing) {

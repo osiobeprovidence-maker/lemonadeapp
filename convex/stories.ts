@@ -329,6 +329,23 @@ export const search = query({
   },
 });
 
+/* ───────── STUDIO STORIES ───────── */
+
+export const listByStudio = query({
+  args: {
+    studioId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+    const stories = await ctx.db
+      .query("stories")
+      .withIndex("by_studioId", (q) => q.eq("studioId", args.studioId))
+      .take(limit);
+    return stories.filter((s) => s.status === "published");
+  },
+});
+
 /* ───────── CRUD ───────── */
 
 export const create = mutation({
@@ -361,6 +378,19 @@ export const create = mutation({
       v.literal("archived"),
     )),
     media: v.optional(v.any()),
+    studioId: v.optional(v.string()),
+    studioName: v.optional(v.string()),
+    displayAs: v.optional(v.union(v.literal("personal"), v.literal("studio"))),
+    credits: v.optional(
+      v.array(
+        v.object({
+          role: v.string(),
+          name: v.string(),
+          userId: v.optional(v.string()),
+          username: v.optional(v.string()),
+        }),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     if (!args.creatorId || !args.creatorUsername) {
@@ -424,6 +454,10 @@ export const create = mutation({
       ...(cleanCoverImage ? { coverImage: cleanCoverImage } : {}),
       ...(cleanBannerImage ? { bannerImage: cleanBannerImage } : {}),
       ...(args.media ? { media: args.media } : {}),
+      ...(args.studioId ? { studioId: args.studioId } : {}),
+      ...(args.studioName ? { studioName: args.studioName } : {}),
+      ...(args.displayAs ? { displayAs: args.displayAs } : { displayAs: "personal" }),
+      ...(args.credits ? { credits: args.credits } : {}),
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -465,6 +499,19 @@ export const update = mutation({
       v.literal("archived"),
     )),
     media: v.optional(v.any()),
+    studioId: v.optional(v.string()),
+    studioName: v.optional(v.string()),
+    displayAs: v.optional(v.union(v.literal("personal"), v.literal("studio"))),
+    credits: v.optional(
+      v.array(
+        v.object({
+          role: v.string(),
+          name: v.string(),
+          userId: v.optional(v.string()),
+          username: v.optional(v.string()),
+        }),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     const story = await ctx.db
@@ -473,9 +520,11 @@ export const update = mutation({
       .unique();
     if (!story) throw new Error("Story not found. It may have been deleted.");
 
-    const { externalId, ...updates } = args;
+    const { externalId, contentType, publicationStatus, ...updates } = args;
     await ctx.db.patch(story._id, {
       ...updates,
+      ...(contentType ? { contentType: contentType as any } : {}),
+      ...(publicationStatus ? { publicationStatus: publicationStatus as any } : {}),
       updatedAt: now(),
     });
     return story._id;
