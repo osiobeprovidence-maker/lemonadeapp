@@ -44,9 +44,27 @@ export const listStudios = query({
 export const getByStudioId = query({
   args: { studioId: v.string() },
   handler: async (ctx, args) => {
-    const studio = await ctx.db.get(args.studioId as any);
-    if (!studio) return null;
-    return studio;
+    // Try by externalId first (seed data uses externalId like "c5")
+    const byExternalId = await ctx.db
+      .query("creators")
+      .withIndex("by_externalId", (q) => q.eq("externalId", args.studioId))
+      .first();
+    if (byExternalId) return byExternalId;
+
+    // Try by username
+    const byUsername = await ctx.db
+      .query("creators")
+      .withIndex("by_username", (q) => q.eq("username", args.studioId))
+      .first();
+    if (byUsername) return byUsername;
+
+    // Fallback: try as internal _id
+    try {
+      const byId = await ctx.db.get(args.studioId as any);
+      if (byId) return byId;
+    } catch { /* invalid id format */ }
+
+    return null;
   },
 });
 
