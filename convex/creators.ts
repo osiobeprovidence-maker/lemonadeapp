@@ -3,7 +3,8 @@ import { mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 
 const now = () => new Date().toISOString();
-const normalizeCategory = (category: string | string[]) => Array.isArray(category) ? category : [category];
+const normalizeCategory = (category: string | string[]) =>
+  Array.isArray(category) ? category : [category];
 
 const findCreatorForUpsert = async (
   ctx: MutationCtx,
@@ -33,10 +34,18 @@ export const list = query({
 export const listStudios = query({
   args: {},
   handler: async (ctx) => {
-    const all = await ctx.db.query("creators").collect();
+    // Use .take() instead of .collect() to stay within Convex transaction limits.
+    const all = await ctx.db.query("creators").take(500);
     return all.filter((c) => {
-      const cat = Array.isArray(c.category) ? c.category : [c.category];
-      return cat.includes("Studio");
+      // category can be a string or an array — normalise before checking.
+      const cat: string[] = Array.isArray(c.category)
+        ? (c.category as string[])
+        : typeof c.category === "string"
+          ? [c.category as string]
+          : [];
+      return cat.some(
+        (v) => v.toLowerCase() === "studio" || v.toLowerCase() === "studios",
+      );
     });
   },
 });
@@ -62,7 +71,9 @@ export const getByStudioId = query({
     try {
       const byId = await ctx.db.get(args.studioId as any);
       if (byId) return byId;
-    } catch { /* invalid id format */ }
+    } catch {
+      /* invalid id format */
+    }
 
     return null;
   },
@@ -121,12 +132,8 @@ export const upsert = mutation({
     username: v.string(),
     avatar: v.optional(v.string()),
     bio: v.optional(v.string()),
-    category: v.union(
-      v.array(v.string()),
-      v.literal("Artist"),
-      v.literal("Writer"),
-      v.literal("Studio"),
-    ),
+    // Must match the schema: v.union(v.array(v.string()), v.string())
+    category: v.union(v.array(v.string()), v.string()),
     location: v.optional(v.string()),
     dropsomethingUrl: v.optional(v.string()),
     supportEnabled: v.boolean(),
@@ -150,15 +157,23 @@ export const upsert = mutation({
       ...(args.userId ? { userId: args.userId } : {}),
       username: args.username,
       name: args.name ?? args.username,
-      avatar: args.avatar || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(args.username)}`,
+      avatar:
+        args.avatar ||
+        `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(args.username)}`,
       bio: args.bio ?? "",
       category: normalizeCategory(args.category),
       supportEnabled: args.supportEnabled,
       ...(args.location ? { location: args.location } : {}),
-      ...(args.dropsomethingUrl ? { dropsomethingUrl: args.dropsomethingUrl } : {}),
+      ...(args.dropsomethingUrl
+        ? { dropsomethingUrl: args.dropsomethingUrl }
+        : {}),
       ...(args.profile ? { profile: args.profile } : {}),
-      ...(args.studioMembers !== undefined ? { studioMembers: args.studioMembers } : {}),
-      ...(args.parentStudioId !== undefined ? { parentStudioId: args.parentStudioId } : {}),
+      ...(args.studioMembers !== undefined
+        ? { studioMembers: args.studioMembers }
+        : {}),
+      ...(args.parentStudioId !== undefined
+        ? { parentStudioId: args.parentStudioId }
+        : {}),
     };
 
     if (existing) {

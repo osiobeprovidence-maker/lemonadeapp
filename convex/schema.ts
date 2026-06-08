@@ -42,7 +42,9 @@ export default defineSchema({
       v.literal("expired"),
     ),
     premiumPlan: v.optional(v.union(v.literal("premium"), v.literal("patron"))),
-    premiumBillingCycle: v.optional(v.union(v.literal("monthly"), v.literal("yearly"))),
+    premiumBillingCycle: v.optional(
+      v.union(v.literal("monthly"), v.literal("yearly")),
+    ),
     premiumStartedAt: v.optional(v.string()),
     premiumRenewsAt: v.optional(v.string()),
     premiumCancelledAt: v.optional(v.string()),
@@ -74,12 +76,9 @@ export default defineSchema({
     avatar: v.string(),
     followers: v.number(),
     bio: v.string(),
-    category: v.union(
-      v.array(v.string()),
-      v.literal("Artist"),
-      v.literal("Writer"),
-      v.literal("Studio"),
-    ),
+    // Accept any string or array of strings — strict literals break read
+    // for documents seeded/upserted before the literal union was added.
+    category: v.union(v.array(v.string()), v.string()),
     location: v.optional(v.string()),
     totalReads: v.number(),
     totalStories: v.number(),
@@ -117,7 +116,6 @@ export default defineSchema({
         v.literal("manga"),
         v.literal("manhwa"),
         v.literal("manhua"),
-        v.literal("webtoon"),
         v.literal("comic"),
         v.literal("novel"),
         v.literal("light_novel"),
@@ -204,7 +202,9 @@ export default defineSchema({
     portfolioLink: v.string(),
     socialLinks: v.any(),
     dropsomethingUrl: v.optional(v.string()),
-    studioMode: v.optional(v.union(v.literal("solo"), v.literal("existing"), v.literal("new"))),
+    studioMode: v.optional(
+      v.union(v.literal("solo"), v.literal("existing"), v.literal("new")),
+    ),
     studioName: v.optional(v.string()),
     storyIntent: v.string(),
     mainGenre: v.string(),
@@ -349,7 +349,11 @@ export default defineSchema({
   advertisers: defineTable({
     name: v.string(),
     contactEmail: v.optional(v.string()),
-    status: v.union(v.literal("active"), v.literal("paused"), v.literal("disabled")),
+    status: v.union(
+      v.literal("active"),
+      v.literal("paused"),
+      v.literal("disabled"),
+    ),
     budgetNaira: v.number(),
     spentNaira: v.number(),
     createdAt: v.string(),
@@ -366,7 +370,13 @@ export default defineSchema({
       v.literal("novel_midroll"),
       v.literal("sponsored_banner"),
     ),
-    status: v.union(v.literal("draft"), v.literal("pending"), v.literal("approved"), v.literal("paused"), v.literal("rejected")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("paused"),
+      v.literal("rejected"),
+    ),
     mediaUrl: v.string(),
     clickUrl: v.optional(v.string()),
     brandName: v.string(),
@@ -391,9 +401,23 @@ export default defineSchema({
     userId: v.optional(v.string()),
     storyId: v.optional(v.string()),
     creatorUsername: v.optional(v.string()),
-    contentType: v.union(v.literal("manga"), v.literal("manhwa"), v.literal("novel"), v.literal("movie"), v.literal("unknown")),
+    contentType: v.union(
+      v.literal("manga"),
+      v.literal("manhwa"),
+      v.literal("manhua"),
+      v.literal("comic"),
+      v.literal("novel"),
+      v.literal("light_novel"),
+      v.literal("movie"),
+      v.literal("unknown"),
+    ),
     chapterId: v.optional(v.string()),
-    eventType: v.union(v.literal("impression"), v.literal("completed"), v.literal("skip"), v.literal("click")),
+    eventType: v.union(
+      v.literal("impression"),
+      v.literal("completed"),
+      v.literal("skip"),
+      v.literal("click"),
+    ),
     watchTimeMs: v.number(),
     revenueNaira: v.number(),
     creatorShareNaira: v.number(),
@@ -452,7 +476,7 @@ export default defineSchema({
       v.literal("bonus_spin"),
       v.literal("lemon_coins"),
       v.literal("cosmetic"),
-      v.literal("badge")
+      v.literal("badge"),
     ),
     amount: v.optional(v.number()),
     metadata: v.optional(v.any()),
@@ -470,7 +494,11 @@ export default defineSchema({
     rewardValue: v.optional(v.any()),
     awardedAt: v.string(),
     claimedAt: v.optional(v.string()),
-    status: v.union(v.literal("awarded"), v.literal("claimed"), v.literal("expired")),
+    status: v.union(
+      v.literal("awarded"),
+      v.literal("claimed"),
+      v.literal("expired"),
+    ),
     metadata: v.optional(v.any()),
   }).index("by_user_week", ["userId", "weekStart"]),
 
@@ -479,7 +507,9 @@ export default defineSchema({
     sessionId: v.string(),
     storyId: v.optional(v.string()),
     chapterId: v.optional(v.string()),
-    contentType: v.optional(v.union(v.literal("manga"), v.literal("novel"), v.literal("movie"))),
+    contentType: v.optional(
+      v.union(v.literal("manga"), v.literal("novel"), v.literal("movie")),
+    ),
     durationMs: v.number(),
     completionPct: v.number(),
     scrollCompletionPct: v.optional(v.number()),
@@ -488,7 +518,9 @@ export default defineSchema({
     counted: v.boolean(),
     timestamp: v.string(),
     metadata: v.optional(v.any()),
-  }).index("by_user", ["userId"]).index("by_session", ["sessionId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_session", ["sessionId"]),
 
   xpEvents: defineTable({
     userId: v.string(),
@@ -539,7 +571,9 @@ export default defineSchema({
     active: v.boolean(),
     createdAt: v.string(),
     updatedAt: v.string(),
-  }).index("by_creator", ["creatorId"]).index("by_active", ["active"]),
+  })
+    .index("by_creator", ["creatorId"])
+    .index("by_active", ["active"]),
 
   rewardInventory: defineTable({
     rewardId: v.string(),
@@ -562,7 +596,7 @@ export default defineSchema({
       v.literal("active"),
       v.literal("past_due"),
       v.literal("cancelled"),
-      v.literal("suspended")
+      v.literal("suspended"),
     ),
     trialStart: v.optional(v.string()),
     trialEnd: v.optional(v.string()),
@@ -584,7 +618,11 @@ export default defineSchema({
     subscriptionId: v.optional(v.string()),
     amount: v.number(),
     currency: v.string(),
-    status: v.union(v.literal("pending"), v.literal("success"), v.literal("failed")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("success"),
+      v.literal("failed"),
+    ),
     transactionReference: v.optional(v.string()),
     provider: v.optional(v.string()),
     providerPayload: v.optional(v.any()),
@@ -610,15 +648,30 @@ export default defineSchema({
   contentRequests: defineTable({
     userId: v.string(),
     title: v.string(),
-    type: v.union(v.literal("manga"), v.literal("manhwa"), v.literal("manhua"), v.literal("webtoon"), v.literal("novel"), v.literal("light_novel"), v.literal("comic"), v.literal("other")),
+    type: v.union(
+      v.literal("manga"),
+      v.literal("manhwa"),
+      v.literal("manhua"),
+      v.literal("novel"),
+      v.literal("light_novel"),
+      v.literal("comic"),
+      v.literal("other"),
+    ),
     description: v.optional(v.string()),
     sourceUrl: v.optional(v.string()),
-    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("in_progress"), v.literal("added"), v.literal("rejected")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("in_progress"),
+      v.literal("added"),
+      v.literal("rejected"),
+    ),
     votes: v.number(),
     votedBy: v.array(v.string()),
     createdAt: v.string(),
     updatedAt: v.string(),
-  }).index("by_status", ["status"])
+  })
+    .index("by_status", ["status"])
     .index("by_votes", ["votes"])
     .index("by_user", ["userId"]),
 });
