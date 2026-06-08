@@ -10,7 +10,11 @@ const periodKey = () => now().slice(0, 7);
 const contentTypeValidator = v.union(
   v.literal("manga"),
   v.literal("manhwa"),
+  v.literal("manhua"),
+  v.literal("webtoon"),
+  v.literal("comic"),
   v.literal("novel"),
+  v.literal("light_novel"),
   v.literal("movie"),
   v.literal("unknown"),
 );
@@ -40,7 +44,7 @@ const baseAds = [
     mediaUrl: "/owuuu-icon.svg",
     clickUrl: "/premium",
     cpmNaira: 1800,
-    targetGenres: ["Action", "Sci-Fi & Cyberpunk", "Romance", "Drama"],
+    targetGenres: ["Action", "Sci-Fi", "Romance", "Drama"],
     frequencyCapHours: 6,
     priority: 10,
   },
@@ -54,7 +58,7 @@ const baseAds = [
     mediaUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=1200&q=80",
     clickUrl: "/explore",
     cpmNaira: 1500,
-    targetGenres: ["Action", "African Fantasy", "Sci-Fi & Cyberpunk"],
+    targetGenres: ["Action", "Fantasy", "Sci-Fi"],
     frequencyCapHours: 4,
     priority: 8,
   },
@@ -63,16 +67,20 @@ const baseAds = [
 const normalizeContentType = (format: string | undefined) => {
   const lower = (format || "").toLowerCase();
   if (lower.includes("movie")) return "movie";
+  if (lower.includes("light novel")) return "light_novel";
   if (lower.includes("novel")) return "novel";
+  if (lower.includes("webtoon")) return "webtoon";
   if (lower.includes("manhwa")) return "manhwa";
-  if (lower.includes("manga") || lower.includes("comic")) return "manga";
+  if (lower.includes("manhua")) return "manhua";
+  if (lower.includes("comic")) return "comic";
+  if (lower.includes("manga")) return "manga";
   return "unknown";
 };
 
 const shouldGate = (contentType: string, chapterNumber: number) => {
   if (contentType === "movie") return true;
-  if (contentType === "novel") return chapterNumber > 1 && chapterNumber % 4 === 0;
-  if (contentType === "manga" || contentType === "manhwa") return chapterNumber === 1 || chapterNumber % 4 === 0;
+  if (contentType === "novel" || contentType === "light_novel") return chapterNumber > 1 && chapterNumber % 4 === 0;
+  if (contentType === "manga" || contentType === "manhwa" || contentType === "manhua" || contentType === "webtoon" || contentType === "comic") return chapterNumber === 1 || chapterNumber % 4 === 0;
   return chapterNumber === 1 || chapterNumber % 5 === 0;
 };
 
@@ -131,7 +139,7 @@ export const selectForContent = mutation({
 
     const placement = contentType === "movie"
       ? "movie_preroll"
-      : contentType === "novel"
+      : contentType === "novel" || contentType === "light_novel"
         ? "novel_midroll"
         : "chapter_preroll";
 

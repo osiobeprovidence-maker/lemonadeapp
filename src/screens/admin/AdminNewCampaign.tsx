@@ -9,7 +9,7 @@ import { formatFileSize, uploadStoryFile } from '../../lib/imageUpload';
 type CampaignType = 'video' | 'image' | 'banner';
 type CampaignPlacement = 'chapter_preroll' | 'movie_preroll' | 'novel_midroll' | 'sponsored_banner';
 
-const genreOptions = ['Action', 'Adventure', 'Fantasy', 'Romance', 'Drama', 'Comedy', 'Sci-Fi', 'Horror', 'Mystery', 'Thriller', 'Slice of Life', 'Historical', 'Supernatural'];
+const genreOptions = ['Action', 'Adventure', 'Fantasy', 'Romance', 'Drama', 'Comedy', 'Sci-Fi', 'Horror', 'Mystery', 'Thriller', 'Slice of Life', 'Historical', 'Supernatural', 'Sports', 'School Life', 'Psychological'];
 
 const typeOptions: Array<{ value: CampaignType; label: string; icon: React.ElementType; helper: string }> = [
   { value: 'video', label: 'Video', icon: MonitorPlay, helper: 'Best for pre-roll and movie playback.' },

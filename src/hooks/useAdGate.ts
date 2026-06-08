@@ -31,12 +31,16 @@ const rememberAd = (adId: string) => {
   localStorage.setItem(LAST_AD_KEY, new Date().toISOString());
 };
 
-const normalizeContentType = (format?: string): 'manga' | 'manhwa' | 'novel' | 'movie' | 'unknown' => {
+const normalizeContentType = (format?: string): 'manga' | 'manhwa' | 'manhua' | 'webtoon' | 'comic' | 'novel' | 'light_novel' | 'movie' | 'unknown' => {
   const lower = (format || '').toLowerCase();
   if (lower.includes('movie')) return 'movie';
+  if (lower.includes('light novel')) return 'light_novel';
   if (lower.includes('novel')) return 'novel';
+  if (lower.includes('webtoon')) return 'webtoon';
   if (lower.includes('manhwa')) return 'manhwa';
-  if (lower.includes('manga') || lower.includes('comic')) return 'manga';
+  if (lower.includes('manhua')) return 'manhua';
+  if (lower.includes('comic')) return 'comic';
+  if (lower.includes('manga')) return 'manga';
   return 'unknown';
 };
 
