@@ -12,10 +12,12 @@ const ensureCreatorProfile = async (
     .query("creators")
     .withIndex("by_userId", (q) => q.eq("userId", args.creatorId))
     .first();
-  const creator = byUserId ?? await ctx.db
-    .query("creators")
-    .withIndex("by_username", (q) => q.eq("username", args.creatorUsername))
-    .first();
+  const creator =
+    byUserId ??
+    (await ctx.db
+      .query("creators")
+      .withIndex("by_username", (q) => q.eq("username", args.creatorUsername))
+      .first());
 
   const timestamp = now();
   if (creator) {
@@ -79,7 +81,9 @@ export const listByCreator = query({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("stories")
-      .withIndex("by_creatorUsername", (q) => q.eq("creatorUsername", args.creatorUsername))
+      .withIndex("by_creatorUsername", (q) =>
+        q.eq("creatorUsername", args.creatorUsername),
+      )
       .collect();
   },
 });
@@ -98,7 +102,11 @@ export const listByContentType = query({
       .withIndex("by_status", (q) => q.eq("status", "published"))
       .collect();
     return stories
-      .filter((s) => s.contentType === args.contentType || s.format?.toLowerCase() === args.contentType.toLowerCase())
+      .filter(
+        (s) =>
+          s.contentType === args.contentType ||
+          s.format?.toLowerCase() === args.contentType.toLowerCase(),
+      )
       .sort((a, b) => (b.views || 0) - (a.views || 0))
       .slice(0, limit);
   },
@@ -120,7 +128,7 @@ export const listByGenre = query({
         (s) =>
           s.genre === args.genre ||
           (s.genres && s.genres.includes(args.genre)) ||
-          (s.tags && s.tags.includes(args.genre))
+          (s.tags && s.tags.includes(args.genre)),
       )
       .sort((a, b) => (b.views || 0) - (a.views || 0))
       .slice(0, limit);
@@ -136,7 +144,10 @@ export const listTrending = query({
       .withIndex("by_status", (q) => q.eq("status", "published"))
       .collect();
     return stories
-      .sort((a, b) => ((b.weeklyViews || b.views || 0)) - ((a.weeklyViews || a.views || 0)))
+      .sort(
+        (a, b) =>
+          (b.weeklyViews || b.views || 0) - (a.weeklyViews || a.views || 0),
+      )
       .slice(0, limit);
   },
 });
@@ -164,7 +175,11 @@ export const listNewReleases = query({
       .withIndex("by_status", (q) => q.eq("status", "published"))
       .collect();
     return stories
-      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || 0).getTime() -
+          new Date(a.createdAt || 0).getTime(),
+      )
       .slice(0, limit);
   },
 });
@@ -209,17 +224,22 @@ export const listOriginals = query({
       .query("stories")
       .withIndex("by_featured", (q) => q.eq("isFeatured", true))
       .collect();
-    const originals = stories.filter((s) => s.isOriginal && s.status === "published");
+    const originals = stories.filter(
+      (s) => s.isOriginal && s.status === "published",
+    );
     return originals.slice(0, limit);
   },
 });
 
 // Fuzzy search helper — Levenshtein distance
 function levenshtein(a: string, b: string): number {
-  const m = a.length, n = b.length;
+  const m = a.length,
+    n = b.length;
   if (m === 0) return n;
   if (n === 0) return m;
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  const dp: number[][] = Array.from({ length: m + 1 }, () =>
+    Array(n + 1).fill(0),
+  );
   for (let i = 0; i <= m; i++) dp[i][0] = i;
   for (let j = 0; j <= n; j++) dp[0][j] = j;
   for (let i = 1; i <= m; i++) {
@@ -227,7 +247,7 @@ function levenshtein(a: string, b: string): number {
       dp[i][j] = Math.min(
         dp[i - 1][j] + 1,
         dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + (a[i - 1] !== b[j - 1] ? 1 : 0)
+        dp[i - 1][j - 1] + (a[i - 1] !== b[j - 1] ? 1 : 0),
       );
     }
   }
@@ -280,7 +300,14 @@ export const search = query({
           (s.genres && s.genres.some((g) => fuzzyMatch(q, g))) ||
           (s.tags && s.tags.some((t) => fuzzyMatch(q, t)));
         const altMatch = s.alternativeTitles?.some((alt) => fuzzyMatch(q, alt));
-        return titleMatch || authorMatch || artistMatch || creatorMatch || genreMatch || altMatch;
+        return (
+          titleMatch ||
+          authorMatch ||
+          artistMatch ||
+          creatorMatch ||
+          genreMatch ||
+          altMatch
+        );
       });
     }
 
@@ -288,7 +315,7 @@ export const search = query({
     if (args.contentType) {
       const ct = args.contentType.toLowerCase();
       stories = stories.filter(
-        (s) => s.contentType === ct || s.format?.toLowerCase() === ct
+        (s) => s.contentType === ct || s.format?.toLowerCase() === ct,
       );
     }
 
@@ -299,7 +326,7 @@ export const search = query({
         (s) =>
           s.genre === g ||
           (s.genres && s.genres.includes(g)) ||
-          (s.tags && s.tags.includes(g))
+          (s.tags && s.tags.includes(g)),
       );
     }
 
@@ -311,7 +338,11 @@ export const search = query({
     // Sort
     switch (args.sort) {
       case "newest":
-        stories.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        stories.sort(
+          (a, b) =>
+            new Date(b.createdAt || 0).getTime() -
+            new Date(a.createdAt || 0).getTime(),
+        );
         break;
       case "most_read":
         stories.sort((a, b) => (b.views || 0) - (a.views || 0));
@@ -321,7 +352,10 @@ export const search = query({
         break;
       case "trending":
       default:
-        stories.sort((a, b) => (b.weeklyViews || b.views || 0) - (a.weeklyViews || a.views || 0));
+        stories.sort(
+          (a, b) =>
+            (b.weeklyViews || b.views || 0) - (a.weeklyViews || a.views || 0),
+        );
         break;
     }
 
@@ -371,12 +405,14 @@ export const create = mutation({
     isOriginal: v.boolean(),
     publicationStatus: v.optional(v.string()),
     episodes: v.optional(v.number()),
-    status: v.optional(v.union(
-      v.literal("draft"),
-      v.literal("published"),
-      v.literal("hidden"),
-      v.literal("archived"),
-    )),
+    status: v.optional(
+      v.union(
+        v.literal("draft"),
+        v.literal("published"),
+        v.literal("hidden"),
+        v.literal("archived"),
+      ),
+    ),
     media: v.optional(v.any()),
     studioId: v.optional(v.string()),
     studioName: v.optional(v.string()),
@@ -399,15 +435,21 @@ export const create = mutation({
 
     const timestamp = now();
 
+    // Use .first() not .unique() — unique() throws if there are ever
+    // two rows with the same externalId (data corruption / race condition).
     const existingStory = args.externalId
       ? await ctx.db
           .query("stories")
-          .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId as string))
-          .unique()
+          .withIndex("by_externalId", (q) =>
+            q.eq("externalId", args.externalId as string),
+          )
+          .first()
       : null;
 
     if (existingStory) {
-      throw new Error("A story with this ID already exists. Use update instead.");
+      throw new Error(
+        "A story with this ID already exists. Use update instead.",
+      );
     }
 
     try {
@@ -416,17 +458,26 @@ export const create = mutation({
         creatorUsername: args.creatorUsername,
       });
     } catch (error) {
-      console.error("Failed to ensure creator profile before story create", error);
+      console.error(
+        "Failed to ensure creator profile before story create",
+        error,
+      );
     }
 
-    const cleanCoverImage = args.coverImage && args.coverImage.trim() ? args.coverImage : undefined;
-    const cleanBannerImage = args.bannerImage && args.bannerImage.trim() ? args.bannerImage : undefined;
+    const cleanCoverImage =
+      args.coverImage && args.coverImage.trim() ? args.coverImage : undefined;
+    const cleanBannerImage =
+      args.bannerImage && args.bannerImage.trim()
+        ? args.bannerImage
+        : undefined;
 
     return await ctx.db.insert("stories", {
       creatorId: args.creatorId,
       creatorUsername: args.creatorUsername,
       title: args.title,
-      ...(args.alternativeTitles ? { alternativeTitles: args.alternativeTitles } : {}),
+      ...(args.alternativeTitles
+        ? { alternativeTitles: args.alternativeTitles }
+        : {}),
       genre: args.genre,
       ...(args.genres ? { genres: args.genres } : {}),
       ...(args.contentType ? { contentType: args.contentType as any } : {}),
@@ -448,7 +499,9 @@ export const create = mutation({
       ...(args.artist ? { artist: args.artist } : {}),
       ...(args.releaseYear ? { releaseYear: args.releaseYear } : {}),
       ...(args.language ? { language: args.language } : {}),
-      ...(args.publicationStatus ? { publicationStatus: args.publicationStatus as any } : { publicationStatus: "ongoing" }),
+      ...(args.publicationStatus
+        ? { publicationStatus: args.publicationStatus as any }
+        : { publicationStatus: "ongoing" }),
       weeklyViews: 0,
       ...(args.externalId ? { externalId: args.externalId } : {}),
       ...(cleanCoverImage ? { coverImage: cleanCoverImage } : {}),
@@ -456,7 +509,9 @@ export const create = mutation({
       ...(args.media ? { media: args.media } : {}),
       ...(args.studioId ? { studioId: args.studioId } : {}),
       ...(args.studioName ? { studioName: args.studioName } : {}),
-      ...(args.displayAs ? { displayAs: args.displayAs } : { displayAs: "personal" }),
+      ...(args.displayAs
+        ? { displayAs: args.displayAs }
+        : { displayAs: "personal" }),
       ...(args.credits ? { credits: args.credits } : {}),
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -492,12 +547,14 @@ export const update = mutation({
     publicationStatus: v.optional(v.string()),
     weeklyViews: v.optional(v.number()),
     lastChapterAt: v.optional(v.string()),
-    status: v.optional(v.union(
-      v.literal("draft"),
-      v.literal("published"),
-      v.literal("hidden"),
-      v.literal("archived"),
-    )),
+    status: v.optional(
+      v.union(
+        v.literal("draft"),
+        v.literal("published"),
+        v.literal("hidden"),
+        v.literal("archived"),
+      ),
+    ),
     media: v.optional(v.any()),
     studioId: v.optional(v.string()),
     studioName: v.optional(v.string()),
@@ -514,17 +571,37 @@ export const update = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const story = await ctx.db
+    // Try externalId index first, then fall back to document _id so that
+    // stories created before externalId was required can still be updated.
+    let story = await ctx.db
       .query("stories")
       .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
-      .unique();
+      .first();
+
+    if (!story) {
+      try {
+        const byId = (await ctx.db.get(args.externalId as any)) as typeof story;
+        if (byId && byId._id) story = byId;
+      } catch {
+        // args.externalId is not a valid Convex document id — ignore
+      }
+    }
+
     if (!story) throw new Error("Story not found. It may have been deleted.");
 
     const { externalId, contentType, publicationStatus, ...updates } = args;
+
+    // Never write empty strings into optional image fields — omit them
+    // so an existing URL is not accidentally cleared.
+    if ((updates as any).coverImage === "") delete (updates as any).coverImage;
+    if ((updates as any).bannerImage === "")
+      delete (updates as any).bannerImage;
     await ctx.db.patch(story._id, {
       ...updates,
       ...(contentType ? { contentType: contentType as any } : {}),
-      ...(publicationStatus ? { publicationStatus: publicationStatus as any } : {}),
+      ...(publicationStatus
+        ? { publicationStatus: publicationStatus as any }
+        : {}),
       updatedAt: now(),
     });
     return story._id;

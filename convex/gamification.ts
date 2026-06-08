@@ -1606,7 +1606,7 @@ export const resetAllGamificationData = mutation({
     ];
 
     for (const table of tables) {
-      const docs = await ctx.db.query(table).take(1000);
+      const docs = await (ctx.db.query as any)(table).take(1000);
       for (const doc of docs) {
         await ctx.db.delete(doc._id);
       }
