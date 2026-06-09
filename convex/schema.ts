@@ -185,7 +185,6 @@ export default defineSchema({
     .index("by_status_and_views", ["status", "views"])
     .index("by_status_and_rating", ["status", "rating"])
     .index("by_status_and_weeklyViews", ["status", "weeklyViews"])
-    .index("by_status_and_creationTime", ["status", "_creationTime"])
     .index("by_featured_and_status", ["isFeatured", "status"]),
 
   storyRatings: defineTable({

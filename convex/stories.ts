@@ -168,9 +168,7 @@ export const listNewReleases = query({
     const limit = args.limit || 20;
     return await ctx.db
       .query("stories")
-      .withIndex("by_status_and_creationTime", (q) =>
-        q.eq("status", "published"),
-      )
+      .withIndex("by_status", (q) => q.eq("status", "published"))
       .order("desc")
       .take(limit);
   },
@@ -182,9 +180,7 @@ export const listRecentlyUpdated = query({
     const limit = args.limit || 20;
     const stories = await ctx.db
       .query("stories")
-      .withIndex("by_status_and_creationTime", (q) =>
-        q.eq("status", "published"),
-      )
+      .withIndex("by_status", (q) => q.eq("status", "published"))
       .order("desc")
       .take(500);
     return stories
