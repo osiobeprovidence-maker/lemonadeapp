@@ -434,6 +434,7 @@ const storyFromDoc = (doc: any, creator: Creator): Story => ({
   releaseYear: doc.releaseYear,
   language: doc.language,
   tags: doc.tags,
+  isFeatured: doc.isFeatured,
   isOriginal: doc.isOriginal,
   publicationStatus: doc.publicationStatus,
   status: doc.status,

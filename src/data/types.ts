@@ -246,6 +246,7 @@ export interface Story {
   releaseYear?: number;
   language?: string;
   tags: string[];
+  isFeatured?: boolean;
   isOriginal: boolean;
   publicationStatus?: PublicationStatus;
   status?: 'draft' | 'published' | 'hidden' | 'archived';
