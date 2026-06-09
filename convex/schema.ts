@@ -181,7 +181,12 @@ export default defineSchema({
     .index("by_publicationStatus", ["publicationStatus"])
     .index("by_views", ["views"])
     .index("by_rating", ["rating"])
-    .index("by_studioId", ["studioId"]),
+    .index("by_studioId", ["studioId"])
+    .index("by_status_and_views", ["status", "views"])
+    .index("by_status_and_rating", ["status", "rating"])
+    .index("by_status_and_weeklyViews", ["status", "weeklyViews"])
+    .index("by_status_and_creationTime", ["status", "_creationTime"])
+    .index("by_featured_and_status", ["isFeatured", "status"]),
 
   storyRatings: defineTable({
     storyId: v.string(),

@@ -14,7 +14,7 @@ export const listByUser = query({
     return await ctx.db
       .query("walletTransactions")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .collect();
+      .take(500);
   },
 });
 

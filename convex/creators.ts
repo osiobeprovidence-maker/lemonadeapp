@@ -27,7 +27,7 @@ const findCreatorForUpsert = async (
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("creators").collect();
+    return await ctx.db.query("creators").take(500);
   },
 });
 
@@ -82,7 +82,7 @@ export const getByStudioId = query({
 export const listByParentStudio = query({
   args: { parentStudioId: v.string() },
   handler: async (ctx, args) => {
-    const all = await ctx.db.query("creators").collect();
+    const all = await ctx.db.query("creators").take(500);
     return all.filter((c) => c.parentStudioId === args.parentStudioId);
   },
 });

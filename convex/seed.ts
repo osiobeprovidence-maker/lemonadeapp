@@ -105,7 +105,7 @@ const creators = [
     username: "metascot",
     avatar: "https://picsum.photos/seed/metascot/200/200",
     followers: 18200,
-    bio: "Premium webtoons and manhwa from West Africa to the world.",
+    bio: "Premium manhwa and comics from West Africa to the world.",
     category: "Studio",
     location: "Abuja, Nigeria",
     totalReads: 3200000,
@@ -119,7 +119,7 @@ const creators = [
     profile: {
       banner: "https://picsum.photos/seed/metascotbanner/1500/500",
       tagline: "Where African creativity meets global storytelling.",
-      fullBio: "Metascot Studio is a premier webtoon and manhwa studio producing high-quality serialized content. Our team blends African cultural depth with the visual polish of top-tier manhwa and webtoon production.",
+      fullBio: "Metascot Studio is a premier manhwa and comic studio producing high-quality serialized content. Our team blends African cultural depth with the visual polish of top-tier manhwa and comic production.",
       creativeMission: "To elevate African creators onto the global stage through studio-quality serialized comics and novels.",
       genres: ["Action", "Fantasy", "Drama", "Thriller", "Sci-Fi"],
       style: "Polished, Cinematic, Character-driven",
@@ -310,7 +310,7 @@ const stories = [
     creatorId: "c6",
     creatorUsername: "providence",
     genre: "Fantasy",
-    format: "Webtoon",
+    format: "Manhwa",
     rating: 4.8,
     views: 380000,
     saves: 15000,
@@ -337,7 +337,7 @@ const stories = [
     creatorId: "c6",
     creatorUsername: "providence",
     genre: "Thriller",
-    format: "Webtoon",
+    format: "Manhwa",
     rating: 4.7,
     views: 290000,
     saves: 11000,
@@ -370,7 +370,7 @@ export const initialContent = mutation({
       const existing = await ctx.db
         .query("creators")
         .withIndex("by_username", (q) => q.eq("username", creator.username))
-        .unique();
+        .first();
 
       if (!existing) {
         await ctx.db.insert("creators", {
@@ -387,7 +387,7 @@ export const initialContent = mutation({
       const existing = await ctx.db
         .query("stories")
         .withIndex("by_externalId", (q) => q.eq("externalId", story.externalId))
-        .unique();
+        .first();
 
       if (!existing) {
         await ctx.db.insert("stories", {

@@ -34,10 +34,10 @@ export const createQuest = mutation({
 export const listActiveQuests = query({
   args: {},
   handler: async (ctx) => {
-    const nowTs = new Date().toISOString();
     return await ctx.db
       .query("creatorQuests")
-      .collect();
+      .withIndex("by_active", (q) => q.eq("active", true))
+      .take(200);
   },
 });
 
@@ -56,7 +56,7 @@ export const claimQuest = mutation({
 
     const quest = await ctx.db
       .query("creatorQuests")
-      .collect()
+      .take(200)
       .then((arr) => arr.find((q) => q.questId === args.questId));
 
     if (!quest) throw new Error("Quest not found");
@@ -65,7 +65,7 @@ export const claimQuest = mutation({
     const already = await ctx.db
       .query("userAchievements")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect()
+      .take(200)
       .then((arr) => arr.find((a) => a.achievementId === `quest:${args.questId}`));
 
     if (already) throw new Error("Quest already claimed");

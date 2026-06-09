@@ -11,7 +11,6 @@ const contentTypeValidator = v.union(
   v.literal("manga"),
   v.literal("manhwa"),
   v.literal("manhua"),
-  v.literal("webtoon"),
   v.literal("comic"),
   v.literal("novel"),
   v.literal("light_novel"),
@@ -53,7 +52,7 @@ const baseAds = [
     type: "image" as const,
     placement: "chapter_preroll" as const,
     brandName: "OWUUU Originals",
-    headline: "Discover new manga, webtoon, and comic worlds",
+    headline: "Discover new manga, manhwa, and comic worlds",
     description: "Follow creators, save stories, and support the next breakout series.",
     mediaUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=1200&q=80",
     clickUrl: "/explore",
@@ -69,7 +68,6 @@ const normalizeContentType = (format: string | undefined) => {
   if (lower.includes("movie")) return "movie";
   if (lower.includes("light novel")) return "light_novel";
   if (lower.includes("novel")) return "novel";
-  if (lower.includes("webtoon")) return "webtoon";
   if (lower.includes("manhwa")) return "manhwa";
   if (lower.includes("manhua")) return "manhua";
   if (lower.includes("comic")) return "comic";
@@ -80,7 +78,7 @@ const normalizeContentType = (format: string | undefined) => {
 const shouldGate = (contentType: string, chapterNumber: number) => {
   if (contentType === "movie") return true;
   if (contentType === "novel" || contentType === "light_novel") return chapterNumber > 1 && chapterNumber % 4 === 0;
-  if (contentType === "manga" || contentType === "manhwa" || contentType === "manhua" || contentType === "webtoon" || contentType === "comic") return chapterNumber === 1 || chapterNumber % 4 === 0;
+  if (contentType === "manga" || contentType === "manhwa" || contentType === "manhua" || contentType === "comic") return chapterNumber === 1 || chapterNumber % 4 === 0;
   return chapterNumber === 1 || chapterNumber % 5 === 0;
 };
 
@@ -346,11 +344,12 @@ export const deleteCampaign = mutation({
     if (!ad) throw new Error("Campaign not found");
 
     // Delete all associated events
-    const events = await ctx.db.query("adEvents").collect();
+    const events = await ctx.db
+      .query("adEvents")
+      .withIndex("by_adId", (q) => q.eq("adId", args.adId))
+      .collect();
     for (const event of events) {
-      if (event.adId === args.adId) {
-        await ctx.db.delete(event._id);
-      }
+      await ctx.db.delete(event._id);
     }
 
     await ctx.db.delete(args.adId);

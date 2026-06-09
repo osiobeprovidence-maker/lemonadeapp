@@ -51,8 +51,9 @@ export const listPublished = query({
   handler: async (ctx) => {
     return await ctx.db
       .query("stories")
-      .withIndex("by_status", (q) => q.eq("status", "published"))
-      .collect();
+      .withIndex("by_status_and_views", (q) => q.eq("status", "published"))
+      .order("desc")
+      .take(500);
   },
 });
 
@@ -62,7 +63,7 @@ export const listFeatured = query({
     return await ctx.db
       .query("stories")
       .withIndex("by_featured", (q) => q.eq("isFeatured", true))
-      .collect();
+      .take(500);
   },
 });
 
@@ -84,7 +85,7 @@ export const listByCreator = query({
       .withIndex("by_creatorUsername", (q) =>
         q.eq("creatorUsername", args.creatorUsername),
       )
-      .collect();
+      .take(500);
   },
 });
 
@@ -99,15 +100,15 @@ export const listByContentType = query({
     const limit = args.limit || 50;
     const stories = await ctx.db
       .query("stories")
-      .withIndex("by_status", (q) => q.eq("status", "published"))
-      .collect();
+      .withIndex("by_status_and_views", (q) => q.eq("status", "published"))
+      .order("desc")
+      .take(500);
     return stories
       .filter(
         (s) =>
           s.contentType === args.contentType ||
           s.format?.toLowerCase() === args.contentType.toLowerCase(),
       )
-      .sort((a, b) => (b.views || 0) - (a.views || 0))
       .slice(0, limit);
   },
 });
@@ -121,8 +122,9 @@ export const listByGenre = query({
     const limit = args.limit || 50;
     const stories = await ctx.db
       .query("stories")
-      .withIndex("by_status", (q) => q.eq("status", "published"))
-      .collect();
+      .withIndex("by_status_and_views", (q) => q.eq("status", "published"))
+      .order("desc")
+      .take(500);
     return stories
       .filter(
         (s) =>
@@ -130,7 +132,6 @@ export const listByGenre = query({
           (s.genres && s.genres.includes(args.genre)) ||
           (s.tags && s.tags.includes(args.genre)),
       )
-      .sort((a, b) => (b.views || 0) - (a.views || 0))
       .slice(0, limit);
   },
 });
@@ -139,16 +140,11 @@ export const listTrending = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = args.limit || 20;
-    const stories = await ctx.db
+    return await ctx.db
       .query("stories")
-      .withIndex("by_status", (q) => q.eq("status", "published"))
-      .collect();
-    return stories
-      .sort(
-        (a, b) =>
-          (b.weeklyViews || b.views || 0) - (a.weeklyViews || a.views || 0),
-      )
-      .slice(0, limit);
+      .withIndex("by_status_and_views", (q) => q.eq("status", "published"))
+      .order("desc")
+      .take(limit);
   },
 });
 
@@ -156,13 +152,13 @@ export const listPopularThisWeek = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = args.limit || 20;
-    const stories = await ctx.db
+    return await ctx.db
       .query("stories")
-      .withIndex("by_status", (q) => q.eq("status", "published"))
-      .collect();
-    return stories
-      .sort((a, b) => (b.weeklyViews || 0) - (a.weeklyViews || 0))
-      .slice(0, limit);
+      .withIndex("by_status_and_weeklyViews", (q) =>
+        q.eq("status", "published"),
+      )
+      .order("desc")
+      .take(limit);
   },
 });
 
@@ -170,17 +166,13 @@ export const listNewReleases = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = args.limit || 20;
-    const stories = await ctx.db
+    return await ctx.db
       .query("stories")
-      .withIndex("by_status", (q) => q.eq("status", "published"))
-      .collect();
-    return stories
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt || 0).getTime() -
-          new Date(a.createdAt || 0).getTime(),
+      .withIndex("by_status_and_creationTime", (q) =>
+        q.eq("status", "published"),
       )
-      .slice(0, limit);
+      .order("desc")
+      .take(limit);
   },
 });
 
@@ -190,8 +182,11 @@ export const listRecentlyUpdated = query({
     const limit = args.limit || 20;
     const stories = await ctx.db
       .query("stories")
-      .withIndex("by_status", (q) => q.eq("status", "published"))
-      .collect();
+      .withIndex("by_status_and_creationTime", (q) =>
+        q.eq("status", "published"),
+      )
+      .order("desc")
+      .take(500);
     return stories
       .sort((a, b) => {
         const aDate = new Date(a.lastChapterAt || a.updatedAt || 0).getTime();
@@ -206,13 +201,11 @@ export const listTopRated = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = args.limit || 20;
-    const stories = await ctx.db
+    return await ctx.db
       .query("stories")
-      .withIndex("by_status", (q) => q.eq("status", "published"))
-      .collect();
-    return stories
-      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
-      .slice(0, limit);
+      .withIndex("by_status_and_rating", (q) => q.eq("status", "published"))
+      .order("desc")
+      .take(limit);
   },
 });
 
@@ -222,12 +215,11 @@ export const listOriginals = query({
     const limit = args.limit || 20;
     const stories = await ctx.db
       .query("stories")
-      .withIndex("by_featured", (q) => q.eq("isFeatured", true))
-      .collect();
-    const originals = stories.filter(
-      (s) => s.isOriginal && s.status === "published",
-    );
-    return originals.slice(0, limit);
+      .withIndex("by_featured_and_status", (q) =>
+        q.eq("isFeatured", true).eq("status", "published"),
+      )
+      .take(200);
+    return stories.filter((s) => s.isOriginal).slice(0, limit);
   },
 });
 
@@ -285,8 +277,9 @@ export const search = query({
 
     let stories = await ctx.db
       .query("stories")
-      .withIndex("by_status", (q2) => q2.eq("status", "published"))
-      .collect();
+      .withIndex("by_status_and_views", (q2) => q2.eq("status", "published"))
+      .order("desc")
+      .take(500);
 
     // Text matching
     if (q) {

@@ -40,7 +40,7 @@ const allocateUniqueUsername = async (ctx: MutationCtx, desired: string) => {
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("users").collect();
+    return await ctx.db.query("users").take(500);
   },
 });
 
@@ -203,15 +203,15 @@ export const getFullProfile = query({
       ctx.db
         .query("readingHistory")
         .withIndex("by_userId", (q) => q.eq("userId", user._id))
-        .collect(),
+        .take(200),
       ctx.db
         .query("notifications")
         .withIndex("by_userId", (q) => q.eq("userId", user._id))
-        .collect(),
+        .take(200),
       ctx.db
         .query("walletTransactions")
         .withIndex("by_userId", (q) => q.eq("userId", user._id))
-        .collect(),
+        .take(200),
     ]);
 
     return {

@@ -32,7 +32,7 @@ const enrichApplication = async (ctx: QueryCtx, application: any) => {
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const applications = await ctx.db.query("creatorApplications").collect();
+    const applications = await ctx.db.query("creatorApplications").take(500);
     return await Promise.all(applications.map((application) => enrichApplication(ctx, application)));
   },
 });
@@ -51,7 +51,7 @@ export const listByStatus = query({
     const applications = await ctx.db
       .query("creatorApplications")
       .withIndex("by_status", (q) => q.eq("status", args.status))
-      .collect();
+      .take(500);
     return await Promise.all(applications.map((application) => enrichApplication(ctx, application)));
   },
 });
