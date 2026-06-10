@@ -116,20 +116,20 @@ export default function AdminStories() {
                 </td>
                 <td className="p-6">
                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-white/40 uppercase">
-                         <Eye size={12} className="text-white/20"/> {(s.reads ?? 0).toLocaleString()} Reads
-                      </div>
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-white/40 uppercase">
-                         <Clock size={12} className="text-white/20"/> {s.chapters} Chaps
-                      </div>
+                       <div className="flex items-center gap-2 text-[10px] font-bold text-white/40 uppercase">
+                          <Eye size={12} className="text-white/20"/> {(s.views ?? 0).toLocaleString()} Reads
+                       </div>
+                       <div className="flex items-center gap-2 text-[10px] font-bold text-white/40 uppercase">
+                          <Clock size={12} className="text-white/20"/> {s.episodes ?? 0} Chaps
+                       </div>
                    </div>
                 </td>
-                <td className="p-6">
-                   <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-white/60">Published</span>
-                   </div>
-                </td>
+                 <td className="p-6">
+                    <div className="flex items-center gap-2">
+                       <div className={`w-1.5 h-1.5 rounded-full ${s.status === 'published' ? 'bg-green-500' : s.status === 'draft' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                       <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Unknown'}</span>
+                    </div>
+                 </td>
                 <td className="p-6">
                    <button 
                     onClick={() => navigate('/admin/featured/editor')}
@@ -203,18 +203,18 @@ export default function AdminStories() {
             </div>
 
             <div className="grid grid-cols-3 gap-3 border-t border-b border-white/5 py-4">
-               <div className="text-center">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-1">Reads</p>
-                  <p className="text-xs font-black text-white">{s.reads > 1000 ? (s.reads/1000).toFixed(1) + 'k' : s.reads}</p>
-               </div>
-               <div className="text-center">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-1">Chapters</p>
-                  <p className="text-xs font-black text-white">{s.chapters}</p>
-               </div>
-               <div className="text-center">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-1">Status</p>
-                  <p className="text-[9px] font-black uppercase text-green-500">Live</p>
-               </div>
+                <div className="text-center">
+                   <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-1">Reads</p>
+                   <p className="text-xs font-black text-white">{s.views > 1000 ? (s.views/1000).toFixed(1) + 'k' : s.views}</p>
+                </div>
+                <div className="text-center">
+                   <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-1">Chapters</p>
+                   <p className="text-xs font-black text-white">{s.episodes ?? 0}</p>
+                </div>
+                <div className="text-center">
+                   <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-1">Status</p>
+                   <p className={`text-[9px] font-black uppercase ${s.status === 'published' ? 'text-green-500' : s.status === 'draft' ? 'text-yellow-500' : 'text-red-500'}`}>{s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Unknown'}</p>
+                </div>
             </div>
 
             <div className="flex gap-2">
