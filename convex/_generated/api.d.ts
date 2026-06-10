@@ -11,6 +11,8 @@
 import type * as admin from "../admin.js";
 import type * as ads from "../ads.js";
 import type * as applications from "../applications.js";
+import type * as contentRequests from "../contentRequests.js";
+import type * as creatorPremium from "../creatorPremium.js";
 import type * as creatorQuests from "../creatorQuests.js";
 import type * as creators from "../creators.js";
 import type * as files from "../files.js";
@@ -24,6 +26,7 @@ import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as stories from "../stories.js";
 import type * as users from "../users.js";
+import type * as webhooks from "../webhooks.js";
 
 import type {
   ApiFromModules,
@@ -35,6 +38,8 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   ads: typeof ads;
   applications: typeof applications;
+  contentRequests: typeof contentRequests;
+  creatorPremium: typeof creatorPremium;
   creatorQuests: typeof creatorQuests;
   creators: typeof creators;
   files: typeof files;
@@ -48,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   settings: typeof settings;
   stories: typeof stories;
   users: typeof users;
+  webhooks: typeof webhooks;
 }>;
 
 /**
