@@ -53,7 +53,7 @@ export const listPublished = query({
       .query("stories")
       .withIndex("by_status_and_views", (q) => q.eq("status", "published"))
       .order("desc")
-      .take(500);
+      .take(50);
   },
 });
 

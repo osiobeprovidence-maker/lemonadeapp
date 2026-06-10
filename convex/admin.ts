@@ -315,8 +315,8 @@ export const premium = query({
   args: {},
   handler: async (ctx) => {
     const [users, transactions] = await Promise.all([
-      ctx.db.query("users").collect(),
-      ctx.db.query("walletTransactions").collect(),
+      ctx.db.query("users").take(500),
+      ctx.db.query("walletTransactions").take(500),
     ]);
 
     const premiumUsers = users.filter(
@@ -563,7 +563,7 @@ export const updatePaymentStatus = mutation({
 export const listReports = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("contentReports").collect();
+    return await ctx.db.query("contentReports").take(500);
   },
 });
 
@@ -609,7 +609,7 @@ export const resolveReport = mutation({
 export const listActivity = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("adminActivity").order("desc").collect();
+    return await ctx.db.query("adminActivity").order("desc").take(500);
   },
 });
 
@@ -630,7 +630,7 @@ export const logActivity = mutation({
 export const listModerators = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("moderators").collect();
+    return await ctx.db.query("moderators").take(100);
   },
 });
 

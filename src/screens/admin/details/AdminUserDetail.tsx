@@ -132,7 +132,7 @@ export default function AdminUserDetail() {
                    </div>
                    <div className="flex-1">
                       <p className="text-xs font-black uppercase tracking-widest text-white/40 mb-0.5">Premium Status</p>
-                      <p className="text-lg font-black italic">{user.premium ? 'Active' : 'Free Tier'}</p>
+                      <p className="text-lg font-black italic">{user?.premium ? 'Active' : 'Free Tier'}</p>
                    </div>
                 </div>
                 <div className="flex items-center gap-4">
