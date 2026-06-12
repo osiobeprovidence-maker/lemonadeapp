@@ -726,7 +726,7 @@ export default defineSchema({
     lastSyncedAt: v.optional(v.string()),
     importMethod: v.optional(v.string()),
     provider: v.string(),
-    published: v.boolean(),
+    published: v.optional(v.boolean()),
     ...timestampFields,
   })
     .index("by_anilistId", ["anilistId"])
