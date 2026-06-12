@@ -36,7 +36,7 @@ export default function CatalogDetail() {
     );
   }
 
-  if (!item) {
+  if (!item || !item.published) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-4">
         <p className="text-white/40 font-bold text-lg">Content not found</p>
