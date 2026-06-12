@@ -26,6 +26,7 @@ import {
   ChevronRight,
   ChevronDown,
   Zap,
+  EyeOff,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { convex } from "../../lib/convex";
@@ -87,6 +88,7 @@ export default function AdminImports() {
   const [failedLogs, setFailedLogs] = useState<ImportLogEntry[]>([]);
   const [importedContent, setImportedContent] = useState<any[]>([]);
   const [syncing, setSyncing] = useState<Set<string>>(new Set());
+  const [publishing, setPublishing] = useState<Set<string>>(new Set());
 
   const loadStats = useCallback(async () => {
     if (!convex) return;
@@ -193,6 +195,41 @@ export default function AdminImports() {
     try {
       await convex.mutation(api.externalContent.remove, { id: id as any });
       await Promise.all([loadStats(), loadImported()]);
+    } catch {}
+  };
+
+  const handlePublish = async (id: string, published: boolean) => {
+    if (!convex) return;
+    setPublishing((prev) => new Set(prev).add(id));
+    try {
+      await convex.mutation(api.externalContent.publish, { id: id as any, published });
+      await loadImported();
+    } catch {
+    } finally {
+      setPublishing((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const handlePublishAll = async (published: boolean) => {
+    if (!convex) return;
+    const unpublished = importedContent.filter((i) => i.published !== published);
+    if (!unpublished.length) return;
+    const ids = unpublished.map((i) => i._id);
+    try {
+      await convex.mutation(api.externalContent.publishMany, { ids, published });
+      await loadImported();
+    } catch {}
+  };
+
+  const handlePublishSelected = async (ids: string[], published: boolean) => {
+    if (!convex) return;
+    try {
+      await convex.mutation(api.externalContent.publishMany, { ids, published });
+      await loadImported();
     } catch {}
   };
 
@@ -516,7 +553,24 @@ export default function AdminImports() {
 
       {/* ──────── TAB: Imported ──────── */}
       {tab === "imported" && (
-        <div className="bg-ink-deep border border-white/5 rounded-[2.5rem] overflow-hidden">
+        <div className="space-y-4">
+          {importedContent.length > 0 && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handlePublishAll(true)}
+                className="flex items-center gap-2 px-5 h-10 bg-green-500/10 text-green-400 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-green-500 hover:text-white transition-all"
+              >
+                <Eye size={14} /> Publish All Unpublished
+              </button>
+              <button
+                onClick={() => handlePublishAll(false)}
+                className="flex items-center gap-2 px-5 h-10 bg-red-500/10 text-red-400 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-red-500 hover:text-white transition-all"
+              >
+                <EyeOff size={14} /> Unpublish All
+              </button>
+            </div>
+          )}
+          <div className="bg-ink-deep border border-white/5 rounded-[2.5rem] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -524,6 +578,7 @@ export default function AdminImports() {
                   <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Title</th>
                   <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Type</th>
                   <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Format</th>
+                  <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Published</th>
                   <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Score</th>
                   <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Popularity</th>
                   <th className="p-6 text-[10px] font-black uppercase tracking-widest text-white/40">Chapters</th>
@@ -533,8 +588,8 @@ export default function AdminImports() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {importedContent.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="p-12 text-center text-white/30 font-bold">
+                    <tr>
+                    <td colSpan={9} className="p-12 text-center text-white/30 font-bold">
                       No content imported yet. Search AniList to get started.
                     </td>
                   </tr>
@@ -563,6 +618,17 @@ export default function AdminImports() {
                         <span className="text-[11px] font-bold text-white/40">{formatLabel(item.format)}</span>
                       </td>
                       <td className="p-6">
+                        {item.published ? (
+                          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-green-400">
+                            <CheckCircle2 size={12} /> Live
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-yellow-400">
+                            <EyeOff size={12} /> Draft
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-6">
                         {item.averageScore != null ? (
                           <span className="text-sm font-black text-yellow-400">{(item.averageScore / 10).toFixed(1)}</span>
                         ) : (
@@ -582,6 +648,24 @@ export default function AdminImports() {
                       </td>
                       <td className="p-6">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handlePublish(item._id, !item.published)}
+                            disabled={publishing.has(item._id)}
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all disabled:opacity-40 ${
+                              item.published
+                                ? "bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-white"
+                                : "bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500 hover:text-white"
+                            }`}
+                            title={item.published ? "Unpublish" : "Publish"}
+                          >
+                            {publishing.has(item._id) ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : item.published ? (
+                              <EyeOff size={14} />
+                            ) : (
+                              <Eye size={14} />
+                            )}
+                          </button>
                           <button
                             onClick={() => handleResync(item._id)}
                             disabled={syncing.has(item._id)}
@@ -609,6 +693,7 @@ export default function AdminImports() {
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       )}
 

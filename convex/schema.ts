@@ -726,6 +726,7 @@ export default defineSchema({
     lastSyncedAt: v.optional(v.string()),
     importMethod: v.optional(v.string()),
     provider: v.string(),
+    published: v.boolean(),
     ...timestampFields,
   })
     .index("by_anilistId", ["anilistId"])
@@ -738,6 +739,10 @@ export default defineSchema({
     .index("by_popularity", ["popularity"])
     .index("by_averageScore", ["averageScore"])
     .index("by_provider", ["provider"])
+    .index("by_published", ["published"])
+    .index("by_published_and_type", ["published", "contentDetection"])
+    .index("by_published_and_popularity", ["published", "popularity"])
+    .index("by_published_and_score", ["published", "averageScore"])
     .index("by_content_and_popularity", ["contentDetection", "popularity"])
     .index("by_content_and_score", ["contentDetection", "averageScore"])
     .index("by_content_and_format", ["contentDetection", "format"]),

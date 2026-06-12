@@ -158,11 +158,13 @@ export const create = mutation({
     structuredData: v.optional(v.any()),
     provider: v.string(),
     importMethod: v.optional(v.string()),
+    published: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const timestamp = now();
     return await ctx.db.insert("externalContent", {
       ...args,
+      published: args.published ?? false,
       importedAt: timestamp,
       lastSyncedAt: timestamp,
       createdAt: timestamp,
@@ -224,5 +226,93 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
     return args.id;
+  },
+});
+
+export const publish = mutation({
+  args: { id: v.id("externalContent"), published: v.boolean() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { published: args.published, updatedAt: now() });
+    return args.id;
+  },
+});
+
+export const publishMany = mutation({
+  args: { ids: v.array(v.id("externalContent")), published: v.boolean() },
+  handler: async (ctx, args) => {
+    for (const id of args.ids) {
+      await ctx.db.patch(id, { published: args.published, updatedAt: now() });
+    }
+    return args.ids.length;
+  },
+});
+
+export const listPublished = query({
+  args: {
+    contentType: v.optional(v.string()),
+    limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+    const offset = args.offset ?? 0;
+
+    if (args.contentType) {
+      return await ctx.db
+        .query("externalContent")
+        .withIndex("by_published_and_type", (q) => q.eq("published", true).eq("contentDetection", args.contentType!))
+        .order("desc")
+        .take(limit + offset);
+    }
+
+    return await ctx.db
+      .query("externalContent")
+      .withIndex("by_published", (q) => q.eq("published", true))
+      .order("desc")
+      .take(limit + offset);
+  },
+});
+
+export const listPublishedByPopularity = query({
+  args: {
+    contentType: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+    if (args.contentType) {
+      return await ctx.db
+        .query("externalContent")
+        .withIndex("by_published_and_type", (q) => q.eq("published", true).eq("contentDetection", args.contentType!))
+        .order("desc")
+        .take(limit);
+    }
+    return await ctx.db
+      .query("externalContent")
+      .withIndex("by_published_and_popularity", (q) => q.eq("published", true))
+      .order("desc")
+      .take(limit);
+  },
+});
+
+export const listPublishedByScore = query({
+  args: {
+    contentType: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+    if (args.contentType) {
+      return await ctx.db
+        .query("externalContent")
+        .withIndex("by_published_and_type", (q) => q.eq("published", true).eq("contentDetection", args.contentType!))
+        .order("desc")
+        .take(limit);
+    }
+    return await ctx.db
+      .query("externalContent")
+      .withIndex("by_published_and_score", (q) => q.eq("published", true))
+      .order("desc")
+      .take(limit);
   },
 });
