@@ -1,9 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Flame, TrendingUp, Star, Clock } from 'lucide-react';
+import { ArrowLeft, Flame, TrendingUp, Star, Clock, ExternalLink } from 'lucide-react';
 import { StoryCard } from '../components/ui/Cards';
 import { cn } from '../lib/utils';
 import { useApp } from '../contexts/AppContext';
+import { convex } from '../lib/convex';
+import { api } from '../../convex/_generated/api';
+import type { Story } from '../data/types';
 
 const TYPE_LABELS: Record<string, string> = {
   manga: 'Manga',
@@ -22,13 +25,64 @@ const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest', icon: Clock },
 ];
 
+const TYPE_TO_CONTENT: Record<string, string> = {
+  manga: 'manga',
+  manhwa: 'manhwa',
+  manhua: 'manhua',
+  webtoon: 'webtoon',
+  comic: 'comic',
+  novel: 'novel',
+  'light-novel': 'light_novel',
+};
+
+function normalizeExternalContent(item: any): Story {
+  return {
+    id: `ext_${item.urlSlug || item._id}`,
+    title: item.titleRomaji || item.titleEnglish || 'Untitled',
+    alternativeTitles: item.alternativeTitles,
+    creator: { name: item.author || item.publisher || 'AniList', id: '', username: '', avatar: '', followers: 0, bio: '', category: 'Writer' as const, totalReads: 0, totalStories: 0, supportEnabled: false },
+    genre: item.genres?.[0] || 'Other',
+    genres: item.genres,
+    format: item.contentDetection || item.format,
+    contentType: item.contentDetection as any,
+    rating: item.averageScore ? item.averageScore / 10 : 0,
+    ratingCount: item.meanScore,
+    views: item.popularity || 0,
+    saves: item.favorites || 0,
+    followers: item.favorites,
+    episodes: item.chapterCount || 0,
+    synopsis: item.description || '',
+    description: item.description,
+    coverImage: item.coverImage || '',
+    bannerImage: item.bannerImage || '',
+    author: item.author,
+    artist: item.artist,
+    tags: item.tags || [],
+    isFeatured: false,
+    isOriginal: false,
+    status: 'published' as const,
+  };
+}
+
 export default function TypePage() {
   const { type } = useParams<{ type: string }>();
   const { stories } = useApp();
   const [activeSort, setActiveSort] = useState('trending');
+  const [externalStories, setExternalStories] = useState<any[]>([]);
+  const [loadingExternal, setLoadingExternal] = useState(true);
 
   const typeName = type || 'manga';
   const typeLabel = TYPE_LABELS[typeName] || typeName;
+
+  useEffect(() => {
+    const contentType = TYPE_TO_CONTENT[typeName];
+    if (!convex) return;
+    setLoadingExternal(true);
+    convex.query(api.externalContent.listPublishedByPopularity, { contentType, limit: 50 })
+      .then(setExternalStories)
+      .catch(() => {})
+      .finally(() => setLoadingExternal(false));
+  }, [typeName]);
 
   const typeStories = useMemo(() => {
     const normalized = typeName.toLowerCase().replace('-', '_').replace('light novel', 'light_novel');
@@ -38,6 +92,9 @@ export default function TypePage() {
       return ct === normalized || fmt === normalized ||
         ct === typeName.toLowerCase() || fmt === typeName.toLowerCase();
     });
+
+    const externalNormalized = externalStories.map(normalizeExternalContent);
+    results = [...results, ...externalNormalized];
 
     switch (activeSort) {
       case 'newest':
@@ -56,7 +113,7 @@ export default function TypePage() {
     }
 
     return results;
-  }, [stories, typeName, activeSort]);
+  }, [stories, typeName, activeSort, externalStories]);
 
   return (
     <div className="flex flex-col w-full min-h-screen">
@@ -100,9 +157,40 @@ export default function TypePage() {
       <section className="px-4 pb-12 md:px-8">
         {typeStories.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-            {typeStories.map(story => (
-              <StoryCard key={story.id} story={story} />
-            ))}
+            {typeStories.map(story => {
+              const isExternal = story.id.startsWith('ext_');
+              return isExternal ? (
+                <a
+                  key={story.id}
+                  href={(story as any).externalUrl || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col gap-2.5"
+                >
+                  <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#171717] shadow-lg shadow-black/20">
+                    <img src={story.coverImage} alt={story.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 transition-opacity group-hover:opacity-80" />
+                    <div className="absolute top-2 left-2 flex gap-1.5 flex-wrap">
+                      <div className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-lemon-muted text-black">
+                        Imported
+                      </div>
+                    </div>
+                    <div className="absolute bottom-2.5 left-2.5 right-2.5 flex justify-between items-end">
+                      <div className="flex bg-black/65 backdrop-blur-md rounded-full px-2 py-1 gap-2 text-[10px] w-full justify-center">
+                        <span className="flex items-center gap-1 font-medium"><Star size={12} className="text-white/70" /> {(story.rating || 0).toFixed(1)}</span>
+                        <span className="flex items-center gap-1 font-medium"><ExternalLink size={12} className="text-white/70" /> AniList</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <h3 className="font-display font-semibold text-[15px] sm:text-lg leading-tight group-hover:text-lemon-muted transition-colors line-clamp-2">{story.title}</h3>
+                    <p className="text-white/55 font-medium text-xs sm:text-sm truncate">{(story as any).author || 'AniList'}</p>
+                  </div>
+                </a>
+              ) : (
+                <StoryCard key={story.id} story={story} />
+              );
+            })}
           </div>
         ) : (
           <div className="py-20 text-center text-white/40">
