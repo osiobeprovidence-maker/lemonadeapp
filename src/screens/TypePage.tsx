@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Flame, TrendingUp, Star, Clock, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Flame, TrendingUp, Star, Clock, Heart, Eye } from 'lucide-react';
 import { StoryCard } from '../components/ui/Cards';
 import { cn } from '../lib/utils';
 import { useApp } from '../contexts/AppContext';
@@ -159,12 +159,11 @@ export default function TypePage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
             {typeStories.map(story => {
               const isExternal = story.id.startsWith('ext_');
+              const extSlug = isExternal ? story.id.replace('ext_', '') : '';
               return isExternal ? (
-                <a
+                <Link
                   key={story.id}
-                  href={(story as any).externalUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  to={`/catalog/${extSlug}`}
                   className="group flex flex-col gap-2.5"
                 >
                   <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#171717] shadow-lg shadow-black/20">
@@ -175,10 +174,10 @@ export default function TypePage() {
                         Imported
                       </div>
                     </div>
-                    <div className="absolute bottom-2.5 left-2.5 right-2.5 flex justify-between items-end">
+                    <div className="absolute bottom-2.5 left-2.5 right-2.5 flex justify-between items-end opacity-100 sm:opacity-0 transform sm:translate-y-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
                       <div className="flex bg-black/65 backdrop-blur-md rounded-full px-2 py-1 gap-2 text-[10px] w-full justify-center">
-                        <span className="flex items-center gap-1 font-medium"><Star size={12} className="text-white/70" /> {(story.rating || 0).toFixed(1)}</span>
-                        <span className="flex items-center gap-1 font-medium"><ExternalLink size={12} className="text-white/70" /> AniList</span>
+                        <span className="flex items-center gap-1 font-medium"><Heart size={12} className="text-white/70" /> {(story.saves / 1000).toFixed(1)}k</span>
+                        <span className="flex items-center gap-1 font-medium"><Eye size={12} className="text-white/70" /> {(story.views / 1000).toFixed(1)}k</span>
                       </div>
                     </div>
                   </div>
@@ -186,7 +185,7 @@ export default function TypePage() {
                     <h3 className="font-display font-semibold text-[15px] sm:text-lg leading-tight group-hover:text-lemon-muted transition-colors line-clamp-2">{story.title}</h3>
                     <p className="text-white/55 font-medium text-xs sm:text-sm truncate">{(story as any).author || 'AniList'}</p>
                   </div>
-                </a>
+                </Link>
               ) : (
                 <StoryCard key={story.id} story={story} />
               );

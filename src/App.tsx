@@ -9,6 +9,7 @@ import Auth from './screens/Auth';
 import Home from './screens/Home';
 import Explore from './screens/Explore';
 import StoryDetail from './screens/StoryDetail';
+import CatalogDetail from './screens/CatalogDetail';
 import Reader from './screens/Reader';
 import Library from './screens/Library';
 import CreatorDashboard from './screens/CreatorDashboard';
@@ -134,6 +135,7 @@ function AnimatedRoutes() {
           <Route path="/premium" element={<Premium />} />
           
           <Route path="/story/:id" element={<StoryDetail />} />
+          <Route path="/catalog/:slug" element={<CatalogDetail />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/creator/:username" element={<CreatorProfile />} />
           <Route path="/creator/:username/portfolio" element={<CreatorPortfolio />} />
