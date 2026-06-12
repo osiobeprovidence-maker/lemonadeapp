@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   LayoutDashboard, 
   Users, 
   PenTool, 
@@ -20,7 +20,8 @@ import {
   TrendingUp,
   Box,
   Megaphone,
-  Gift
+  Gift,
+  Database,
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { cn } from '../../lib/utils';
@@ -48,6 +49,7 @@ const NAV_ITEMS = [
   { label: 'Premium', icon: Star, path: '/admin/premium' },
   { label: 'Moderators', icon: ShieldCheck, path: '/admin/moderators', superAdminOnly: true },
   { label: 'Featured Content', icon: BadgeCheck, path: '/admin/featured' },
+  { label: 'Content Imports', icon: Database, path: '/admin/imports' },
   { label: 'Settings', icon: Settings, path: '/admin/settings' },
 ];
 

@@ -52,6 +52,7 @@ import AdminReportDetail from './screens/admin/details/AdminReportDetail';
 import AdminPaymentDetail from './screens/admin/details/AdminPaymentDetail';
 import AdminApplicationDetail from './screens/admin/details/AdminApplicationDetail';
 import AdminFeaturedEditor from './screens/admin/details/AdminFeaturedEditor';
+import AdminImports from './screens/admin/AdminImports';
 import AdminPlatformRules from './screens/admin/AdminPlatformRules';
 import AdminModerationPresets from './screens/admin/AdminModerationPresets';
 import AdminAuditLog from './screens/admin/AdminAuditLog';
@@ -333,6 +334,13 @@ function AnimatedRoutes() {
           <AdminRouteGuard>
             <AdminLayout>
                <AdminFeaturedEditor />
+            </AdminLayout>
+          </AdminRouteGuard>
+        } />
+        <Route path="/admin/imports" element={
+          <AdminRouteGuard>
+            <AdminLayout>
+              <AdminImports />
             </AdminLayout>
           </AdminRouteGuard>
         } />

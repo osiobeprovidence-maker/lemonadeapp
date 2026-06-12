@@ -678,4 +678,105 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_votes", ["votes"])
     .index("by_user", ["userId"]),
+
+  /* ═══════════════════════════════════════════
+     External Content Import (AniList, etc.)
+     ═══════════════════════════════════════════ */
+
+  externalContent: defineTable({
+    anilistId: v.optional(v.number()),
+    malId: v.optional(v.number()),
+    titleRomaji: v.string(),
+    titleEnglish: v.optional(v.string()),
+    titleNative: v.optional(v.string()),
+    alternativeTitles: v.array(v.string()),
+    description: v.string(),
+    coverImage: v.optional(v.string()),
+    bannerImage: v.optional(v.string()),
+    format: v.string(),
+    status: v.string(),
+    countryOfOrigin: v.optional(v.string()),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+    genres: v.array(v.string()),
+    tags: v.array(v.string()),
+    themes: v.array(v.string()),
+    averageScore: v.optional(v.number()),
+    meanScore: v.optional(v.number()),
+    popularity: v.optional(v.number()),
+    favorites: v.optional(v.number()),
+    rankings: v.optional(v.any()),
+    author: v.optional(v.string()),
+    artist: v.optional(v.string()),
+    publisher: v.optional(v.string()),
+    serialization: v.optional(v.string()),
+    chapterCount: v.optional(v.number()),
+    volumeCount: v.optional(v.number()),
+    source: v.optional(v.string()),
+    contentDetection: v.string(),
+    mappingVersion: v.number(),
+    externalUrl: v.optional(v.string()),
+    isAdult: v.boolean(),
+    seoTitle: v.optional(v.string()),
+    seoDescription: v.optional(v.string()),
+    urlSlug: v.string(),
+    ogImage: v.optional(v.string()),
+    structuredData: v.optional(v.any()),
+    importedAt: v.string(),
+    lastSyncedAt: v.optional(v.string()),
+    importMethod: v.optional(v.string()),
+    provider: v.string(),
+    ...timestampFields,
+  })
+    .index("by_anilistId", ["anilistId"])
+    .index("by_malId", ["malId"])
+    .index("by_urlSlug", ["urlSlug"])
+    .index("by_contentDetection", ["contentDetection"])
+    .index("by_format", ["format"])
+    .index("by_status_field", ["status"])
+    .index("by_genres", ["genres"])
+    .index("by_popularity", ["popularity"])
+    .index("by_averageScore", ["averageScore"])
+    .index("by_provider", ["provider"])
+    .index("by_content_and_popularity", ["contentDetection", "popularity"])
+    .index("by_content_and_score", ["contentDetection", "averageScore"])
+    .index("by_content_and_format", ["contentDetection", "format"]),
+
+  anilistCache: defineTable({
+    cacheKey: v.string(),
+    response: v.any(),
+    expiresAt: v.string(),
+    ...timestampFields,
+  })
+    .index("by_cacheKey", ["cacheKey"])
+    .index("by_expiresAt", ["expiresAt"]),
+
+  importLogs: defineTable({
+    anilistId: v.optional(v.number()),
+    title: v.optional(v.string()),
+    action: v.string(),
+    status: v.string(),
+    message: v.string(),
+    details: v.optional(v.any()),
+    provider: v.string(),
+    ...timestampFields,
+  })
+    .index("by_anilistId", ["anilistId"])
+    .index("by_action", ["action"])
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
+
+  syncHistory: defineTable({
+    syncType: v.string(),
+    status: v.string(),
+    itemsProcessed: v.number(),
+    itemsSucceeded: v.number(),
+    itemsFailed: v.number(),
+    startedAt: v.string(),
+    completedAt: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    ...timestampFields,
+  })
+    .index("by_status", ["status"])
+    .index("by_syncType", ["syncType"]),
 });

@@ -10,13 +10,16 @@
 
 import type * as admin from "../admin.js";
 import type * as ads from "../ads.js";
+import type * as anilist from "../anilist.js";
 import type * as applications from "../applications.js";
 import type * as contentRequests from "../contentRequests.js";
 import type * as creatorPremium from "../creatorPremium.js";
 import type * as creatorQuests from "../creatorQuests.js";
 import type * as creators from "../creators.js";
+import type * as externalContent from "../externalContent.js";
 import type * as files from "../files.js";
 import type * as gamification from "../gamification.js";
+import type * as imports from "../imports.js";
 import type * as interactions from "../interactions.js";
 import type * as migrate from "../migrate.js";
 import type * as payments from "../payments.js";
@@ -37,13 +40,16 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   ads: typeof ads;
+  anilist: typeof anilist;
   applications: typeof applications;
   contentRequests: typeof contentRequests;
   creatorPremium: typeof creatorPremium;
   creatorQuests: typeof creatorQuests;
   creators: typeof creators;
+  externalContent: typeof externalContent;
   files: typeof files;
   gamification: typeof gamification;
+  imports: typeof imports;
   interactions: typeof interactions;
   migrate: typeof migrate;
   payments: typeof payments;
