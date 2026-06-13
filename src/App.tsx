@@ -57,6 +57,7 @@ import AdminImports from './screens/admin/AdminImports';
 import AdminMangaManager from './screens/admin/AdminMangaManager';
 import MangaLibrary from './screens/MangaLibrary';
 import MangaDetail from './screens/MangaDetail';
+import MangaReader from './screens/MangaReader';
 import AdminPlatformRules from './screens/admin/AdminPlatformRules';
 import AdminModerationPresets from './screens/admin/AdminModerationPresets';
 import AdminAuditLog from './screens/admin/AdminAuditLog';
@@ -141,6 +142,7 @@ function AnimatedRoutes() {
           <Route path="/catalog/:slug" element={<CatalogDetail />} />
           <Route path="/manga/library" element={<MangaLibrary />} />
           <Route path="/manga/:slug" element={<MangaDetail />} />
+          <Route path="/manga/:slug/chapter/:chapterNumber" element={<MangaReader />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/creator/:username" element={<CreatorProfile />} />
           <Route path="/creator/:username/portfolio" element={<CreatorPortfolio />} />

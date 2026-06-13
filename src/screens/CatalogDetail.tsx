@@ -161,16 +161,6 @@ export default function CatalogDetail() {
 
           {/* Action buttons */}
           <div className="flex items-center gap-3 mt-6">
-            {item.externalUrl && (
-              <a
-                href={item.externalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-6 h-12 bg-lemon-muted text-black rounded-xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
-              >
-                <ExternalLink size={16} /> View on AniList
-              </a>
-            )}
           </div>
         </div>
       </div>

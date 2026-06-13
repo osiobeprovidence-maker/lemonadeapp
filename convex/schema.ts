@@ -818,4 +818,20 @@ export default defineSchema({
     .index("by_status_and_rating", ["status", "rating"])
     .index("by_status_and_popularity", ["status", "popularityScore"])
     .index("by_status_and_created", ["status", "createdAt"]),
+
+  mangaChapters: defineTable({
+    mangaId: v.id("manga"),
+    chapterNumber: v.float64(),
+    title: v.optional(v.string()),
+    volumeNumber: v.optional(v.float64()),
+    externalId: v.string(),
+    pages: v.array(v.string()),
+    status: v.union(v.literal("draft"), v.literal("published")),
+    language: v.string(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_mangaId", ["mangaId"])
+    .index("by_mangaId_and_chapter", ["mangaId", "chapterNumber"])
+    .index("by_externalId", ["externalId"]),
 });

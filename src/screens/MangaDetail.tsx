@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Star, Heart, Eye, ExternalLink, BookOpen, Calendar, Globe, User, Loader2, Tag, Clock } from 'lucide-react';
+import { ArrowLeft, Star, Heart, Eye, ExternalLink, BookOpen, Calendar, Globe, User, Loader2, Tag, Clock, ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { convex } from '../lib/convex';
 import { api } from '../../convex/_generated/api';
@@ -12,12 +12,23 @@ export default function MangaDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [manga, setManga] = useState<MangaDoc | null>(null);
   const [loading, setLoading] = useState(true);
+  const [chapters, setChapters] = useState<any[]>([]);
+  const [chaptersLoading, setChaptersLoading] = useState(false);
 
   useEffect(() => {
     if (!slug || !convex) return;
     setLoading(true);
     convex.query(api.manga.getBySlug, { slug })
-      .then((item) => setManga(item?.status === "published" ? item : null))
+      .then((item) => {
+        setManga(item?.status === "published" ? item : null);
+        if (item?.status === "published") {
+          setChaptersLoading(true);
+          convex.query(api.mangaChapters.listByMangaId, { mangaId: item._id })
+            .then(setChapters)
+            .catch(() => {})
+            .finally(() => setChaptersLoading(false));
+        }
+      })
       .catch(() => setManga(null))
       .finally(() => setLoading(false));
   }, [slug]);
@@ -169,6 +180,44 @@ export default function MangaDetail() {
             <div className="bg-ink-deep border border-white/5 rounded-2xl p-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-1">Chapters</p>
               <p className="font-bold text-white">{manga.chapters}</p>
+            </div>
+          )}
+        </section>
+
+        {/* Chapters */}
+        <section>
+          <h2 className="font-display font-black text-xl mb-4 text-white flex items-center gap-2">
+            <BookOpen size={20} /> Chapters
+            {chaptersLoading && <Loader2 size={14} className="animate-spin text-white/30" />}
+            {!chaptersLoading && chapters.length > 0 && (
+              <span className="text-sm font-bold text-white/30">({chapters.length})</span>
+            )}
+          </h2>
+          {chapters.length === 0 ? (
+            <p className="text-white/30 text-sm">No chapters available yet.</p>
+          ) : (
+            <div className="grid gap-2 max-w-2xl">
+              {chapters.map((ch) => (
+                <Link
+                  key={ch._id}
+                  to={`/manga/${manga.slug}/chapter/${ch.chapterNumber}`}
+                  className="flex items-center justify-between p-4 bg-ink-deep border border-white/5 rounded-xl hover:border-white/10 hover:bg-white/[0.02] transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/30 group-hover:bg-lemon-muted/10 group-hover:text-lemon-muted transition-all">
+                      <BookOpen size={14} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-white">Chapter {ch.chapterNumber}</p>
+                      {ch.title && <p className="text-xs text-white/40">{ch.title}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/30">{ch.pages?.length || 0} pages</span>
+                    <ChevronRight size={14} className="text-white/20 group-hover:text-white/50 transition-all" />
+                  </div>
+                </Link>
+              ))}
             </div>
           )}
         </section>
