@@ -50,6 +50,7 @@ export default function AdminMangaManager() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
+  const [importingChapters, setImportingChapters] = useState<Set<string>>(new Set());
 
   const [logs, setLogs] = useState<any[]>([]);
   const [editModal, setEditModal] = useState<{ manga: MangaDoc; field: string; value: string } | null>(null);
@@ -155,6 +156,20 @@ export default function AdminMangaManager() {
     const fn = action === "publish" ? api.manga.publish : action === "unpublish" ? api.manga.unpublish : action === "archive" ? api.manga.archive : api.manga.remove;
     await convex.mutation(fn, { id: id as any });
     loadManga();
+  };
+
+  // ─── Import Chapters ────────────────────────────────────────────────
+  const handleImportChapters = async (mangaId: string) => {
+    if (!convex || importingChapters.has(mangaId)) return;
+    setImportingChapters(prev => new Set(prev).add(mangaId));
+    try {
+      const result = await convex.action(api.mangaChapters.importChapters, { mangaId: mangaId as any, limit: 50 });
+      alert(`Imported ${result.imported} chapters (${result.skipped} skipped, ${result.failed} failed)`);
+    } catch (e: any) {
+      alert(e.message || "Import failed");
+    } finally {
+      setImportingChapters(prev => { const next = new Set(prev); next.delete(mangaId); return next; });
+    }
   };
 
   // ─── Quick Edit ────────────────────────────────────────────────────
@@ -404,6 +419,14 @@ export default function AdminMangaManager() {
                           </button>
                         )}
                         <button onClick={() => handleAction(m._id, "delete")} className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all" title="Delete"><Trash2 size={12} /></button>
+                        {m.source === "mangadex" && (
+                          <button onClick={() => handleImportChapters(m._id)} disabled={importingChapters.has(m._id)}
+                            className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                              importingChapters.has(m._id) ? "bg-white/5 text-white/20 cursor-wait" : "bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white"
+                            )} title={importingChapters.has(m._id) ? "Importing..." : "Import Chapters"}>
+                            {importingChapters.has(m._id) ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
