@@ -116,6 +116,16 @@ export default function MangaDetail() {
               </div>
             )}
           </div>
+
+          {/* Read button */}
+          {chapters.length > 0 && (
+            <Link
+              to={`/manga/${manga.slug}/chapter/${chapters[0].chapterNumber}`}
+              className="inline-flex items-center gap-2 px-6 h-12 bg-lemon-muted text-black rounded-xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] active:scale-[0.98] transition-all mt-4"
+            >
+              <BookOpen size={16} /> Start Reading
+            </Link>
+          )}
         </div>
       </div>
 
