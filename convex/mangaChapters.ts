@@ -179,6 +179,36 @@ export const syncChapterPages = action({
   },
 });
 
+export const getChapterPages = action({
+  args: { externalId: v.string(), chapterId: v.optional(v.id("mangaChapters")) },
+  handler: async (ctx, args) => {
+    const res = await fetch(`https://api.mangadex.org/at-home/server/${args.externalId}`, {
+      headers: { "User-Agent": "Owuu/1.0" },
+    });
+    if (!res.ok) return { pages: [], error: `MangaDex error ${res.status}` };
+    const json = await res.json();
+    const baseUrl = json?.baseUrl;
+    const chapterData = json?.chapter;
+    if (!baseUrl || !chapterData?.hash || !chapterData?.data?.length) {
+      return { pages: [], error: "No page data" };
+    }
+    const pages = chapterData.data.map(
+      (f: string) => `${baseUrl}/data/${chapterData.hash}/${f}`
+    );
+    if (args.chapterId) {
+      await ctx.runMutation(api.mangaChapters.updatePages, { id: args.chapterId, pages });
+    }
+    return { pages };
+  },
+});
+
+export const updateExternalId = mutation({
+  args: { id: v.id("mangaChapters"), externalId: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { externalId: args.externalId, updatedAt: now() });
+  },
+});
+
 export const updatePages = mutation({
   args: { id: v.id("mangaChapters"), pages: v.array(v.string()) },
   handler: async (ctx, args) => {

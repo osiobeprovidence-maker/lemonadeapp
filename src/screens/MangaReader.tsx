@@ -8,11 +8,23 @@ export default function MangaReader() {
   const { slug, chapterNumber } = useParams<{ slug: string; chapterNumber: string }>();
   const [manga, setManga] = useState<any>(null);
   const [chapter, setChapter] = useState<any>(null);
+  const [pages, setPages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pagesLoading, setPagesLoading] = useState(false);
   const [allChapters, setAllChapters] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [fullscreen, setFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  async function loadPages(ch: any) {
+    if (!ch?.externalId) return;
+    setPagesLoading(true);
+    try {
+      const result = await convex.action(api.mangaChapters.getChapterPages, { externalId: ch.externalId, chapterId: ch._id });
+      setPages(result.pages || []);
+    } catch { setPages([]); }
+    finally { setPagesLoading(false); }
+  }
 
   useEffect(() => {
     if (!slug || !chapterNumber || !convex) return;
@@ -30,15 +42,10 @@ export default function MangaReader() {
         if (!chs) return;
         setAllChapters(chs);
         const found = chs.find((c: any) => c.chapterNumber === chNum);
-        if (!found) {
-          const nearest = chs.reduce((best: any, c: any) =>
-            Math.abs(c.chapterNumber - chNum) < Math.abs(best.chapterNumber - chNum) ? c : best
-          , chs[0]);
-          setChapter(nearest || null);
-        } else {
-          setChapter(found);
-        }
-        setCurrentIndex(chs.findIndex((c: any) => c._id === (found?._id || chs[0]?._id)));
+        const ch = found || chs[0] || null;
+        setChapter(ch);
+        setCurrentIndex(chs.findIndex((c: any) => c._id === ch?._id));
+        if (ch) loadPages(ch);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -49,13 +56,10 @@ export default function MangaReader() {
     if (next < 0 || next >= allChapters.length) return;
     const nextCh = allChapters[next];
     window.history.pushState({}, '', `/manga/${slug}/chapter/${nextCh.chapterNumber}`);
-    setLoading(true);
-    convex.query(api.mangaChapters.getByChapterNumber, {
-      mangaId: manga._id,
-      chapterNumber: nextCh.chapterNumber,
-    }).then(setChapter).catch(() => {}).finally(() => setLoading(false));
+    setChapter(nextCh);
     setCurrentIndex(next);
-  }, [currentIndex, allChapters, slug, manga?._id]);
+    loadPages(nextCh);
+  }, [currentIndex, allChapters, slug]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -84,8 +88,7 @@ export default function MangaReader() {
   }
 
   return (
-    <div ref={containerRef} className={cn("flex flex-col bg-black min-h-screen", fullscreen && "fixed inset-0 z-50")}>
-      {/* Top bar */}
+    <div ref={containerRef} className={`flex flex-col bg-black min-h-screen ${fullscreen ? 'fixed inset-0 z-50' : ''}`}>
       <div className="flex items-center justify-between px-4 h-14 bg-[#0a0a0a] border-b border-white/5 shrink-0">
         <div className="flex items-center gap-3">
           <Link to={`/manga/${slug}`} className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all">
@@ -104,46 +107,34 @@ export default function MangaReader() {
         </div>
       </div>
 
-      {/* Pages */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto">
-          {chapter.pages?.map((url: string, i: number) => (
-            <div key={i} className="flex flex-col">
-              {i > 0 && <div className="h-px bg-white/5" />}
-              <img
-                src={url}
-                alt={`Page ${i + 1}`}
-                className="w-full h-auto"
-                loading="lazy"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-          ))}
+          {pagesLoading ? (
+            <div className="flex items-center justify-center py-20"><Loader2 size={24} className="animate-spin text-white/20" /></div>
+          ) : pages.length === 0 ? (
+            <div className="flex items-center justify-center py-20 text-white/30 font-bold">No pages available</div>
+          ) : (
+            pages.map((url: string, i: number) => (
+              <div key={i} className="flex flex-col">
+                {i > 0 && <div className="h-px bg-white/5" />}
+                <img src={url} alt={`Page ${i + 1}`} className="w-full h-auto" loading="lazy" referrerPolicy="no-referrer" crossOrigin="anonymous" />
+              </div>
+            ))
+          )}
         </div>
       </div>
 
-      {/* Bottom bar */}
       <div className="flex items-center justify-between px-4 h-16 bg-[#0a0a0a] border-t border-white/5 shrink-0">
-        <button
-          onClick={() => goToChapter(-1)}
-          disabled={currentIndex <= 0}
-          className="flex items-center gap-2 px-4 h-10 rounded-xl bg-white/5 text-white/70 font-bold text-xs hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-        >
+        <button onClick={() => goToChapter(-1)} disabled={currentIndex <= 0}
+          className="flex items-center gap-2 px-4 h-10 rounded-xl bg-white/5 text-white/70 font-bold text-xs hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
           <ChevronLeft size={16} /> Previous
         </button>
         <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Ch. {chapter.chapterNumber}</span>
-        <button
-          onClick={() => goToChapter(1)}
-          disabled={currentIndex >= allChapters.length - 1}
-          className="flex items-center gap-2 px-4 h-10 rounded-xl bg-white/5 text-white/70 font-bold text-xs hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-        >
+        <button onClick={() => goToChapter(1)} disabled={currentIndex >= allChapters.length - 1}
+          className="flex items-center gap-2 px-4 h-10 rounded-xl bg-white/5 text-white/70 font-bold text-xs hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
           Next <ChevronRight size={16} />
         </button>
       </div>
     </div>
   );
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }

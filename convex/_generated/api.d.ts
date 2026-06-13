@@ -21,6 +21,8 @@ import type * as files from "../files.js";
 import type * as gamification from "../gamification.js";
 import type * as imports from "../imports.js";
 import type * as interactions from "../interactions.js";
+import type * as manga from "../manga.js";
+import type * as mangaChapters from "../mangaChapters.js";
 import type * as migrate from "../migrate.js";
 import type * as payments from "../payments.js";
 import type * as paystack from "../paystack.js";
@@ -51,6 +53,8 @@ declare const fullApi: ApiFromModules<{
   gamification: typeof gamification;
   imports: typeof imports;
   interactions: typeof interactions;
+  manga: typeof manga;
+  mangaChapters: typeof mangaChapters;
   migrate: typeof migrate;
   payments: typeof payments;
   paystack: typeof paystack;
