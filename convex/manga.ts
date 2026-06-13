@@ -342,7 +342,7 @@ query ($page: Int, $perPage: Int, $sort: [MediaSort]) {
       genres
       tags { name }
       authors: staff(sort: [RELEVANCE]) {
-        edges { role node { name } }
+        edges { role node { name { full } } }
       }
       format
       status
@@ -362,10 +362,10 @@ query ($page: Int, $perPage: Int, $sort: [MediaSort]) {
 function parseAnilistMedia(media: any, source: string) {
   const author = media.authors?.edges?.find((e: any) =>
     e.role.toLowerCase().includes("story") || e.role.toLowerCase().includes("author")
-  )?.node?.name;
+  )?.node?.name?.full;
   const artist = media.authors?.edges?.find((e: any) =>
     e.role.toLowerCase().includes("art")
-  )?.node?.name;
+  )?.node?.name?.full;
   const slug = slugify(media.title?.romaji || media.title?.english || "untitled");
   return {
     title: media.title?.romaji || media.title?.english || "Untitled",
@@ -411,7 +411,7 @@ export const importFromAnilist = action({
       });
       const media = data?.data?.Page?.media?.[0];
       if (!media && args.externalId) {
-        const detailQuery = `query ($id: Int) { Media(id: $id, type: MANGA) { id title { romaji english native } description coverImage { extraLarge large } bannerImage genres tags { name } staff(sort: [RELEVANCE]) { edges { role node { name } } } format status chapters volumes averageScore popularity favourites countryOfOrigin startDate { year } source siteUrl } }`;
+        const detailQuery = `query ($id: Int) { Media(id: $id, type: MANGA) { id title { romaji english native } description coverImage { extraLarge large } bannerImage genres tags { name } staff(sort: [RELEVANCE]) { edges { role node { name { full } } } } format status chapters volumes averageScore popularity favourites countryOfOrigin startDate { year } source siteUrl } }`;
         const detail = await anilistFetch(detailQuery, { id: parseInt(args.externalId) });
         if (!detail?.data?.Media) return { status: "failed", message: "Not found on AniList" };
         const parsed = parseAnilistMedia(detail.data.Media, source);
@@ -491,7 +491,7 @@ export const importFromMangaDex = action({
       const coverRel = md.relationships?.find((r: any) => r.type === "cover_art");
       let coverUrl: string | undefined;
       if (coverRel?.attributes?.fileName) {
-        coverUrl = `https://uploads.mangadex.org/covers/${md.id}/${coverRel.attributes.fileName}.512.jpg`;
+        coverUrl = `https://uploads.mangadex.org/covers/${md.id}/${coverRel.attributes.fileName}`;
       }
       const authorName = authorRel ? await fetchMangaDexAuthor(authorRel.id) : undefined;
       const artistName = artistRel && artistRel.id !== authorRel?.id ? await fetchMangaDexAuthor(artistRel.id) : undefined;
@@ -592,7 +592,7 @@ export const searchMangaDex = action({
     return (json?.data || []).map((md: any) => {
       const coverRel = md.relationships?.find((r: any) => r.type === "cover_art");
       const coverUrl = coverRel?.attributes?.fileName
-        ? `https://uploads.mangadex.org/covers/${md.id}/${coverRel.attributes.fileName}.512.jpg`
+        ? `https://uploads.mangadex.org/covers/${md.id}/${coverRel.attributes.fileName}`
         : undefined;
       return {
         id: md.id,
