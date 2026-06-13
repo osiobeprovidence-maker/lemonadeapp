@@ -22,6 +22,7 @@ import {
   Megaphone,
   Gift,
   Database,
+  BookOpen,
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { cn } from '../../lib/utils';
