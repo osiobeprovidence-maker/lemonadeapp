@@ -50,6 +50,7 @@ const NAV_ITEMS = [
   { label: 'Moderators', icon: ShieldCheck, path: '/admin/moderators', superAdminOnly: true },
   { label: 'Featured Content', icon: BadgeCheck, path: '/admin/featured' },
   { label: 'Content Imports', icon: Database, path: '/admin/imports' },
+  { label: 'Manga Manager', icon: BookOpen, path: '/admin/manga' },
   { label: 'Settings', icon: Settings, path: '/admin/settings' },
 ];
 

@@ -784,4 +784,38 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_syncType", ["syncType"]),
+
+  manga: defineTable({
+    title: v.string(),
+    alternativeTitle: v.optional(v.string()),
+    slug: v.string(),
+    synopsis: v.optional(v.string()),
+    coverImage: v.optional(v.string()),
+    bannerImage: v.optional(v.string()),
+    genres: v.array(v.string()),
+    themes: v.array(v.string()),
+    author: v.optional(v.string()),
+    artist: v.optional(v.string()),
+    status: v.union(v.literal("draft"), v.literal("published"), v.literal("archived")),
+    releaseYear: v.optional(v.float64()),
+    chapters: v.optional(v.float64()),
+    volumes: v.optional(v.float64()),
+    rating: v.optional(v.float64()),
+    popularityScore: v.optional(v.float64()),
+    countryOfOrigin: v.optional(v.string()),
+    language: v.optional(v.string()),
+    source: v.string(),
+    externalId: v.string(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    importedAt: v.optional(v.string()),
+    lastSyncedAt: v.optional(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_status", ["status"])
+    .index("by_externalId", ["externalId", "source"])
+    .index("by_source", ["source"])
+    .index("by_status_and_rating", ["status", "rating"])
+    .index("by_status_and_popularity", ["status", "popularityScore"])
+    .index("by_status_and_created", ["status", "createdAt"]),
 });

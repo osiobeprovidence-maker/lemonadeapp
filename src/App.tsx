@@ -54,6 +54,9 @@ import AdminPaymentDetail from './screens/admin/details/AdminPaymentDetail';
 import AdminApplicationDetail from './screens/admin/details/AdminApplicationDetail';
 import AdminFeaturedEditor from './screens/admin/details/AdminFeaturedEditor';
 import AdminImports from './screens/admin/AdminImports';
+import AdminMangaManager from './screens/admin/AdminMangaManager';
+import MangaLibrary from './screens/MangaLibrary';
+import MangaDetail from './screens/MangaDetail';
 import AdminPlatformRules from './screens/admin/AdminPlatformRules';
 import AdminModerationPresets from './screens/admin/AdminModerationPresets';
 import AdminAuditLog from './screens/admin/AdminAuditLog';
@@ -136,6 +139,8 @@ function AnimatedRoutes() {
           
           <Route path="/story/:id" element={<StoryDetail />} />
           <Route path="/catalog/:slug" element={<CatalogDetail />} />
+          <Route path="/manga/library" element={<MangaLibrary />} />
+          <Route path="/manga/:slug" element={<MangaDetail />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/creator/:username" element={<CreatorProfile />} />
           <Route path="/creator/:username/portfolio" element={<CreatorPortfolio />} />
@@ -343,6 +348,13 @@ function AnimatedRoutes() {
           <AdminRouteGuard>
             <AdminLayout>
               <AdminImports />
+            </AdminLayout>
+          </AdminRouteGuard>
+        } />
+        <Route path="/admin/manga" element={
+          <AdminRouteGuard>
+            <AdminLayout>
+              <AdminMangaManager />
             </AdminLayout>
           </AdminRouteGuard>
         } />
