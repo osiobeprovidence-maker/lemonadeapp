@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ChevronLeft,
@@ -76,6 +76,9 @@ export default function Reader() {
   const [commentsCursor, setCommentsCursor] = useState<string | undefined>(
     undefined,
   );
+  const [repliesByComment, setRepliesByComment] = useState<Record<string, any[]>>({});
+  const [openReplyBox, setOpenReplyBox] = useState<Record<string, boolean>>({});
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState("Wrong content");
   const [reportMessage, setReportMessage] = useState("");
@@ -275,6 +278,82 @@ export default function Reader() {
       alert("Could not delete comment. Only the author can delete.");
     }
   };
+
+  const fetchReplies = useCallback(async (commentId: string) => {
+    if (!convex) return;
+    try {
+      const page = await convex.query(api.interactions.listCommentsPaged, { parentCommentId: commentId, limit: 50 });
+      setRepliesByComment((prev) => ({
+        ...prev,
+        [commentId]: Array.isArray(page)
+          ? page.map((c: any) => ({
+              _id: c._id,
+              parentCommentId: c.parentCommentId,
+              author: c.authorName,
+              avatar: c.authorAvatar,
+              message: c.message,
+              time: c.createdAt,
+              likes: c.likesCount || 0,
+              dislikes: c.dislikesCount || 0,
+              likedBy: c.likedBy || [],
+              dislikedBy: c.dislikedBy || [],
+            }))
+          : [],
+      }));
+    } catch (err) {
+      console.error('Failed to fetch replies', err);
+    }
+  }, []);
+
+  const toggleReplyBox = useCallback((commentId: string) => {
+    setOpenReplyBox((prev) => {
+      const isOpen = !prev[commentId];
+      if (isOpen && !repliesByComment[commentId]) {
+        fetchReplies(commentId);
+      }
+      return { ...prev, [commentId]: isOpen };
+    });
+  }, [fetchReplies, repliesByComment]);
+
+  const submitReply = useCallback(async (commentId: string) => {
+    const msg = replyDrafts[commentId]?.trim();
+    if (!msg || !user || user.isGuest || !convex) return;
+    const optimistic: any = {
+      _id: `opt_${Date.now()}`,
+      parentCommentId: commentId,
+      author: user.name,
+      avatar: user.avatar,
+      message: msg,
+      time: new Date().toISOString(),
+      likes: 0,
+      dislikes: 0,
+      likedBy: [],
+      dislikedBy: [],
+    };
+    setRepliesByComment((prev) => ({
+      ...prev,
+      [commentId]: [...(prev[commentId] || []), optimistic],
+    }));
+    setReplyDrafts((prev) => ({ ...prev, [commentId]: '' }));
+    try {
+      const result: any = await convex.mutation(api.interactions.createComment, {
+        storyId: story.id,
+        chapterId,
+        parentCommentId: commentId,
+        authorId: user.id,
+        authorName: user.name,
+        authorAvatar: user.avatar,
+        message: msg,
+      });
+      if (result?.reward) {
+        setRewardBanner(`🍋 +${result.reward} Lemon Coins`);
+        window.setTimeout(() => setRewardBanner(null), 3200);
+      }
+      fetchReplies(commentId);
+    } catch (err) {
+      console.error('Failed to submit reply', err);
+    }
+  }, [replyDrafts, user, convex, story?.id, chapterId, fetchReplies]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/read/${story.id}/${chapterNum || "1"}`;
@@ -953,6 +1032,12 @@ export default function Reader() {
         onLike={handleLike}
         onDislike={handleDislike}
         onDelete={handleDelete}
+        repliesByComment={repliesByComment}
+        onToggleReplyBox={toggleReplyBox}
+        openReplyBox={openReplyBox}
+        replyDrafts={replyDrafts}
+        onReplyDraftChange={(commentId, value) => setReplyDrafts((prev) => ({ ...prev, [commentId]: value }))}
+        onSubmitReply={submitReply}
         disabled={!user || user.isGuest}
       />
     </div>
