@@ -834,4 +834,21 @@ export default defineSchema({
     .index("by_mangaId", ["mangaId"])
     .index("by_mangaId_and_chapter", ["mangaId", "chapterNumber"])
     .index("by_externalId", ["externalId"]),
+
+  creatorSubmissions: defineTable({
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    mangaTitle: v.string(),
+    genre: v.string(),
+    synopsis: v.string(),
+    submissionStatus: v.string(),
+    chapters: v.optional(v.number()),
+    portfolio: v.optional(v.string()),
+    social: v.optional(v.string()),
+    sampleFiles: v.optional(v.array(v.string())),
+    submittedAt: v.string(),
+  })
+    .index("by_submittedAt", ["submittedAt"])
+    .index("by_email", ["email"]),
 });

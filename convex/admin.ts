@@ -288,7 +288,7 @@ export const analytics = query({
         fulfillmentMode: getRewardFulfillment(reward),
         metadata: reward.metadata,
       })),
-      rewardSummary: {
+      revenueSummary: {
         premium: premiumRevenue,
         wallet: walletRevenue,
         support: transactions

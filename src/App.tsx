@@ -79,6 +79,7 @@ import ReportProblem from './screens/help/ReportProblem';
 import Terms from './screens/legal/Terms';
 import Privacy from './screens/legal/Privacy';
 
+import Creators from './screens/Creators';
 import CreatorApplication from './screens/CreatorApplication';
 import CreatorApplicationStatus from './screens/CreatorApplicationStatus';
 import StudioAccessGuard from './components/StudioAccessGuard';
@@ -105,6 +106,7 @@ function AnimatedRoutes() {
         <Route element={<NavigationLayout />}>
           <Route path="/home" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/creators" element={<Creators />} />
           <Route path="/genre/:genre" element={<GenrePage />} />
           <Route path="/type/:type" element={<TypePage />} />
           <Route path="/manga" element={<TypePage />} />
