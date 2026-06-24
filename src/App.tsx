@@ -109,7 +109,6 @@ function AnimatedRoutes() {
         <Route element={<NavigationLayout />}>
           <Route path="/home" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
-          <Route path="/creators" element={<Creators />} />
           <Route path="/genre/:genre" element={<GenrePage />} />
           <Route path="/type/:type" element={<TypePage />} />
           <Route path="/manga" element={<TypePage />} />
@@ -183,6 +182,9 @@ function AnimatedRoutes() {
           } />
         </Route>
 
+        {/* Standalone public pages */}
+        <Route path="/creators" element={<Creators />} />
+        
         {/* Reader is full screen, no standard navigation */}
         <Route path="/read/:id/:chapterNum" element={<Reader />} />
 

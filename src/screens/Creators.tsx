@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { PenTool, TrendingUp, Shield, Star, HeadphonesIcon, ChevronDown, Upload, CheckCircle, AlertCircle, BookOpen, Palette, Zap, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { PenTool, TrendingUp, Shield, Star, HeadphonesIcon, ChevronDown, Upload, CheckCircle, AlertCircle, BookOpen, Palette, Zap, ArrowRight, Loader2, Sparkles, Share2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from '../components/ui/Button';
 import { api } from '../../convex/_generated/api';
 import { convex } from '../lib/convex';
+import { shareLink } from '../lib/share';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 24 },
@@ -202,6 +203,17 @@ export default function Creators() {
                 <Button size="lg" variant="outline" onClick={() => document.getElementById('benefits')?.scrollIntoView({ behavior: 'smooth' })}>
                   Learn More
                 </Button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await shareLink({ title: 'Publish Your Manga on Owuuu', url: window.location.href });
+                    } catch {}
+                  }}
+                  className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:border-lemon-muted/30 transition-all shrink-0"
+                  aria-label="Share this page"
+                >
+                  <Share2 size={20} className="text-white/50" />
+                </button>
               </motion.div>
             </motion.div>
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.3 }} className="relative hidden md:block">
