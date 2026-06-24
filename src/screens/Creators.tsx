@@ -42,7 +42,6 @@ const ALLOWED_EXTENSIONS = ['.pdf', '.zip', '.png', '.jpg', '.jpeg', '.webp'];
 
 export default function Creators() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [showForm, setShowForm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,8 +155,7 @@ export default function Creators() {
   };
 
   const scrollToForm = () => {
-    setShowForm(true);
-    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const genresList = useRef([
@@ -175,7 +173,7 @@ export default function Creators() {
           <p className="text-white/60 font-medium mb-2">Thank you for submitting your work.</p>
           <p className="text-white/40 text-sm mb-8">Our team will review your submission and get back to you within 2\u20134 weeks.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button variant="primary" onClick={() => { setSubmitted(false); setShowForm(false); setForm({ name: '', email: '', phone: '', mangaTitle: '', genre: '', synopsis: '', submissionStatus: 'ongoing', chapters: '', portfolio: '', social: '', rightsConfirmed: false, understood: false }); setFiles([]); }}>
+            <Button variant="primary" onClick={() => { setSubmitted(false); setForm({ name: '', email: '', phone: '', mangaTitle: '', genre: '', synopsis: '', submissionStatus: 'ongoing', chapters: '', portfolio: '', social: '', rightsConfirmed: false, understood: false }); setFiles([]); }}>
               Submit Another
             </Button>
             <Button variant="outline" onClick={() => window.location.href = '/'}>
@@ -311,14 +309,7 @@ export default function Creators() {
               <p className="text-white/50 font-medium max-w-2xl mx-auto">Fill out the form below and our team will review your submission.</p>
             </motion.div>
 
-            {!showForm ? (
-              <motion.div variants={item} className="text-center">
-                <Button size="lg" variant="primary" onClick={scrollToForm}>
-                  Begin Submission <ArrowRight size={18} className="ml-2" />
-                </Button>
-              </motion.div>
-            ) : (
-              <motion.form variants={item} onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
+            <motion.form variants={item} onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
                 {error && (
                   <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3">
                     <AlertCircle size={20} className="text-red-500 shrink-0 mt-0.5" />
@@ -442,7 +433,6 @@ export default function Creators() {
                   )}
                 </Button>
               </motion.form>
-            )}
           </motion.div>
         </section>
 
