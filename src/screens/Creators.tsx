@@ -201,7 +201,7 @@ export default function Creators() {
             <motion.div initial="hidden" animate="show" variants={container}>
               <motion.div variants={item}>
                 <span className="inline-flex items-center gap-2 px-4 py-2 bg-lemon-muted/10 text-lemon-muted text-xs font-black uppercase tracking-widest rounded-full mb-6">
-                  <Sparkles size={14} /> Creator Program
+                  Creator Program
                 </span>
               </motion.div>
               <motion.h1 variants={item} className="text-4xl sm:text-5xl md:text-6xl font-display font-black italic leading-[1.1] mb-6">

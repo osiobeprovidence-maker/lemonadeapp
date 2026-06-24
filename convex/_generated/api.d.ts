@@ -15,6 +15,7 @@ import type * as applications from "../applications.js";
 import type * as contentRequests from "../contentRequests.js";
 import type * as creatorPremium from "../creatorPremium.js";
 import type * as creatorQuests from "../creatorQuests.js";
+import type * as creatorSubmissions from "../creatorSubmissions.js";
 import type * as creators from "../creators.js";
 import type * as externalContent from "../externalContent.js";
 import type * as files from "../files.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   contentRequests: typeof contentRequests;
   creatorPremium: typeof creatorPremium;
   creatorQuests: typeof creatorQuests;
+  creatorSubmissions: typeof creatorSubmissions;
   creators: typeof creators;
   externalContent: typeof externalContent;
   files: typeof files;
