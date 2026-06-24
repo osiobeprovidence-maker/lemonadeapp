@@ -43,6 +43,7 @@ const NAV_ITEMS = [
   { label: 'Creators', icon: PenTool, path: '/admin/creators' },
   { label: 'Fraud', icon: Flag, path: '/admin/fraud' },
   { label: 'Applications', icon: FileText, path: '/admin/applications' },
+  { label: 'Submissions', icon: FileText, path: '/admin/submissions' },
   { label: 'Stories', icon: Box, path: '/admin/stories' },
   { label: 'Reports', icon: Flag, path: '/admin/reports' },
   { label: 'Payments', icon: CreditCard, path: '/admin/payments' },

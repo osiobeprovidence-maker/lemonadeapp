@@ -842,13 +842,23 @@ export default defineSchema({
     mangaTitle: v.string(),
     genre: v.string(),
     synopsis: v.string(),
-    submissionStatus: v.string(),
-    chapters: v.optional(v.number()),
-    portfolio: v.optional(v.string()),
     social: v.optional(v.string()),
+    portfolio: v.optional(v.string()),
+    chapterCount: v.optional(v.number()),
     sampleFiles: v.optional(v.array(v.string())),
-    submittedAt: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("reviewing"),
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("offered"),
+      v.literal("licensed"),
+    ),
+    offerPrice: v.optional(v.number()),
+    adminNotes: v.optional(v.string()),
+    createdAt: v.string(),
   })
-    .index("by_submittedAt", ["submittedAt"])
-    .index("by_email", ["email"]),
+    .index("by_createdAt", ["createdAt"])
+    .index("by_email", ["email"])
+    .index("by_status", ["status"]),
 });

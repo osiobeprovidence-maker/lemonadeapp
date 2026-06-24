@@ -926,3 +926,67 @@ export const resolveFraudEvent = mutation({
     return args.id;
   },
 });
+
+export const listSubmissions = query({
+  args: {
+    status: v.optional(v.string()),
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let submissions = await ctx.db.query("creatorSubmissions").order("desc").collect();
+    if (args.status && args.status !== "all") {
+      submissions = submissions.filter((s) => s.status === args.status);
+    }
+    if (args.search) {
+      const q = args.search.toLowerCase();
+      submissions = submissions.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.mangaTitle.toLowerCase().includes(q) ||
+          s.email.toLowerCase().includes(q),
+      );
+    }
+    return submissions;
+  },
+});
+
+export const getSubmission = query({
+  args: { id: v.id("creatorSubmissions") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const updateSubmissionStatus = mutation({
+  args: {
+    id: v.id("creatorSubmissions"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("reviewing"),
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("offered"),
+      v.literal("licensed"),
+    ),
+    adminNotes: v.optional(v.string()),
+    offerPrice: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const patch: any = { status: args.status };
+    if (args.adminNotes !== undefined) patch.adminNotes = args.adminNotes;
+    if (args.offerPrice !== undefined) patch.offerPrice = args.offerPrice;
+    await ctx.db.patch(args.id, patch);
+    return args.id;
+  },
+});
+
+export const getSubmissionsByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("creatorSubmissions")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .order("desc")
+      .collect();
+  },
+});

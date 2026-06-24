@@ -61,6 +61,9 @@ import MangaReader from './screens/MangaReader';
 import AdminPlatformRules from './screens/admin/AdminPlatformRules';
 import AdminModerationPresets from './screens/admin/AdminModerationPresets';
 import AdminAuditLog from './screens/admin/AdminAuditLog';
+import AdminSubmissions from './screens/admin/AdminSubmissions';
+import AdminSubmissionDetail from './screens/admin/details/AdminSubmissionDetail';
+import StudioSubmissions from './screens/studio/StudioSubmissions';
 
 // User Settings Detail
 import SettingsAccountProfile from './screens/settings/SettingsAccountProfile';
@@ -171,6 +174,11 @@ function AnimatedRoutes() {
           <Route path="/studio/wallet" element={
             <StudioAccessGuard>
               <CreatorWallet />
+            </StudioAccessGuard>
+          } />
+          <Route path="/studio/submissions" element={
+            <StudioAccessGuard>
+              <StudioSubmissions />
             </StudioAccessGuard>
           } />
         </Route>
@@ -387,6 +395,20 @@ function AnimatedRoutes() {
           <AdminRouteGuard>
             <AdminLayout>
               <AdminAuditLog />
+            </AdminLayout>
+          </AdminRouteGuard>
+        } />
+        <Route path="/admin/submissions" element={
+          <AdminRouteGuard>
+            <AdminLayout>
+              <AdminSubmissions />
+            </AdminLayout>
+          </AdminRouteGuard>
+        } />
+        <Route path="/admin/submissions/:id" element={
+          <AdminRouteGuard>
+            <AdminLayout>
+              <AdminSubmissionDetail />
             </AdminLayout>
           </AdminRouteGuard>
         } />
