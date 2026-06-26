@@ -444,3 +444,16 @@ export const updateCampaignStatus = mutation({
     return args.adId;
   },
 });
+
+export const getSitewideAd = query({
+  args: {},
+  handler: async (ctx) => {
+    await ensureSeedAds(ctx);
+    const ads = await ctx.db
+      .query("adCampaigns")
+      .withIndex("by_status_and_placement", (q) => q.eq("status", "approved").eq("placement", "sponsored_banner"))
+      .take(10);
+    if (ads.length === 0) return null;
+    return ads[Math.floor(Math.random() * ads.length)];
+  },
+});

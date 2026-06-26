@@ -34,7 +34,6 @@ export default function NavigationLayout() {
   const readerNav = [
     { name: 'Home', path: '/home', icon: Home, sensitive: false },
     { name: 'Explore', path: '/explore', icon: Compass, sensitive: false },
-    { name: 'Creators', path: '/creators', icon: PenTool, sensitive: false },
     { name: 'Library', path: '/library', icon: BookMarked, sensitive: true },
     { name: 'Wallet', path: '/wallet', icon: Wallet, sensitive: true },
     { name: 'Profile', path: '/profile', icon: UserCircle, sensitive: true },
@@ -43,7 +42,6 @@ export default function NavigationLayout() {
   const creatorNav = [
     { name: 'Home', path: '/home', icon: Home, sensitive: false },
     { name: 'Explore', path: '/explore', icon: Compass, sensitive: false },
-    { name: 'Creators', path: '/creators', icon: PenTool, sensitive: false },
     { name: 'Studio', path: '/studio', icon: PenTool, sensitive: true },
     { name: 'Wallet', path: '/wallet', icon: Wallet, sensitive: true },
     { name: 'Profile', path: '/profile', icon: UserCircle, sensitive: true },
@@ -66,7 +64,6 @@ export default function NavigationLayout() {
   const mainNav = [
     { name: 'Home', path: '/home', icon: Home, sensitive: false },
     { name: 'Explore', path: '/explore', icon: Compass, sensitive: false },
-    { name: 'Creators', path: '/creators', icon: PenTool, sensitive: false },
     { name: 'Library', path: '/library', icon: BookMarked, sensitive: true },
     { name: 'Studio', path: '/studio', icon: PenTool, sensitive: true },
   ];

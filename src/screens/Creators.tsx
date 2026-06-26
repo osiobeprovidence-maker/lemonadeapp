@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { api } from '../../convex/_generated/api';
 import { convex } from '../lib/convex';
 import { shareLink } from '../lib/share';
+import AdBanner from '../components/ads/AdBanner';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 24 },
@@ -177,6 +178,8 @@ export default function Creators() {
   return (
     <div className="min-h-screen bg-black-core">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-32">
+
+        <AdBanner className="mb-6" />
 
         {/* HERO */}
         <section className="relative pt-20 pb-16 md:pt-28 md:pb-20 overflow-hidden">
