@@ -99,7 +99,6 @@ export default function Auth() {
     setNotice(null);
     setLoading(true);
     try {
-      await setAuthPersistence();
       await signInWithGoogle();
       if (mode === 'signup') {
         setMode('role');
