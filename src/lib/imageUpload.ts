@@ -230,59 +230,74 @@ export const compressImage = async (
   console.log('[upload] Compress image selected:', { name: file.name, type: file.type, size: file.size, quality });
   validateImageFile(file);
 
-  const dataUrl = await readFileAsDataURL(file);
+  const loadImage = (src: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = src;
+    });
 
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxWidth = 1200;
-      const maxHeight = 1200;
+  let img: HTMLImageElement;
+  let objectUrl: string | null = null;
 
-      let width = img.width;
-      let height = img.height;
+  try {
+    const dataUrl = await readFileAsDataURL(file);
+    img = await loadImage(dataUrl);
+  } catch {
+    console.warn('[upload] FileReader failed, trying URL.createObjectURL fallback');
+    objectUrl = URL.createObjectURL(file);
+    try {
+      img = await loadImage(objectUrl);
+    } catch (err2) {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      console.error('[upload] Both FileReader and createObjectURL failed:', err2);
+      throw new Error('Failed to read file');
+    }
+  }
 
-      if (width > height) {
-        if (width > maxWidth) {
-          height *= maxWidth / width;
-          width = maxWidth;
-        }
-      } else {
-        if (height > maxHeight) {
-          width *= maxHeight / height;
-          height = maxHeight;
-        }
+  try {
+    const canvas = document.createElement('canvas');
+    const maxWidth = 1200;
+    const maxHeight = 1200;
+
+    let width = img.width;
+    let height = img.height;
+
+    if (width > height) {
+      if (width > maxWidth) {
+        height *= maxWidth / width;
+        width = maxWidth;
       }
-
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Failed to get canvas context'));
-        return;
+    } else {
+      if (height > maxHeight) {
+        width *= maxHeight / height;
+        height = maxHeight;
       }
+    }
 
-      ctx.drawImage(img, 0, 0, width, height);
+    canvas.width = width;
+    canvas.height = height;
 
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error('Failed to compress image'));
-            return;
-          }
-          const compressedFile = new File([blob], file.name, {
-            type: 'image/jpeg',
-            lastModified: Date.now(),
-          });
-          console.log('[upload] Compressed:', { original: file.size, compressed: compressedFile.size });
-          resolve(compressedFile);
-        },
-        'image/jpeg',
-        quality
-      );
-    };
-    img.onerror = () => reject(new Error('Failed to load image'));
-    img.src = dataUrl;
-  });
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Failed to get canvas context');
+    }
+
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (!blob) {
+      throw new Error('Failed to compress image');
+    }
+
+    const compressedFile = new File([blob], file.name, {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+    console.log('[upload] Compressed:', { original: file.size, compressed: compressedFile.size });
+    return compressedFile;
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
 };
