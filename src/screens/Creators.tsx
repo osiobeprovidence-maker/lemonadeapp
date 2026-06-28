@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { PenTool, TrendingUp, Shield, Star, HeadphonesIcon, ChevronDown, Upload, CheckCircle, AlertCircle, BookOpen, Palette, Zap, ArrowRight, Loader2, Sparkles, Share2 } from 'lucide-react';
+import { PenTool, TrendingUp, Shield, Star, HeadphonesIcon, ChevronDown, Upload, CheckCircle, AlertCircle, BookOpen, Palette, Zap, ArrowRight, Loader2, Share2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from '../components/ui/Button';
 import { api } from '../../convex/_generated/api';
@@ -233,7 +233,7 @@ export default function Creators() {
           <div className="relative grid md:grid-cols-2 gap-10 items-center">
             <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}>
               <motion.span variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="inline-flex items-center gap-2 px-4 py-2 bg-lemon-muted/10 text-lemon-muted text-xs font-black uppercase tracking-widest rounded-full mb-6">
-                <Sparkles size={14} /> Creator Program
+                Creator Program
               </motion.span>
               <motion.h1 variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } }} className="text-4xl sm:text-5xl md:text-6xl font-display font-black italic leading-[1.1] mb-6">
                 Publish Your Manga on<br />
