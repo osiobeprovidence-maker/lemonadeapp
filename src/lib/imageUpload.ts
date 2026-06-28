@@ -3,65 +3,161 @@ import { api } from '../../convex/_generated/api';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_STORY_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_RETRIES = 2;
+const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
 
 const requireConvex = () => {
   if (!convex) {
-    throw new Error('Image uploads are not configured. Convex is missing.');
+    throw new Error('Uploads are not configured. Convex is missing.');
   }
   return convex;
 };
 
-const normalizeUploadError = (error: unknown): Error => {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.includes('storage/unauthorized')) {
-    return new Error('Image upload is blocked by storage permissions. Please sign in again and try once more.');
+function getFileReaderError(error: unknown): string {
+  if (error instanceof DOMException) {
+    switch (error.name) {
+      case 'NotFoundError': return 'File not found';
+      case 'SecurityError': return 'Permission denied';
+      case 'NotReadableError': return 'File is too large or corrupted';
+      case 'AbortError': return 'File read was cancelled';
+    }
   }
-  if (message.includes('Failed to fetch') || message.includes('NetworkError')) {
-    return new Error('Image upload failed because the network connection dropped. Please try again.');
-  }
-  return new Error(message || 'Failed to upload image.');
-};
+  return error instanceof Error ? error.message : String(error);
+}
 
-/**
- * Upload image to Convex storage and return a signed download URL.
- * @param file - Image file to upload
- * @param folder - Logical image category, kept for call-site clarity
- * @param userId - User ID, kept for call-site clarity
- */
+function getUploadErrorMessage(cause: string): string {
+  if (cause.includes('storage/unauthorized')) {
+    return 'Upload is blocked by storage permissions. Please sign in again.';
+  }
+  if (cause.includes('Failed to fetch') || cause.includes('NetworkError')) {
+    return 'Upload failed because the network connection dropped. Please try again.';
+  }
+  if (cause.includes('not found') || cause.includes('NotFound')) {
+    return 'File not found';
+  }
+  if (cause.includes('permission') || cause.includes('denied') || cause.includes('Security')) {
+    return 'Permission denied';
+  }
+  if (cause.includes('too large') || cause.includes('exceeds') || cause.includes('size')) {
+    return 'File is too large';
+  }
+  return cause || 'Upload failed';
+}
+
+function validateImageFile(file: File): void {
+  if (!file.type || !file.type.startsWith('image/')) {
+    console.warn('[upload] Rejected file — unsupported type:', file.name, file.type);
+    throw new Error('Unsupported file type');
+  }
+  if (!ALLOWED_IMAGE_MIMES.includes(file.type)) {
+    console.warn('[upload] Rejected file — unlisted image mime:', file.name, file.type);
+    throw new Error('Unsupported file type');
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    console.warn('[upload] Rejected file — too large:', file.name, formatFileSize(file.size));
+    throw new Error('File is too large');
+  }
+}
+
+function validateStoryFile(file: File): void {
+  if (file.size > MAX_STORY_FILE_BYTES) {
+    console.warn('[upload] Rejected file — too large:', file.name, formatFileSize(file.size));
+    throw new Error('File is too large');
+  }
+}
+
+async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      return res;
+    } catch (err) {
+      console.warn(`[upload] fetch attempt ${attempt + 1}/${retries + 1} failed:`, err);
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw new Error('Upload failed');
+}
+
+async function readFileAsDataURL(file: File, retries = MAX_RETRIES): Promise<string> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (e) => {
+          const err = e.target?.error || new Error('Failed to read file');
+          reject(err);
+        };
+        reader.readAsDataURL(file);
+      });
+    } catch (err) {
+      console.warn(`[upload] FileReader attempt ${attempt + 1}/${retries + 1} failed:`, getFileReaderError(err));
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 500));
+      } else {
+        throw new Error(getFileReaderError(err));
+      }
+    }
+  }
+  throw new Error('Failed to read file');
+}
+
+async function uploadFileToConvex(
+  file: File,
+  contentType: string,
+  logLabel: string,
+): Promise<string> {
+  const client = requireConvex();
+  console.log(`[upload] ${logLabel} — generating upload URL`);
+  const uploadUrl = await client.mutation(api.files.generateUploadUrl, {});
+  console.log(`[upload] ${logLabel} — upload URL obtained`);
+
+  const response = await fetchWithRetry(uploadUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': contentType },
+    body: file,
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    console.error(`[upload] ${logLabel} — HTTP ${response.status}:`, body);
+    throw new Error('Upload failed');
+  }
+
+  const { storageId } = await response.json();
+  if (!storageId) {
+    console.error(`[upload] ${logLabel} — missing storageId in response`);
+    throw new Error('Upload failed');
+  }
+
+  console.log(`[upload] ${logLabel} — storageId: ${storageId}`);
+  return storageId;
+}
+
 export const uploadImage = async (
   file: File,
   folder: string,
   userId: string
 ): Promise<string> => {
+  console.log('[upload] Image selected:', { name: file.name, type: file.type, size: file.size, folder });
   try {
-    if (!file.type.startsWith('image/')) {
-      throw new Error('Please upload a valid image file (JPG, PNG, WebP, etc.)');
-    }
-
-    if (file.size > MAX_IMAGE_BYTES) {
-      throw new Error('Image size must be less than 5MB');
-    }
-
+    validateImageFile(file);
     const client = requireConvex();
-    const uploadUrl = await client.mutation(api.files.generateUploadUrl, {});
-    const response = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': file.type },
-      body: file,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Image upload failed with status ${response.status}.`);
-    }
-
-    const { storageId } = await response.json();
-    if (!storageId) {
-      throw new Error('Image upload completed without a storage id.');
-    }
-
-    return await client.mutation(api.files.getUrl, { storageId });
+    const storageId = await uploadFileToConvex(file, file.type, 'image');
+    console.log('[upload] Image upload completed');
+    const url = await client.mutation(api.files.getUrl, { storageId });
+    if (!url) throw new Error('Upload failed');
+    console.log('[upload] Image URL obtained');
+    return url;
   } catch (error) {
-    throw normalizeUploadError(error);
+    const message = getUploadErrorMessage(error instanceof Error ? error.message : String(error));
+    console.error('[upload] Image upload failed:', message);
+    throw new Error(message);
   }
 };
 
@@ -70,45 +166,29 @@ export const uploadStoryFile = async (
   userId: string
 ): Promise<{ name: string; type: string; size: number; url: string }> => {
   void userId;
+  console.log('[upload] Story file selected:', { name: file.name, type: file.type, size: file.size });
   try {
-    if (file.size > MAX_STORY_FILE_BYTES) {
-      throw new Error('Story files must be less than 25MB.');
-    }
-
+    validateStoryFile(file);
     const client = requireConvex();
-    const uploadUrl = await client.mutation(api.files.generateUploadUrl, {});
-    const response = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      body: file,
-    });
-
-    if (!response.ok) {
-      throw new Error(`File upload failed with status ${response.status}.`);
-    }
-
-    const { storageId } = await response.json();
-    if (!storageId) {
-      throw new Error('File upload completed without a storage id.');
-    }
-
+    const contentType = file.type || 'application/octet-stream';
+    const storageId = await uploadFileToConvex(file, contentType, 'story file');
+    console.log('[upload] Story file upload completed');
     const url = await client.mutation(api.files.getUrl, { storageId });
+    if (!url) throw new Error('Upload failed');
+    console.log('[upload] Story file URL obtained');
     return {
       name: file.name,
-      type: file.type || 'application/octet-stream',
+      type: contentType,
       size: file.size,
       url,
     };
   } catch (error) {
-    throw normalizeUploadError(error);
+    const message = getUploadErrorMessage(error instanceof Error ? error.message : String(error));
+    console.error('[upload] Story file upload failed:', message);
+    throw new Error(message);
   }
 };
 
-/**
- * Upload profile picture specifically
- * @param file - Image file to upload
- * @param userId - User ID
- */
 export const uploadProfilePicture = async (
   file: File,
   userId: string
@@ -116,11 +196,6 @@ export const uploadProfilePicture = async (
   return uploadImage(file, 'profile-pictures', userId);
 };
 
-/**
- * Upload story cover image
- * @param file - Image file to upload
- * @param userId - Story creator's user ID
- */
 export const uploadStoryCover = async (
   file: File,
   userId: string
@@ -128,11 +203,6 @@ export const uploadStoryCover = async (
   return uploadImage(file, 'story-covers', userId);
 };
 
-/**
- * Upload banner image
- * @param file - Image file to upload
- * @param userId - User ID
- */
 export const uploadBannerImage = async (
   file: File,
   userId: string
@@ -140,21 +210,11 @@ export const uploadBannerImage = async (
   return uploadImage(file, 'banners', userId);
 };
 
-/**
- * Delete image from Firebase Storage
- * @param imageUrl - Full download URL of the image
- */
 export const deleteImage = async (imageUrl: string): Promise<void> => {
   void imageUrl;
-  // Convex storage URLs are immutable signed URLs. Old uploads are harmless
-  // and should be cleaned up by a backend retention job if needed.
   return;
 };
 
-/**
- * Get file size in human-readable format
- * @param bytes - File size in bytes
- */
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -163,72 +223,66 @@ export const formatFileSize = (bytes: number): string => {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 };
 
-/**
- * Compress image before upload (optional, for bandwidth optimization)
- * @param file - Image file to compress
- * @param quality - Compression quality 0-1 (default: 0.8)
- */
 export const compressImage = async (
   file: File,
   quality: number = 0.8
 ): Promise<File> => {
+  console.log('[upload] Compress image selected:', { name: file.name, type: file.type, size: file.size, quality });
+  validateImageFile(file);
+
+  const dataUrl = await readFileAsDataURL(file);
+
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxWidth = 1200;
+      const maxHeight = 1200;
 
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const maxWidth = 1200;
-        const maxHeight = 1200;
+      let width = img.width;
+      let height = img.height;
 
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxWidth) {
-            height *= maxWidth / width;
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width *= maxHeight / height;
-            height = maxHeight;
-          }
+      if (width > height) {
+        if (width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
         }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
+      } else {
+        if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
         }
+      }
 
-        ctx.drawImage(img, 0, 0, width, height);
+      canvas.width = width;
+      canvas.height = height;
 
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('Failed to compress image'));
-              return;
-            }
-            const compressedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now(),
-            });
-            resolve(compressedFile);
-          },
-          'image/jpeg',
-          quality
-        );
-      };
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = event.target?.result as string;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('Failed to compress image'));
+            return;
+          }
+          const compressedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+          console.log('[upload] Compressed:', { original: file.size, compressed: compressedFile.size });
+          resolve(compressedFile);
+        },
+        'image/jpeg',
+        quality
+      );
     };
-
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = dataUrl;
   });
 };

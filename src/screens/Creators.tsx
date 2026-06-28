@@ -106,13 +106,55 @@ export default function Creators() {
     if (files.length === 0) return [];
     setUploading(true);
     try {
+      if (!convex) {
+        throw new Error('Uploads are not configured. Convex is missing.');
+      }
       const storageIds: string[] = [];
       for (const file of files) {
+        console.log('[creators-upload] File selected:', { name: file.name, type: file.type, size: file.size });
+        const ext = file.name.toLowerCase().split('.').pop();
+        if (!ALLOWED_EXTENSIONS.some((e) => e === `.${ext}`) || ext === 'pdf' && file.type && !file.type.includes('pdf')) {
+          console.warn('[creators-upload] Unsupported file type:', file.name, file.type);
+          throw new Error('Unsupported file type');
+        }
+        if (file.size > 25 * 1024 * 1024) {
+          console.warn('[creators-upload] File too large:', file.name, file.size);
+          throw new Error('File is too large');
+        }
+        console.log('[creators-upload] Generating upload URL');
         const uploadUrl = await convex.mutation(api.files.generateUploadUrl, {});
-        const result = await fetch(uploadUrl, { method: 'POST', body: file });
-        const { storageId } = await result.json();
-        storageIds.push(storageId);
+        console.log('[creators-upload] Upload URL obtained, starting upload');
+        let lastError: unknown;
+        for (let attempt = 0; attempt <= 2; attempt++) {
+          try {
+            const result = await fetch(uploadUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': file.type || 'application/octet-stream' },
+              body: file,
+            });
+            if (!result.ok) {
+              const body = await result.text().catch(() => '');
+              console.error(`[creators-upload] HTTP ${result.status}:`, body);
+              throw new Error('Upload failed');
+            }
+            const { storageId } = await result.json();
+            if (!storageId) {
+              console.error('[creators-upload] missing storageId in response');
+              throw new Error('Upload failed');
+            }
+            console.log('[creators-upload] Upload completed, storageId:', storageId);
+            storageIds.push(storageId);
+            lastError = undefined;
+            break;
+          } catch (err) {
+            lastError = err;
+            console.warn(`[creators-upload] Attempt ${attempt + 1}/3 failed:`, err);
+            if (attempt < 2) await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+          }
+        }
+        if (lastError) throw lastError;
       }
+      console.log('[creators-upload] All files uploaded successfully');
       return storageIds;
     } finally {
       setUploading(false);
@@ -141,8 +183,9 @@ export default function Creators() {
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
-      console.error('Submission failed', err);
-      setError('Failed to submit. Please try again.');
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[creators-upload] Submission failed:', msg);
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
