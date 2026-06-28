@@ -23,8 +23,10 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize services
 export const auth = getAuth(app);
-export const authPersistenceReady = setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.error('Failed to enable persistent Firebase auth', error);
+export const authPersistenceReady = setPersistence(auth, browserLocalPersistence).then(() => {
+  console.log('[auth] Firebase browserLocalPersistence enabled');
+}).catch((error) => {
+  console.error('[auth] Failed to enable persistent Firebase auth:', error);
 });
 export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);

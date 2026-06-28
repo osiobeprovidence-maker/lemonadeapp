@@ -2,11 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, User, PenTool, Globe, Eye, EyeOff } from 'lucide-react';
-import { setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { Button } from '../components/ui/Button';
 import { StatusMessage } from '../components/ui/StatusMessage';
 import { useAuth } from '../contexts/AppContext';
-import { auth } from '../lib/firebase';
 import { AppErrorMessage, getAuthErrorMessage } from '../lib/errorMessages';
 
 export default function Auth() {
@@ -22,7 +20,7 @@ export default function Auth() {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'role'>(defaultMode as any);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('lemonade_remember_me') !== 'false');
   const [error, setError] = useState<AppErrorMessage | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -57,14 +55,6 @@ export default function Auth() {
     }
   };
 
-  const setAuthPersistence = async () => {
-    try {
-      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-    } catch (error) {
-      console.error('Failed to set auth persistence', error);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -78,7 +68,6 @@ export default function Auth() {
     const username = String(formData.get('username') || '');
 
     try {
-      await setAuthPersistence();
       if (mode === 'forgot') {
         await resetPassword(email);
         setNotice('Password reset email sent. Check your inbox.');
@@ -252,7 +241,7 @@ export default function Auth() {
                           <input
                             type="checkbox"
                             checked={rememberMe}
-                            onChange={() => setRememberMe((prev) => !prev)}
+                            onChange={() => setRememberMe((prev) => { const next = !prev; localStorage.setItem('lemonade_remember_me', String(next)); return next; })}
                             className="form-checkbox h-4 w-4 rounded border-white/10 bg-black text-lemon-muted focus:ring-lemon-muted"
                           />
                           Keep me signed in

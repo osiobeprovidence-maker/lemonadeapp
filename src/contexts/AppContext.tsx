@@ -281,18 +281,25 @@ const readPersistedUser = (): AppUser | null => {
 
   try {
     const savedSession = window.localStorage.getItem(AUTH_SESSION_KEY);
-    if (!savedSession) return null;
+    if (!savedSession) {
+      console.log('[auth] No persisted session found in localStorage');
+      return null;
+    }
 
     const parsed = JSON.parse(savedSession) as { user?: AppUser };
     const savedUser = parsed.user;
-    if (!savedUser?.isAuthenticated || savedUser.isGuest) return null;
+    if (!savedUser?.isAuthenticated || savedUser.isGuest) {
+      console.log('[auth] Persisted session is invalid or guest, ignoring');
+      return null;
+    }
 
+    console.log('[auth] Session restored from localStorage:', savedUser.id, savedUser.username);
     return {
       ...savedUser,
       settings: { ...DEFAULT_SETTINGS, ...(savedUser.settings || {}) },
     };
   } catch (error) {
-    console.error('Failed to restore saved auth session', error);
+    console.error('[auth] Failed to restore saved auth session:', error);
     window.localStorage.removeItem(AUTH_SESSION_KEY);
     return null;
   }
@@ -301,11 +308,18 @@ const readPersistedUser = (): AppUser | null => {
 const persistUserSession = (nextUser: AppUser) => {
   if (typeof window === 'undefined' || nextUser.isGuest || !nextUser.isAuthenticated) return;
 
+  const rememberMe = window.localStorage.getItem('lemonade_remember_me');
+  if (rememberMe === 'false') {
+    console.log('[auth] Skipping localStorage persistence (rememberMe=false)');
+    return;
+  }
+
   window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
     user: nextUser,
     savedAt: new Date().toISOString(),
   }));
   window.localStorage.removeItem(AUTH_EXPLICIT_LOGOUT_KEY);
+  console.log('[auth] Session persisted to localStorage:', nextUser.id, nextUser.username);
 };
 
 const clearPersistedUserSession = () => {
@@ -313,6 +327,7 @@ const clearPersistedUserSession = () => {
 
   window.localStorage.removeItem(AUTH_SESSION_KEY);
   window.localStorage.setItem(AUTH_EXPLICIT_LOGOUT_KEY, 'true');
+  console.log('[auth] Session cleared from localStorage');
 };
 
 const usernameFromUser = (firebaseUser: FirebaseUser, preferred?: string) => {
@@ -690,21 +705,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const savedUser = readPersistedUser();
         const explicitlyLoggedOut = localStorage.getItem(AUTH_EXPLICIT_LOGOUT_KEY) === 'true';
 
+        console.log('[auth] Firebase user is null, savedUser:', !!savedUser, 'explicitLogout:', explicitlyLoggedOut);
+
         if (savedUser && !explicitlyLoggedOut) {
+          console.log('[auth] Restoring session from localStorage fallback');
           setUser(savedUser);
           setAuthReady(true);
           return;
         }
 
+        console.log('[auth] No session to restore, setting guest user');
         setUser(GUEST_USER);
         setAuthReady(true);
         return;
       }
 
+      console.log('[auth] Firebase user restored from IndexedDB:', firebaseUser.uid, firebaseUser.email);
+
       try {
         await syncFirebaseUser(firebaseUser);
+        console.log('[auth] Session synced successfully');
       } catch (error) {
-        console.error('Failed to sync Firebase user', error);
+        console.error('[auth] Failed to sync Firebase user, using fallback:', error);
         const fallbackUser = appUserFromFirebase(firebaseUser);
         persistUserSession(fallbackUser);
         setUser(fallbackUser);
