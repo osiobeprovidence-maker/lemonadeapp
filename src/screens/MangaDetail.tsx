@@ -25,7 +25,7 @@ export default function MangaDetail() {
           setChaptersLoading(true);
           convex.query(api.mangaChapters.listByMangaId, { mangaId: item._id })
             .then(setChapters)
-            .catch(() => {})
+            .catch((err) => console.error('Failed to load chapters', err))
             .finally(() => setChaptersLoading(false));
         }
       })

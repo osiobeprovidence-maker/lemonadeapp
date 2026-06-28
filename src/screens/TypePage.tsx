@@ -80,7 +80,7 @@ export default function TypePage() {
     setLoadingExternal(true);
     convex.query(api.externalContent.listPublishedByPopularity, { contentType, limit: 50 })
       .then(setExternalStories)
-      .catch(() => {})
+      .catch((err) => console.error('Failed to load external content', err))
       .finally(() => setLoadingExternal(false));
   }, [typeName]);
 

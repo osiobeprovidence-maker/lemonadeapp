@@ -27,7 +27,7 @@ export default function MangaLibrary() {
     const q = sort === 'top_rated' ? api.manga.listPublishedByRating : api.manga.listPublished;
     convex.query(q, { limit: 100 })
       .then(setManga)
-      .catch(() => {})
+      .catch((err) => console.error('Failed to load manga library', err))
       .finally(() => setLoading(false));
   }, [sort]);
 

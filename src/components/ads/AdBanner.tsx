@@ -22,7 +22,7 @@ export default function AdBanner({ className }: { className?: string }) {
     if (!convex) return;
     convex.query(api.ads.getSitewideAd, {}).then((result) => {
       if (result) setAd(result as any);
-    }).catch(() => {});
+    }).catch((err) => console.error('[AdBanner] Failed to fetch ad', err));
   }, []);
 
   if (!ad || dismissed) return null;

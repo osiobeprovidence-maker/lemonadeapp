@@ -22,7 +22,7 @@ export default function MangaReader() {
     try {
       const result = await convex.action(api.mangaChapters.getChapterPages, { externalId: ch.externalId, chapterId: ch._id });
       setPages(result.pages || []);
-    } catch { setPages([]); }
+    } catch (err) { console.error('Failed to load chapter pages', err); setPages([]); }
     finally { setPagesLoading(false); }
   }
 
@@ -47,7 +47,7 @@ export default function MangaReader() {
         setCurrentIndex(chs.findIndex((c: any) => c._id === ch?._id));
         if (ch) loadPages(ch);
       })
-      .catch(() => {})
+      .catch((err) => console.error('Failed to load manga', err))
       .finally(() => setLoading(false));
   }, [slug, chapterNumber]);
 
