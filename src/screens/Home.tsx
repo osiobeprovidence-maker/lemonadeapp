@@ -11,8 +11,8 @@ import { ALL_CONTENT_TYPES } from "../data/types";
 import type { ContentCategory } from "../data/types";
 
 const SWITCH_OPTIONS = [
-  { value: "global" as ContentCategory, label: "Global", icon: "\uD83C\uDF0D" },
-  { value: "original" as ContentCategory, label: "Originals", icon: "\u2728" },
+  { value: "global" as ContentCategory, label: "Global" },
+  { value: "original" as ContentCategory, label: "Originals" },
 ];
 
 export default function Home() {

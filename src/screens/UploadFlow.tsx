@@ -1099,7 +1099,6 @@ export default function UploadFlow() {
                   <div className="flex-1">
                     <div className="font-bold text-sm flex items-center gap-1.5">
                       <span>Originals</span>
-                      <span className="text-xs">\u2728</span>
                     </div>
                     <p className="text-xs text-white/50">
                       Exclusive content published primarily on OWUUU.
@@ -1141,7 +1140,6 @@ export default function UploadFlow() {
                   <div className="flex-1">
                     <div className="font-bold text-sm flex items-center gap-1.5">
                       <span>Global</span>
-                      <span className="text-xs">\uD83C\uDF0D</span>
                     </div>
                     <p className="text-xs text-white/50">
                       Content already available on other platforms or licensed

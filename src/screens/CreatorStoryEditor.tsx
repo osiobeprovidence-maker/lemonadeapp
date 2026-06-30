@@ -104,7 +104,7 @@ export default function CreatorStoryEditor() {
           chapterText: storyDoc.media?.chapterText || '',
           monetization: storyDoc.media?.monetization || 'free',
           credits: storyDoc.media?.credits || '',
-          contentCategory: storyDoc.contentCategory || 'global',
+          contentCategory: storyDoc.contentCategory || 'original',
         });
         setEpisodes(storyDoc.episodes || 1);
         setCoverPreview(storyDoc.coverImage || '');
@@ -497,7 +497,7 @@ export default function CreatorStoryEditor() {
                     </div>
                     <div className="flex-1">
                       <div className="font-bold text-sm flex items-center gap-1.5">
-                        <span>Originals \u2728</span>
+                        <span>Originals</span>
                       </div>
                       <p className="text-xs text-white/50">
                         Exclusive content published primarily on OWUUU.
@@ -538,7 +538,7 @@ export default function CreatorStoryEditor() {
                     </div>
                     <div className="flex-1">
                       <div className="font-bold text-sm flex items-center gap-1.5">
-                        <span>Global \uD83C\uDF0D</span>
+                        <span>Global</span>
                       </div>
                       <p className="text-xs text-white/50">
                         Content already available on other platforms or
