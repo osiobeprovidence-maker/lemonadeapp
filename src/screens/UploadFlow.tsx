@@ -110,6 +110,7 @@ export default function UploadFlow() {
     tags: ["Original"],
     chapterText: "",
     monetization: "free",
+    contentCategory: "original" as "global" | "original",
   });
 
   const steps = ["Story Info", "Visuals", "Story Panels", "Publish"];
@@ -371,6 +372,7 @@ export default function UploadFlow() {
         ...(assets.coverImage ? { coverImage: assets.coverImage } : {}),
         ...(assets.bannerImage ? { bannerImage: assets.bannerImage } : {}),
         tags: formData.tags,
+        contentCategory: formData.contentCategory,
         isOriginal: true,
         episodes: Math.max(
           1,
@@ -1055,6 +1057,106 @@ export default function UploadFlow() {
             <h3 className="font-display text-2xl font-bold mb-2">
               Publish Instantly
             </h3>
+
+            {/* Content Category Selection */}
+            <div className="p-4 bg-[#141414] border border-white/10 rounded-xl">
+              <h4 className="font-bold mb-1">Content Category</h4>
+              <p className="text-xs text-white/50 mb-3">
+                Choose where this content is primarily published.
+              </p>
+              <div className="flex flex-col gap-2">
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                    formData.contentCategory === "original"
+                      ? "border-lemon-muted bg-lemon-muted/10"
+                      : "border-white/10 bg-black/30"
+                  } ${user?.role !== "admin" ? "opacity-60" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="contentCategory"
+                    value="original"
+                    checked={formData.contentCategory === "original"}
+                    onChange={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        contentCategory: "original",
+                      }))
+                    }
+                    className="sr-only"
+                  />
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      formData.contentCategory === "original"
+                        ? "border-lemon-muted"
+                        : "border-white/30"
+                    }`}
+                  >
+                    {formData.contentCategory === "original" && (
+                      <div className="w-2 h-2 rounded-full bg-lemon-muted" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-sm flex items-center gap-1.5">
+                      <span>Originals</span>
+                      <span className="text-xs">\u2728</span>
+                    </div>
+                    <p className="text-xs text-white/50">
+                      Exclusive content published primarily on OWUUU.
+                    </p>
+                  </div>
+                </label>
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                    formData.contentCategory === "global"
+                      ? "border-lemon-muted bg-lemon-muted/10"
+                      : "border-white/10 bg-black/30"
+                  } ${user?.role !== "admin" ? "opacity-60 pointer-events-none" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="contentCategory"
+                    value="global"
+                    checked={formData.contentCategory === "global"}
+                    onChange={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        contentCategory: "global",
+                      }))
+                    }
+                    className="sr-only"
+                    disabled={user?.role !== "admin"}
+                  />
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      formData.contentCategory === "global"
+                        ? "border-lemon-muted"
+                        : "border-white/30"
+                    }`}
+                  >
+                    {formData.contentCategory === "global" && (
+                      <div className="w-2 h-2 rounded-full bg-lemon-muted" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-sm flex items-center gap-1.5">
+                      <span>Global</span>
+                      <span className="text-xs">\uD83C\uDF0D</span>
+                    </div>
+                    <p className="text-xs text-white/50">
+                      Content already available on other platforms or licensed
+                      for distribution.
+                    </p>
+                    {user?.role !== "admin" && (
+                      <p className="text-[10px] text-lemon-muted/70 mt-0.5">
+                        Available for verified publishers only.
+                      </p>
+                    )}
+                  </div>
+                </label>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between p-4 bg-black border border-lemon-muted rounded-xl">
               <div>
                 <h4 className="font-bold">Free to Read</h4>

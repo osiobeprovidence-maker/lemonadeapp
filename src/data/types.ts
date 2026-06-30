@@ -55,6 +55,8 @@ export type ContentType =
   | "Novel"
   | "Light Novel";
 
+export type ContentCategory = "global" | "original";
+
 export type PublicationStatus = "ongoing" | "completed" | "hiatus" | "cancelled";
 
 export type Format = ContentType; // Backward compat alias
@@ -246,6 +248,7 @@ export interface Story {
   releaseYear?: number;
   language?: string;
   tags: string[];
+  contentCategory?: ContentCategory;
   isFeatured?: boolean;
   isOriginal: boolean;
   publicationStatus?: PublicationStatus;

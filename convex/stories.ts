@@ -47,13 +47,19 @@ const ensureCreatorProfile = async (
 };
 
 export const listPublished = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db
+  args: {
+    contentCategory: v.optional(v.union(v.literal("global"), v.literal("original"))),
+  },
+  handler: async (ctx, args) => {
+    let stories = await ctx.db
       .query("stories")
       .withIndex("by_status_and_views", (q) => q.eq("status", "published"))
       .order("desc")
       .take(50);
+    if (args.contentCategory) {
+      stories = stories.filter((s) => s.contentCategory === args.contentCategory);
+    }
+    return stories;
   },
 });
 
@@ -391,6 +397,7 @@ export const create = mutation({
     releaseYear: v.optional(v.number()),
     language: v.optional(v.string()),
     tags: v.array(v.string()),
+    contentCategory: v.optional(v.union(v.literal("global"), v.literal("original"))),
     isOriginal: v.boolean(),
     publicationStatus: v.optional(v.string()),
     episodes: v.optional(v.number()),
@@ -474,6 +481,7 @@ export const create = mutation({
       synopsis: args.synopsis,
       ...(args.description ? { description: args.description } : {}),
       tags: args.tags,
+      ...(args.contentCategory ? { contentCategory: args.contentCategory } : {}),
       isOriginal: args.isOriginal,
       rating: 0,
       ratingCount: 0,
@@ -532,6 +540,7 @@ export const update = mutation({
     language: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     isOriginal: v.optional(v.boolean()),
+    contentCategory: v.optional(v.union(v.literal("global"), v.literal("original"))),
     isFeatured: v.optional(v.boolean()),
     publicationStatus: v.optional(v.string()),
     weeklyViews: v.optional(v.number()),
@@ -578,7 +587,7 @@ export const update = mutation({
 
     if (!story) throw new Error("Story not found. It may have been deleted.");
 
-    const { externalId, contentType, publicationStatus, ...updates } = args;
+    const { externalId, contentType, publicationStatus, contentCategory, ...updates } = args;
 
     // Never write empty strings into optional image fields — omit them
     // so an existing URL is not accidentally cleared.
@@ -588,6 +597,7 @@ export const update = mutation({
     await ctx.db.patch(story._id, {
       ...updates,
       ...(contentType ? { contentType: contentType as any } : {}),
+      ...(contentCategory ? { contentCategory } : {}),
       ...(publicationStatus
         ? { publicationStatus: publicationStatus as any }
         : {}),

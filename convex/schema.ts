@@ -137,6 +137,7 @@ export default defineSchema({
     artist: v.optional(v.string()),
     releaseYear: v.optional(v.number()),
     language: v.optional(v.string()),
+    contentCategory: v.optional(v.union(v.literal("global"), v.literal("original"))),
     isOriginal: v.boolean(),
     isFeatured: v.boolean(),
     publicationStatus: v.optional(

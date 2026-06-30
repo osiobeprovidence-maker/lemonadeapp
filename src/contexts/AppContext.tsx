@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -9,7 +9,7 @@ import {
   updateProfile,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import type { Creator, Story, SupportTransaction, CreatorApplication, CreatorAccessStatus } from '../data/types';
+import type { Creator, Story, SupportTransaction, CreatorApplication, CreatorAccessStatus, ContentCategory } from '../data/types';
 import { api } from '../../convex/_generated/api';
 import { auth, authPersistenceReady, googleProvider } from '../lib/firebase';
 import { convex } from '../lib/convex';
@@ -144,6 +144,8 @@ interface AppContextType {
   creators: Record<string, Creator>;
   stories: Story[];
   applications: CreatorApplication[];
+  contentCategory: ContentCategory;
+  setContentCategory: (category: ContentCategory) => void;
   
   // Admin State
   adminSession: AdminSession | null;
@@ -276,6 +278,26 @@ const INITIAL_READER: AppUser = {
   settings: DEFAULT_SETTINGS,
 };
 
+const SESSION_SAFE_FIELDS: (keyof AppUser)[] = [
+  'id', 'email', 'name', 'username', 'usernameUpdatedAt', 'usernameChangeLockedAt',
+  'bio', 'avatar', 'banner', 'role', 'creatorAccessStatus', 'isAuthenticated', 'isGuest',
+  'isPremium', 'premiumStatus', 'premiumPlan', 'premiumBillingCycle',
+  'premiumStartedAt', 'premiumRenewsAt', 'premiumCancelledAt',
+  'premiumCancelAtPeriodEnd', 'premiumProvider', 'premiumReference',
+  'walletBalance', 'followedCreators', 'savedStories', 'unlockedChapters',
+  'unlockHistory', 'supportHistory', 'topupHistory', 'readingHistory', 'badges',
+  'notifications', 'settings',
+];
+
+const sanitizeUserForStorage = (user: AppUser): Record<string, unknown> => {
+  const safe: Record<string, unknown> = {};
+  for (const key of SESSION_SAFE_FIELDS) {
+    const val = (user as any)[key];
+    if (val !== undefined) safe[key] = val;
+  }
+  return safe;
+};
+
 const readPersistedUser = (): AppUser | null => {
   if (typeof window === 'undefined') return null;
 
@@ -286,7 +308,7 @@ const readPersistedUser = (): AppUser | null => {
       return null;
     }
 
-    const parsed = JSON.parse(savedSession) as { user?: AppUser };
+    const parsed = JSON.parse(savedSession) as { user?: any };
     const savedUser = parsed.user;
     if (!savedUser?.isAuthenticated || savedUser.isGuest) {
       console.log('[auth] Persisted session is invalid or guest, ignoring');
@@ -300,7 +322,6 @@ const readPersistedUser = (): AppUser | null => {
     };
   } catch (error) {
     console.error('[auth] Failed to restore saved auth session:', error);
-    window.localStorage.removeItem(AUTH_SESSION_KEY);
     return null;
   }
 };
@@ -314,12 +335,17 @@ const persistUserSession = (nextUser: AppUser) => {
     return;
   }
 
-  window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
-    user: nextUser,
-    savedAt: new Date().toISOString(),
-  }));
-  window.localStorage.removeItem(AUTH_EXPLICIT_LOGOUT_KEY);
-  console.log('[auth] Session persisted to localStorage:', nextUser.id, nextUser.username);
+  try {
+    const safeData = sanitizeUserForStorage(nextUser);
+    window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
+      user: safeData,
+      savedAt: new Date().toISOString(),
+    }));
+    window.localStorage.removeItem(AUTH_EXPLICIT_LOGOUT_KEY);
+    console.log('[auth] Session persisted to localStorage:', nextUser.id, nextUser.username);
+  } catch (error) {
+    console.error('[auth] Failed to persist session:', error);
+  }
 };
 
 const clearPersistedUserSession = () => {
@@ -449,6 +475,7 @@ const storyFromDoc = (doc: any, creator: Creator): Story => ({
   releaseYear: doc.releaseYear,
   language: doc.language,
   tags: doc.tags,
+  contentCategory: doc.contentCategory,
   isFeatured: doc.isFeatured,
   isOriginal: doc.isOriginal,
   publicationStatus: doc.publicationStatus,
@@ -558,6 +585,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [reports, setReports] = useState<ContentReport[]>([]);
   const [activityLog, setActivityLog] = useState<AdminActivity[]>([]);
   const [showMockData, setShowMockData] = useState<boolean>(false);
+
+  const [contentCategory, setContentCategoryState] = useState<ContentCategory>(() => {
+    if (typeof window === 'undefined') return 'global';
+    const saved = window.localStorage.getItem('lemonade_content_category');
+    return (saved === 'global' || saved === 'original') ? saved : 'global';
+  });
+
+  const setContentCategory = useCallback((category: ContentCategory) => {
+    setContentCategoryState(category);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('lemonade_content_category', category);
+    }
+  }, []);
 
   useEffect(() => {
     if (!convex) return;
@@ -1486,6 +1526,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       reports,
       activityLog,
       applications,
+      contentCategory,
+      setContentCategory,
       showMockData,
       updatePlatformSettings,
       contentLoading

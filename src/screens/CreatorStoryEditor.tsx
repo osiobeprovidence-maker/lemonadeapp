@@ -19,6 +19,7 @@ interface StoryDocument {
   coverImage: string;
   bannerImage: string;
   tags: string[];
+  contentCategory?: 'global' | 'original';
   isOriginal: boolean;
   status: string;
   episodes: number;
@@ -65,6 +66,7 @@ export default function CreatorStoryEditor() {
     chapterText: '',
     monetization: 'free',
     credits: '',
+    contentCategory: 'original' as 'global' | 'original',
   });
   const [episodes, setEpisodes] = useState(1);
   const [coverPreview, setCoverPreview] = useState('');
@@ -102,6 +104,7 @@ export default function CreatorStoryEditor() {
           chapterText: storyDoc.media?.chapterText || '',
           monetization: storyDoc.media?.monetization || 'free',
           credits: storyDoc.media?.credits || '',
+          contentCategory: storyDoc.contentCategory || 'global',
         });
         setEpisodes(storyDoc.episodes || 1);
         setCoverPreview(storyDoc.coverImage || '');
@@ -230,6 +233,7 @@ export default function CreatorStoryEditor() {
         coverImage: assets.coverImage,
         bannerImage: assets.bannerImage,
         tags: formData.tags,
+        contentCategory: formData.contentCategory,
         isOriginal: story.isOriginal,
         episodes: episodeCount,
         media: {
@@ -449,6 +453,105 @@ export default function CreatorStoryEditor() {
                   className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-white outline-none resize-none focus:border-lemon-muted"
                   placeholder="Add author, editor, illustrator credits or thank-you notes."
                 />
+              </div>
+
+              {/* Content Category */}
+              <div>
+                <label className="text-sm font-semibold text-white/50 mb-2 block">
+                  Content Category
+                </label>
+                <p className="text-xs text-white/40 mb-3">
+                  Choose where this content is primarily published.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <label
+                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                      formData.contentCategory === "original"
+                        ? "border-lemon-muted bg-lemon-muted/10"
+                        : "border-white/10 bg-black/30"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="contentCategory"
+                      value="original"
+                      checked={formData.contentCategory === "original"}
+                      onChange={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          contentCategory: "original",
+                        }))
+                      }
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        formData.contentCategory === "original"
+                          ? "border-lemon-muted"
+                          : "border-white/30"
+                      }`}
+                    >
+                      {formData.contentCategory === "original" && (
+                        <div className="w-2 h-2 rounded-full bg-lemon-muted" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-bold text-sm flex items-center gap-1.5">
+                        <span>Originals \u2728</span>
+                      </div>
+                      <p className="text-xs text-white/50">
+                        Exclusive content published primarily on OWUUU.
+                      </p>
+                    </div>
+                  </label>
+                  <label
+                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                      formData.contentCategory === "global"
+                        ? "border-lemon-muted bg-lemon-muted/10"
+                        : "border-white/10 bg-black/30"
+                    } ${user?.role !== "admin" ? "opacity-60 pointer-events-none" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="contentCategory"
+                      value="global"
+                      checked={formData.contentCategory === "global"}
+                      onChange={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          contentCategory: "global",
+                        }))
+                      }
+                      className="sr-only"
+                      disabled={user?.role !== "admin"}
+                    />
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        formData.contentCategory === "global"
+                          ? "border-lemon-muted"
+                          : "border-white/30"
+                      }`}
+                    >
+                      {formData.contentCategory === "global" && (
+                        <div className="w-2 h-2 rounded-full bg-lemon-muted" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-bold text-sm flex items-center gap-1.5">
+                        <span>Global \uD83C\uDF0D</span>
+                      </div>
+                      <p className="text-xs text-white/50">
+                        Content already available on other platforms or
+                        licensed for distribution.
+                      </p>
+                      {user?.role !== "admin" && (
+                        <p className="text-[10px] text-lemon-muted/70 mt-0.5">
+                          Available for verified publishers only.
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
           </section>
