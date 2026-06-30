@@ -481,7 +481,7 @@ export const create = mutation({
       synopsis: args.synopsis,
       ...(args.description ? { description: args.description } : {}),
       tags: args.tags,
-      ...(args.contentCategory ? { contentCategory: args.contentCategory } : {}),
+      contentCategory: args.contentCategory ?? "original",
       isOriginal: args.isOriginal,
       rating: 0,
       ratingCount: 0,
